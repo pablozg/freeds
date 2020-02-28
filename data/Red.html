@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="description" content="FreeDS - Derivador de energía solar excedente">
+        <meta name="author" content="(C) 2020 Pablo Zerón">
+        <link rel='icon' type='image/vnd.microsoft.icon' href='favicon.ico'>
+        <title>FreeDS</title>
+        <link href="all.min.css" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+        <link href="sb-admin-2.min.css" rel="stylesheet">
+    </head>
+    <body onload='lanDisabled();'>
+        <div id="wrapper">
+            <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+                <a class="sidebar-brand d-flex align-items-center justify-content-center">
+                    <div class="sidebar-brand-icon">
+                        <img src="freeds.png" alt="FreeDS Logo" class="brand-image elevation-3" style="opacity: .8">
+                    </div>
+                    <div class="sidebar-brand-text mx-2 tx-white">[FreeDS]</div>
+                </a>
+                <hr class="sidebar-divider my-1">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">
+                        <i class="fas fa-home"></i>
+                        <span class="m-l-20">Monitorización</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Red.html">
+                        <i class="fas fa-wifi"></i>
+                        <span>Ajustes de Red</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Config.html">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Configuración</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Salidas.html">
+                        <i class="fas fa-plug"></i>
+                        <span>Salidas</span>
+                    </a>
+                </li>
+                <hr class="sidebar-divider my-1">
+                <li class="nav-item">
+                    <a id='panelControl' class="nav-link" href="#" data-toggle="collapse" data-target="#collapseControl" aria-expanded="true" aria-controls="collapseControl">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Panel de Control</span>
+                    </a>
+                    <div id="collapseControl" class="collapse" aria-labelledby="headingControl" data-parent="#accordionSidebar">
+                        <div class="bg-white py-2 collapse-inner rounded">
+                            <h6 class="collapse-header">Control Pantalla:</h6>
+                            <a id="Button5" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(5)" title="Enciende / Apaga la pantalla Oled">Pantalla (ON)</a>
+                            <div class="range-control">
+                                <input id="oledBrightness" type="range" min="0" max="100" step="1" value="100" data-thumbwidth="10" data-toggle="tooltip" data-placement="right" title="Ajusta el nivel de brillo de la pantalla Oled">
+                                <output id="rangeVal" name="rangeVal">100</output>
+                            </div>
+                            <h6 class="collapse-header">Control PWM:</h6>
+                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(6)">PWM (ON)</a>
+                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(7)">PWM <span class="man_auto man_auto-inactive" id="labelauto">AUTO</span> / <span class="man_auto man_auto-inactive" id="labelman">MAN</span>
+                            </a>
+                        </div>
+                    </div>
+                </li>
+                <hr class="sidebar-divider my-1">
+                <li class="nav-item">
+                    <a class="nav-link" onclick="$('#modalRestart').modal();" href='#'>
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Reiniciar</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Ota.html">
+                        <i class="fas fa-download"></i>
+                        <span>Actualizar</span>
+                    </a>
+                </li>
+                <div class="sidebar-heading">Monitor</div>
+                <li class="nav-item">
+                    <a class="nav-link">
+                        <span id='wsolar2Text'>Potencia Solar:</span>
+                        <h6 class='pt-1' id='wsolar2'></h6>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link">
+                        <span>Potencia de red:</span>
+                        <h6 class='pt-1' id='wgrid2'></h6>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link">
+                        <span id='pwm2Text'>PWM:</span>
+                        <h6 class='pt-1' id='pwm2'></h6>
+                    </a>
+                </li>
+                <hr class="sidebar-divider d-none d-md-block">
+                <div class="text-center d-none d-md-inline">
+                    <button class="rounded-circle border-0" id="sidebarToggle"></button>
+                </div>
+            </ul>
+            <div id="content-wrapper" class="d-flex flex-column">
+                <div id="content">
+                    <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                        <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <ul class="navbar-nav ml-auto">
+                            <div style="align-content: right">%SELECT_MODE%</div>
+                        </ul>
+                    </nav>
+                    <div class="container-fluid">
+                        <div id="Errors"></div>
+                        %MESSAGE%
+                        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                            <h1 class="h3 mb-0 text-gray-800">Configuración Red</h1>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <div class="card shadow mb-4 card-size">
+                                    <div id='Red' class="card-body">
+                                        <form method="post" action="/handleCnet">
+                                            <div class="col-xl-12">
+                                                <div class="form-layout form-layout-10">
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-b-10">Datos conexion wifi</h6>
+                                                    <div class="row">
+                                                        <label class="col-sm-4 form-control-label">SSID Wifi 1:</label>
+                                                        <div class="col-sm-8 mg-t-8 mg-sm-t-0">
+                                                            %WIFI1%
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Wifi 1 Password:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id="wifip1" name="wifip1" type="password" class="form-control" placeholder="Escriba la contraseña de Wifi 1" value='%PASS1%'>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">SSID Wifi 2:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            %WIFI2%
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Wifi 2 Password:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id="wifip2" name="wifip2" type="password" class="form-control" placeholder="Escriba la contraseña de Wifi 2" value='%PASS2%'>
+                                                        </div>
+                                                    </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Datos Inversor</h6>
+                                                    <div id='modo' class="row mg-t-2">%WIFIS%</div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Conexi&oacuten de red</h6>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Nombre de Host:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='host' name="host" type="text" maxlength="10" class="form-control" value="%HOST%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Dirección IP:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='ip' name="ip" type="text" maxlength="16" class="form-control" value="%IP%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Puerta de enlace:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='gw' name="gw" type="text" maxlength="16" class="form-control" value="%GW%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Máscara de red:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='mask' name="mask" type="text" maxlength="16" class="form-control" value="%MASK%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">DNS 1:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='dns1' name="dns1" type="text" maxlength="16" class="form-control" value="%DNS1%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">DNS 2:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='dns2' name="dns2" type="text" maxlength="16" class="form-control" value="%DNS2%">
+                                                        </div>
+                                                    </div>
+                                                    <label class="custom-control custom-checkbox pb-3">
+                                                        <input id="dhcp" name="dhcp" type="checkbox" class="custom-control-input" onclick="lanDisabled()" %DHCP%>
+                                                        <span class="custom-control-indicator"></span><span>Dirección DHCP</span>
+                                                    </label>
+                                                    
+                                                    <div class="form-layout-footer pt-4 pb-4">
+                                                        <button type="submit" class="btn btn-info">Guardar</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="sticky-footer bg-white">
+                    <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
+                    <div>Basado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
+                    <small>
+                        <div>Fecha compilación: %FECHA_COMPILACION%</div>
+                        <div id='uptime_small'></div>
+                    </small>
+                </footer>
+            </div>
+        </div>
+        <script src="jquery-3.4.1.min.js"></script>
+        <script src="bootstrap.bundle.min.js"></script>
+        <script src="sb-admin-2.min.js"></script>
+        <script src="custom.js"></script>
+        <div id="modalRestart" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content text-center">
+                    <div class="modal-body">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>                    
+                        <h4 class="tx-danger tx-semibold pt-2 pb-2">¡¡¡¡ATENCIÓN!!!!</h4>
+                        <p class="mg-b-20 mg-x-20">¿Seguro que desea Reiniciar?</p>
+                        <button type="button" onClick="location.href='/reboot'" class="btn btn-success" data-dismiss="modal" aria-label="Close">Reiniciar</button>
+                        <button type="button" class="btn btn-danger" data-dismiss="modal" aria-label="Close">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

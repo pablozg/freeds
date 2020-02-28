@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="description" content="FreeDS - Derivador de energía solar excedente">
+        <meta name="author" content="(C) 2020 Pablo Zerón">
+        <link rel='icon' type='image/vnd.microsoft.icon' href='favicon.ico'>
+        <title>FreeDS</title>
+        <link href="all.min.css" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+        <link href="sb-admin-2.min.css" rel="stylesheet">
+    </head>
+    <body onload='checkPWM();'>
+        <div id="wrapper">
+            <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+                <a class="sidebar-brand d-flex align-items-center justify-content-center">
+                    <div class="sidebar-brand-icon">
+                        <img src="freeds.png" alt="FreeDS Logo" class="brand-image elevation-3" style="opacity: .8">
+                    </div>
+                    <div class="sidebar-brand-text mx-2 tx-white">[FreeDS]</div>
+                </a>
+                <hr class="sidebar-divider my-1">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">
+                        <i class="fas fa-home"></i>
+                        <span class="m-l-20">Monitorización</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Red.html">
+                        <i class="fas fa-wifi"></i>
+                        <span>Ajustes de Red</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Config.html">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Configuración</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Salidas.html">
+                        <i class="fas fa-plug"></i>
+                        <span>Salidas</span>
+                    </a>
+                </li>
+                <hr class="sidebar-divider my-1">
+                <li class="nav-item">
+                    <a id='panelControl' class="nav-link" href="#" data-toggle="collapse" data-target="#collapseControl" aria-expanded="true" aria-controls="collapseControl">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Panel de Control</span>
+                    </a>
+                    <div id="collapseControl" class="collapse" aria-labelledby="headingControl" data-parent="#accordionSidebar">
+                        <div class="bg-white py-2 collapse-inner rounded">
+                            <h6 class="collapse-header">Control Pantalla:</h6>
+                            <a id="Button5" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(5)" title="Enciende / Apaga la pantalla Oled">Pantalla (ON)</a>
+                            <div class="range-control">
+                                <input id="oledBrightness" type="range" min="0" max="100" step="1" value="100" data-thumbwidth="10" data-toggle="tooltip" data-placement="right" title="Ajusta el nivel de brillo de la pantalla Oled">
+                                <output id="rangeVal" name="rangeVal">100</output>
+                            </div>
+                            <h6 class="collapse-header">Control PWM:</h6>
+                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(6)">PWM (ON)</a>
+                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(7)">PWM <span class="man_auto man_auto-inactive" id="labelauto">AUTO</span> / <span class="man_auto man_auto-inactive" id="labelman">MAN</span>
+                            </a>
+                        </div>
+                    </div>
+                </li>
+                <hr class="sidebar-divider my-1">
+                <li class="nav-item">
+                    <a class="nav-link" onclick="$('#modalRestart').modal();" href='#'>
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Reiniciar</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Ota.html">
+                        <i class="fas fa-download"></i>
+                        <span>Actualizar</span>
+                    </a>
+                </li>
+                <div class="sidebar-heading">Monitor</div>
+                <li class="nav-item">
+                    <a class="nav-link">
+                        <span id='wsolar2Text'>Potencia Solar:</span>
+                        <h6 class='pt-1' id='wsolar2'></h6>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link">
+                        <span>Potencia de red:</span>
+                        <h6 class='pt-1' id='wgrid2'></h6>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link">
+                        <span id='pwm2Text'>PWM:</span>
+                        <h6 class='pt-1' id='pwm2'></h6>
+                    </a>
+                </li>
+                <hr class="sidebar-divider d-none d-md-block">
+                <div class="text-center d-none d-md-inline">
+                    <button class="rounded-circle border-0" id="sidebarToggle"></button>
+                </div>
+            </ul>
+            <div id="content-wrapper" class="d-flex flex-column">
+                <div id="content">
+                    <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                        <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <ul class="navbar-nav ml-auto">
+                            <div style="align-content: right">%SELECT_MODE%</div>
+                        </ul>
+                    </nav>
+                    <div class="container-fluid">
+                        <div id="Errors"></div>
+                        %MESSAGE%
+                        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                            <h1 class="h3 mb-0 text-gray-800">Salidas</h1>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <div class="card shadow mb-4  card-size">
+                                    <div id='Salidas' class="card-body">
+                                        <form id='Relay' name='Relay' method='post' action='/handleRelay'>
+                                            <div class="col-xl-12">
+                                                <div class="form-layout form-layout-10">
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-b-10">Configuración Dimmer PWM</h6>
+                                                    <label class="custom-control custom-checkbox pb-3">
+                                                        <input id="pwmactive" name="pwmactive" type="checkbox"  class="custom-control-input" onchange="checkPWM();" %PWMACTIVE%>
+                                                        <span class="custom-control-indicator"></span><span id='pwmText'></span> 
+                                                    </label>
+                                                    <div class="row">
+                                                        <label class="col-sm-4 form-control-label">Consumo de red, valor mínimo (W):</label>
+                                                        <div class="col-sm-8 mg-t-8 mg-sm-t-0">
+                                                            <input id='pwmmin' name='pwmmin' type="text" class="form-control" maxlength='5' value="%PWMMIN%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Consumo de red, valor máximo (W):</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='pwmmax' name='pwmmax' type="text" class="form-control" maxlength='5' value="%PWMMAX%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Frecuencia cálculo PWM (ms):</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='looppwm' name='looppwm' type="text" class="form-control" maxlength='4' value="%LOOPPWM%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Frecuencia PWM:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <select id='frecpwm' name='frecpwm' class='form-control select2'>
+                                                                <option value='500'>0.5 Khz</option>
+                                                                <option value='1000'>1.0 Khz</option>
+                                                                <option value='1500'>1.5 Khz</option>
+                                                                <option value='2000'>2.0 Khz</option>
+                                                                <option value='2500'>2.5 Khz</option>
+                                                                <option value='3000' selected>3.0 Khz</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Porcentaje de PWM en modo manual:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='manpwm' name='manpwm' type="text" class="form-control" maxlength='3' value="%MANPWM%">
+                                                        </div>
+                                                    </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Salidas</h6>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Porcentaje de PWM para activación de salidas por potencia:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='autopwm' name='autopwm' type="text" class="form-control" maxlength='3' value="%AUTOPWM%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row text-center tx-padding-2">
+                                                        <div class="col-sm-3"></div>
+                                                        <div class="col-sm-3">Porcentaje</div>
+                                                        <div class="col-sm-3">Potencia Encendido (W)</div>
+                                                        <div class="col-sm-3">Potencia Apagado (W)</div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-3 form-control-label">Salida 1 inicio desde:</label>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r01min' name='r01min' type="text" class="form-control" maxlength='3' value="%R01MIN%" onfocusout="checkPorcentPower(this);">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r01poton' name='r01poton' type="text" class="form-control" maxlength='4' value="%R01POTON%">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r01potoff' name='r01potoff' type="text" class="form-control" maxlength='4' onfocusout="checkSafeMargin(1)" value="%R01POTOFF%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-3 form-control-label">Salida 2 inicio desde:</label>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r02min' name='r02min' type="text" class="form-control" maxlength='3' value="%R02MIN%" onfocusout="checkPorcentPower(this);">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r02poton' name='r02poton' type="text" class="form-control" maxlength='4' value="%R02POTON%">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r02potoff' name='r02potoff' type="text" class="form-control" maxlength='4' onfocusout="checkSafeMargin(2)" value="%R02POTOFF%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-3 form-control-label">Salida 3 inicio desde:</label>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r03min' name='r03min' type="text" class="form-control" maxlength='3' value="%R03MIN%" onfocusout="checkPorcentPower(this);">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r03poton' name='r03poton' type="text" class="form-control" maxlength='4' value="%R03POTON%">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r03potoff' name='r03potoff' type="text" class="form-control" maxlength='4' onfocusout="checkSafeMargin(3)" value="%R03POTOFF%">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-3 form-control-label">Salida 4 inicio desde:</label>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r04min' name='r04min' type="text" class="form-control" maxlength='3' value="%R04MIN%" onfocusout="checkPorcentPower(this);">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r04poton' name='r04poton' type="text" class="form-control" maxlength='4' value="%R04POTON%">
+                                                        </div>
+                                                        <div class="col-sm-3 mg-t-10 mg-sm-t-0">
+                                                            <input id='r04potoff' name='r04potoff' type="text" class="form-control" maxlength='4' onfocusout="checkSafeMargin(4)" value="%R04POTOFF%">
+                                                        </div>
+                                                    </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Manual</h6>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-3"></label>
+                                                        <div class="col-sm-4 mg-t-10 mg-sm-t-0">
+                                                            <label class="custom-control custom-checkbox">
+                                                                <input id="R01_man" name="R01_man" type="checkbox" class="custom-control-input" onclick="" %R01MAN%><span class="custom-control-indicator"></span><span>Salida 1</span> 
+                                                            </label>
+                                                        </div>
+                                                        <div class="col-sm-4 mg-t-10 mg-sm-t-0">
+                                                            <label class="custom-control custom-checkbox">
+                                                                <input id="R02_man" name="R02_man" type="checkbox" class="custom-control-input" onclick="" %R02MAN%><span class="custom-control-indicator"></span><span>Salida 2</span> 
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2 ">
+                                                        <label class="col-sm-3"></label>
+                                                        <div class="col-sm-4 mg-t-10 mg-sm-t-0">
+                                                            <label class="custom-control custom-checkbox">
+                                                                <input id="R03_man" name="R03_man" type="checkbox" class="custom-control-input" onclick="" %R03MAN%><span class="custom-control-indicator"></span><span>Salida 3</span> 
+                                                            </label>
+                                                        </div>
+                                                        <div class="col-sm-4 mg-t-10 mg-sm-t-0">
+                                                            <label class="custom-control custom-checkbox">
+                                                                <input id="R04_man" name="R04_man" type="checkbox" class="custom-control-input" onclick="" %R04MAN%><span class="custom-control-indicator"></span><span>Salida 4</span> 
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-layout-footer pt-4 pb-4">
+                                                        <button type="submit" class="btn btn-info">Guardar</button> <a href="" class="btn btn-danger" data-toggle="modal" data-target="#pwmDefaults">Reinicializar</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="sticky-footer bg-white">
+                    <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
+                    <div>Basado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
+                    <small>
+                        <div>Fecha compilación: %FECHA_COMPILACION%</div>
+                        <div id='uptime_small'></div>
+                    </small>
+                </footer>
+            </div>
+        </div>
+        <script src="jquery-3.4.1.min.js"></script>
+        <script src="bootstrap.bundle.min.js"></script>
+        <script src="sb-admin-2.min.js"></script>
+        <script src="custom.js"></script>
+        <div id="pwmDefaults" class="modal fade" style="display: none;" aria-hidden="true">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content">
+                    <div class="modal-body tx-center pd-y-20 pd-x-20">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <h4 class="tx-danger tx-semibold pt-2 pb-2">¡¡¡¡ATENCIÓN!!!!</h4>
+                        <p class="mg-b-20 mg-x-20">Si pulsa reinicializar se restaurarán todos los valores por defecto.</p>
+                        <button type="button" onClick="Defaults();" class="btn btn-success" data-dismiss="modal" aria-label="Close">Restaurar</button>
+                        <button type="button" class="btn btn-danger" data-dismiss="modal" aria-label="Close">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="modalRestart" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content text-center">
+                    <div class="modal-body">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <h4 class="tx-danger tx-semibold pt-2 pb-2">¡¡¡¡ATENCIÓN!!!!</h4>
+                        <p class="mg-b-20 mg-x-20">¿Seguro que desea Reiniciar?</p>
+                        <button type="button" onClick="location.href='/reboot'" class="btn btn-success" data-dismiss="modal" aria-label="Close">Reiniciar</button>
+                        <button type="button" class="btn btn-danger" data-dismiss="modal" aria-label="Close">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
