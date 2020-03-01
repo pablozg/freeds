@@ -129,9 +129,9 @@ void data_display(void)
           display.setTextAlignment(TEXT_ALIGN_LEFT);    
           display.drawString(0, 0,  ("IP: " + WiFi.localIP().toString()));
           display.drawString(0, 12, ("SSID: " + WiFi.SSID()));
-          display.drawString(0, 24, ("Frec. PWM: " + String((float)config.pwmFrequency / 1000) + "Khz"));
-          display.drawString(0, 36, ("PWM Step: " + String(invert_pwm)));
-          display.drawString(0, 48, ("PWM: " + pro + "%"));
+          display.drawString(0, 24, ("FREC. PWM: " + String((float)config.pwmFrequency / 1000) + "Khz"));
+          display.drawString(0, 36, ("PWM: " + pro + "% (" + String(invert_pwm) + ")"));
+          display.drawString(0, 48, print_Uptime_Oled());
           display.display();
           break;
 

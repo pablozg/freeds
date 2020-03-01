@@ -396,40 +396,6 @@ void IRAM_ATTR resetModule()
 
 /////////////////////////////////////
 
-//////////////////////
-
-void connect_wifi()
-{
-  // Fixed IP
-  if (config.dhcp == false)
-  {
-    IPAddress local_IP, gateway, subnet, primaryDNS, secondaryDNS;
-    local_IP.fromString((String)config.ip);
-    gateway.fromString((String)config.gw);
-    subnet.fromString((String)config.mask);
-    primaryDNS.fromString((String)config.dns1);
-    secondaryDNS.fromString((String)config.dns2);
-
-    if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
-    {
-      INFOLN("Fixed IP -  Failed to configure");
-    }
-  }
-
-  wifiMulti.addAP(config.ssid1, config.pass1);
-  wifiMulti.addAP(config.ssid2, config.pass2);
-  INFO("\r\nWIFI:");
-#ifdef OLED
-  showLogo(_CONNECTING_, false);
-#endif
-
-  while (wifiMulti.run() != WL_CONNECTED)
-  {
-    delay(500);
-    INFO(".");
-  }
-}
-
 void defaultValues()
 {
   config.wversion = 2;
@@ -587,13 +553,14 @@ void setup()
     mqttClient.setCredentials(config.MQTT_user, config.MQTT_password);
     mqttClient.setServer(config.MQTT_broker, config.MQTT_port);
 
-    WiFi.mode(WIFI_STA);  // Configuramos la wifi como cliente
+    WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);
 
 #ifdef OLED
     showLogo(_CONNECTING_, false);
 #endif
-    connectToWifi(); // New mqtt IMPLEMENTATION
+    
+    connectToWifi();
 
     if (wifiMulti.run() == WL_CONNECTED) // Si conecta continuamos
     {
@@ -643,7 +610,7 @@ void setup()
       INFO("Hostname: ");
       INFOLN(config.hostServer);
 
-      /*use mdns for host name resolution*/
+      // Use mdns for host name resolution
       if (!MDNS.begin(config.hostServer))
       {
         INFOLN("Error setting up MDNS responder!");

@@ -317,8 +317,8 @@ void setWebConfig(void)
     request->send(response);
   });
 
-  server.on("/custom.js", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
-    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/custom.js.jgz", "application/javascript");
+  server.on("/freeds.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/freeds.min.js.jgz", "application/javascript");
     response->addHeader("Content-Encoding", "gzip");
     response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
     request->send(response);

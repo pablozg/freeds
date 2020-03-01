@@ -188,3 +188,10 @@ String print_Uptime()
 {
   return "Uptime: " + String(uptime.Day) + " Días " + String(uptime.Hour) + " Horas " + String(uptime.Minute) + " Minutos " + String(uptime.Second) + " Segundos";
 };
+
+String print_Uptime_Oled()
+{
+  char tmp[33];
+  sprintf(tmp, "UPTIME: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+  return tmp;
+};
