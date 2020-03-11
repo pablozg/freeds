@@ -262,7 +262,7 @@ struct CONFIG
   uint16_t baudiosMeter;
   uint8_t idMeter;
   uint8_t free;
-  uint32_t reserved[2] = {0};
+  uint32_t reserved[3] = {0};
 } config;
 
 struct METER
