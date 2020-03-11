@@ -7,23 +7,24 @@
  *
  */
 
-#define eepromVersion 0x0A
+#define eepromVersion 0x0C
 
 //#define FREEDS_DEBUG
 #define FREEDS_INFO
 
+bool eventsConnected = false;
+
 #ifdef FREEDS_INFO
-  #define INFO(x) Serial.print(x)
-  #define INFOLN(x) Serial.println(x)
+  #define INFO(x) {Serial.print(x); addLog((String)x, false);}
+  #define INFOLN(x) {Serial.println(x); addLog((String)x, true);}
 #else
   #define INFO(x)
   #define INFOLN(x)
 #endif
 
 #ifdef FREEDS_DEBUG
-  #pragma message "FreeDS 1.0.0 debug mode"
-  #define DEBUG(x) Serial.print(x)
-  #define DEBUGLN(x) Serial.println(x)
+  #define DEBUG(x) {Serial.print(x); addLog((String)x, false);}
+  #define DEBUGLN(x) {Serial.println(x); addLog((String)x, true);}
 #else
   #define DEBUG(x)
   #define DEBUGLN(x)
@@ -31,14 +32,12 @@
 
 #include <Update.h>
 #include <Wire.h>
-#include <WiFi.h>
 #include <WiFiMulti.h>
-#include <WiFiClient.h>
-#include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <TickerScheduler.h>
 #include <esp_system.h>
 #include <HardwareSerial.h>
+#include <rom/rtc.h>
 
 #include <AsyncJson.h>
 #include <ESPAsyncWebServer.h>
@@ -48,7 +47,7 @@
 #include <SPIFFS.h>
 #include <driver/dac.h>
 #include <bitmap.h>
-
+#include <tinyxml2.h>
 #include <DNSServer.h>
 
 extern "C"
@@ -57,8 +56,6 @@ extern "C"
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
 }
-
-size_t outputLength; // For base64
 
 #define LANGUAGE_ES
 
@@ -111,19 +108,19 @@ size_t outputLength; // For base64
 unsigned long temporizadorErrorConexionWifi = 0;
 unsigned long temporizadorErrorLecturaDatos = 0;
 unsigned long temporizadorErrorConexionRed = 0;
-unsigned long temporizadorControlPWM = 0;
 unsigned long temporizadorFlashDisplay = 0;
 unsigned long temporizadorOledAutoOff = 0;
+unsigned long temporizadorLecturaDatos = 0;
 
 ///// Debounce control
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 50;
+unsigned long debounceDelay = 80;
 bool ButtonState = false;
 bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "1.0.0 Beta";
+const char version[] PROGMEM = "1.0.2";
 
 const char *www_username = "admin";
 
@@ -147,6 +144,8 @@ uint8_t workingMode;
 
 uint8_t scanDoneCounter = 0;
 
+size_t outputLength; // For base64
+
 // Flags
 boolean Updating = false;
 boolean RelayTurnOn = true;
@@ -161,6 +160,8 @@ boolean Relay03Auto = false;
 boolean Relay04Auto = false;
 
 boolean setBrightness = false;
+
+boolean httpClientConnectSend = false;
 
 //// Flags Errores
 boolean errorConexionWifi = true;     // Error en conexión Wifi
@@ -216,7 +217,7 @@ struct CONFIG
   
   char ssid_esp01[30];
   char password_esp01[30];
-  char invert_ip_v1[30];
+  char sensor_ip[30];
 
   // MQTT
   char MQTT_broker[25];
@@ -244,9 +245,10 @@ struct CONFIG
   uint8_t oledBrightness;
 
   // TEMPORIZADORES
-  unsigned long temporizadorControlOled;
-  unsigned long temporizadorControlPWM;
+  unsigned long oledControlTime;
+  unsigned long pwmControlTime;
   unsigned long maxErrorTime;
+  unsigned long getDataTime;
 
   // PWM
   boolean pwm_man;
@@ -257,8 +259,10 @@ struct CONFIG
   char remote_api[250]; // Por compatibilidad con opends+
 
   // RESERVAS
-
-  uint32_t reserved[4] = {0};
+  uint16_t baudiosMeter;
+  uint8_t idMeter;
+  uint8_t free;
+  uint32_t reserved[2] = {0};
 } config;
 
 struct METER
@@ -307,31 +311,37 @@ struct TIME
   int Rollover = 0;
 } uptime;
 
+struct LOGSTRUCT
+{
+  String timeStamp;
+  String Message;
+} Logging[10];
+int logcount=-1;
+
 //// Definiciones Conexiones
 
-WiFiClient espClient;
+WiFiClient espClient; // TODO: Depurar el motivo del kernel panic sin esta linea
 WiFiMulti wifiMulti;
-HTTPClient http;
+
 HardwareSerial SerieEsp(2);   // RX, TX para esp-01
 HardwareSerial SerieMeter(1); // RX, TX para los Meter rs485/modbus
 DynamicJsonDocument root(2048);
+
+AsyncWebServer server(80);
+AsyncEventSource events("/events");
 
 TickerScheduler Tickers(7);
 
 AsyncMqttClient mqttClient;
 
-// fauxmoESP fauxmo;
-AsyncWebServer server(80);
-AsyncEventSource events("/events");
+DNSServer dnsServer;
 
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 TimerHandle_t relayOnTimer;
 TimerHandle_t relayOffTimer;
 
-//////////////////// PRUEBA CAPTIVE PORTAL ////////////////
-
-DNSServer dnsServer;
+//////////////////// CAPTIVE PORTAL ////////////////
 
 String scanNetworks[15];
 
@@ -353,9 +363,9 @@ public:
 
         EEPROM.put(0, config);
         EEPROM.commit();
-        INFOLN("DATA SAVED!!!!, RESTARTING!!!!");
+        Serial.print("DATA SAVED!!!!, RESTARTING!!!!");
         request->redirect("/");
-        delay(500); // Only to be able to redirect client, 
+        delay(500); // Only to be able to redirect client.
         ESP.restart();
 
     } else {
@@ -410,7 +420,7 @@ void defaultValues()
   strcpy(config.pass2, "DSPLUSWIFI2");
   strcpy(config.ssid_esp01, "SOLAXX");
   strcpy(config.password_esp01, "");
-  strcpy(config.invert_ip_v1, "192.168.0.100");
+  strcpy(config.sensor_ip, "192.168.0.100");
   config.dhcp = true;
   strcpy(config.ip, "192.168.0.99");
   strcpy(config.gw, "192.168.0.1");
@@ -446,14 +456,17 @@ void defaultValues()
   strcpy(config.password, "YWRtaW4=");
   config.oledPower = true;
   config.oledAutoOff = false;
-  config.temporizadorControlPWM = 2000;
-  config.temporizadorControlOled = 30000;
+  config.pwmControlTime = 2000;
+  config.oledControlTime = 30000;
+  config.getDataTime = 1500;
   config.maxErrorTime = 20000;
   config.manualControlPWM = 50;
   config.autoControlPWM = 60;
   config.pwm_man = false;
   config.pwmFrequency = 3000;
   config.oledBrightness = 255;
+  config.baudiosMeter = 9600;
+  config.idMeter = 1;
 
   config.eeinit = eepromVersion;
   config.wifi = false;
@@ -475,6 +488,13 @@ void setup()
   /////////////////////////////////////////////////
 
   Serial.begin(115200); // Se inicia la UART0 para debug
+  Serial.setDebugOutput(true);
+
+  INFO("\nCPU0 reset reason: ");
+  verbose_print_reset_reason(rtc_get_reset_reason(0));
+
+  INFO("CPU1 reset reason: ");
+  verbose_print_reset_reason(rtc_get_reset_reason(1));
 
   //// Comprobación del estado de la configuración
   INFOLN("\nTesting EEPROM Library\n");
@@ -492,6 +512,7 @@ void setup()
   }
 
   EEPROM.get(0, config);
+  checkEEPROM();
 
   // OLED
 #ifdef OLED
@@ -520,9 +541,8 @@ void setup()
     WiFi.mode(WIFI_AP);
     WiFi.softAP("FreeDS");
     IPAddress myIP = WiFi.softAPIP();
-    INFOLN();
     INFO("Local IP address: ");
-    INFOLN(myIP);
+    INFOLN(myIP.toString());
     INFOLN("SSID: FreeDS - 192.168.4.1");
     INFO("Hostname: ");
     INFOLN(config.hostServer);
@@ -553,9 +573,6 @@ void setup()
     mqttClient.setCredentials(config.MQTT_user, config.MQTT_password);
     mqttClient.setServer(config.MQTT_broker, config.MQTT_port);
 
-    WiFi.mode(WIFI_STA);
-    WiFi.setSleep(false);
-
 #ifdef OLED
     showLogo(_CONNECTING_, false);
 #endif
@@ -565,6 +582,7 @@ void setup()
     if (wifiMulti.run() == WL_CONNECTED) // Si conecta continuamos
     {
       errorConexionWifi = false;
+     
 #ifdef OLED
       showLogo("IP: " + WiFi.localIP().toString(), true);
 #endif
@@ -573,13 +591,13 @@ void setup()
       INFOLN("SSID: ");
       INFOLN(WiFi.SSID());
       INFOLN("IP address: ");
-      INFOLN(WiFi.localIP());
+      INFOLN(WiFi.localIP().toString());
 
       WiFi.scanNetworks();
       for (int i = 0; i < 15; ++i) {
         if(WiFi.SSID(i) == "") { break; }
         scanNetworks[i] = WiFi.SSID(i);
-        Serial.println(scanNetworks[i]);
+        INFOLN(scanNetworks[i]);
       }
 
       // Configuramos las salidas
@@ -593,18 +611,8 @@ void setup()
       digitalWrite(PIN_RL4, LOW);
       // SERIAL
 
+      SerieMeter.begin(config.baudiosMeter, SERIAL_8N1, RX1, TX1); // UART1 para meter
       SerieEsp.begin(115200, SERIAL_8N1, pin_rx, pin_tx); // UART2 para ESP01
-
-      switch (config.wversion)
-      {
-      case 6:
-        SerieMeter.begin(2400, SERIAL_8N1, RX1, TX1); // UART1 para meter SDM120/220 RS485
-        break;
-
-      default:
-        SerieMeter.begin(9600, SERIAL_8N1, RX1, TX1); // UART1 para meter DDSU666 y DDS283-2 RS485
-        break;
-      }
 
       INFOLN("Welcome to FreeDS");
       INFO("Hostname: ");
@@ -638,24 +646,16 @@ void setup()
         SerieEsp.println("###SSID=" + String(config.ssid_esp01) + "$$$");
 
       //// Configuración de los tickers
-      Tickers.add(0, 200, [&](void *) { data_display(); }, nullptr, true);         // OLED loop
-      Tickers.add(1, 250, [&](void *) { readMeter(); }, nullptr, false);           // Meter read loop
-      Tickers.add(2, 1500, [&](void *) { getInverterData(); }, nullptr, true);     // Get Inverter Data
-      Tickers.add(3, 500, [&](void *) { send_events(); }, nullptr, false);        // Send Events to Webpage
-      Tickers.add(4, 10000, [&](void *) { publishMqtt(); }, nullptr, false);       // Publish Mqtt messages
-      Tickers.add(5, 30000, [&](void *) { sendStatusSolaxV2(); }, nullptr, false); // Send status message to ESP01
-      Tickers.add(6, 60000, [&](void *) { remote_api(); }, nullptr, false);        // Send Data to Remote API
+      Tickers.add(0,  200, [&](void *) { data_display(); }, nullptr, true);        // OLED loop
+      Tickers.add(1,  500, [&](void *) { send_events(); }, nullptr, false);        // Send Events to Webpage
+      Tickers.add(2, 10000, [&](void *) { publishMqtt(); }, nullptr, false);       // Publish Mqtt messages
+      Tickers.add(3, 30000, [&](void *) { sendStatusSolaxV2(); }, nullptr, false); // Send status message to ESP01
+      Tickers.add(4, 60000, [&](void *) { remote_api(); }, nullptr, false);        // Send Data to Remote API
 
-      if (config.wversion < 4 || config.wversion > 6)
-      {
-        Tickers.disable(1);
-      }
-
-      // Set the http response timeout
-      http.setConnectTimeout(500); //3000
+      Tickers.add(5, config.getDataTime, [&](void *) { getSensorData(); }, nullptr, false); // Sensor data adquisition time
+      Tickers.add(6, config.pwmControlTime, [&](void *) { pwmControl(); }, nullptr, true);  // Pwm Control loop
 
       // Inicialización de Temporizadores
-      temporizadorControlPWM = millis();
       temporizadorErrorConexionWifi = millis();
       temporizadorErrorLecturaDatos = millis();
       temporizadorErrorConexionRed = millis();
@@ -712,13 +712,9 @@ void loop()
       setBrightness = false;
     }
 
-    if ((millis() - temporizadorControlPWM) > config.temporizadorControlPWM)
-    {
-      pwmControl();
-      temporizadorControlPWM = millis();
-    }
+    if (events.count() == 0) { eventsConnected = false; }
 
-    if ((millis() - temporizadorOledAutoOff) > config.temporizadorControlOled)
+    if ((millis() - temporizadorOledAutoOff) > config.oledControlTime)
     {
       if (config.oledAutoOff) {
         config.oledPower = false;
@@ -731,16 +727,6 @@ void loop()
       errorConexionInversor = true;
       temporizadorErrorConexionRed = millis();
       DEBUGLN("INVERTER ERROR: Error de comunicación");
-    }
-
-    if (!Tickers.isRunning(1) && (config.wversion >= 4 && config.wversion <= 6))
-    {
-      Tickers.enable(1);
-    }
-
-    if (Tickers.isRunning(1) && (config.wversion < 4 || config.wversion > 6))
-    {
-      Tickers.disable(1);
     }
 
     if (wifiMulti.run() != WL_CONNECTED)
@@ -785,13 +771,6 @@ void loop()
     display.display();
     dnsServer.processNextRequest();
   }
-
-  /*static unsigned long last = millis();
-  if (millis() - last > 5000)
-  {
-    last = millis();
-    Serial.printf("[MAIN] Free heap: %d bytes\n", ESP.getFreeHeap());
-  }*/
 
   /*INFO("loop time is = ");
   tme = millis() - tme;

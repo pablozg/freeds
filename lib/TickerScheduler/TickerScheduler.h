@@ -81,6 +81,7 @@ public:
     ~TickerScheduler();
     
     bool add(uint8_t i, uint32_t period, tscallback_t, void *, boolean shouldFireNow = false);
+	bool updatePeriod(uint8_t i, uint32_t period);
     bool remove(uint8_t i);
     bool enable(uint8_t i);
     bool disable(uint8_t i);

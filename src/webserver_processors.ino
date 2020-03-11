@@ -18,15 +18,23 @@ String workingModeString(void)
   }
   if (config.wversion == 4)
   {
-    return "Meter dds238-2 Modbus";
+    return "Meter DDS238-2 Modbus";
   }
   if (config.wversion == 5)
   {
-    return "Meter ddsu666 Modbus";
+    return "Meter DDSU666 Modbus";
   }
   if (config.wversion == 6)
   {
-    return "Meter sdm120 / sdm220 Modbus";
+    return "Meter SDM120 / SDM220 Modbus";
+  }
+  if (config.wversion == 9)
+  {
+    return "Wibee";
+  }
+  if (config.wversion == 10)
+  {
+    return "Shelly EM";
   }
   if (config.wversion == 11)
   {
@@ -55,7 +63,11 @@ String processorFreeDS(const String &var)
                                                                               "<option value='6'" +
            String((config.wversion == 6) ? " selected='selected' " : " ") + ">Meter SDM120 / SDM220 Modbus</option>"
                                                                               "<option value='11'" +
-           String((config.wversion == 11) ? " selected='selected' " : " ") + ">Fronius</option></select>";
+           String((config.wversion == 11) ? " selected='selected' " : " ") + ">Fronius</option>" +
+                                                                              "<option value='9'" +
+           String((config.wversion == 9) ? " selected='selected' " : " ") + ">Wibee (En desarrollo)</option>" +
+                                                                              "<option value='10'" +                                                                   
+           String((config.wversion == 10) ? " selected='selected' " : " ") + ">Shelly EM (En desarrollo)</option></select>";
   }
 
   if (var == "MESSAGE")
@@ -127,13 +139,13 @@ String processorRed(const String &var)
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>IP (Auto):</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
-             String(config.invert_ip_v1) + "\" name=\"wifis\" disabled /></div>";
+             String(config.sensor_ip) + "\" name=\"wifis\" disabled /></div>";
     }
     if (config.wversion == 1)
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Wifi V1 solax:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
-             String(config.invert_ip_v1) + "\" name=\"wifis\"/></div>";
+             String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
     }
     if (config.wversion == 2)
     {
@@ -148,11 +160,23 @@ String processorRed(const String &var)
              wifi += "</select></div>";
     return wifi;
     }
+    if (config.wversion == 9)
+    {
+      return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Wibeee:</label>"
+             "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
+             String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
+    }
+    if (config.wversion == 10)
+    {
+      return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Shelly EM:</label>"
+             "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
+             String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
+    }
     if (config.wversion == 11)
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Fronius:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
-             String(config.invert_ip_v1) + "\" name=\"wifis\"/></div>";
+             String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
     }
     // MQTT
     if (config.wversion == 3)
@@ -175,10 +199,6 @@ String processorRed(const String &var)
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>Modbus:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"SDM120 / SDM 220\" name=\"wifis\" disabled /></div>";
-    }
-    if (config.wversion == 11)
-    {
-      return "Fronius";
     }
   }
 
@@ -288,6 +308,11 @@ String processorConfig(const String &var)
     return String(config.remote_api);
   }
 
+  if (var == "IDMETER")
+  {
+    return String(config.idMeter);
+  }
+
   if (var == "AUTOPOWEROFF")
   {
     return config.oledAutoOff ? "checked" : "";
@@ -295,12 +320,17 @@ String processorConfig(const String &var)
 
   if (var == "AUTOPOWEROFFTIME")
   {
-    return String(config.temporizadorControlOled);
+    return String(config.oledControlTime);
   }
 
   if (var == "MAXERRORTIME")
   {
     return String(config.maxErrorTime);
+  }
+
+  if (var == "GETDATATIME")
+  {
+    return String(config.getDataTime);
   }
 
   if (var == "VERSION_CODE")
@@ -336,7 +366,7 @@ String processorSalidas(const String &var)
   }
   if (var == "LOOPPWM")
   {
-    return String(config.temporizadorControlPWM);
+    return String(config.pwmControlTime);
   }
   if (var == "MANPWM")
   {

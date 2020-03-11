@@ -54,6 +54,17 @@ bool TickerScheduler::add(uint8_t i, uint32_t period, tscallback_t f, void* arg,
     return true;
 }
 
+bool TickerScheduler::updatePeriod(uint8_t i, uint32_t period)
+{
+    if (i >= this->size || !this->items[i].is_used)
+        return false;
+
+    this->items[i].period = period;
+    enable(i);
+
+    return true;
+}
+
 bool TickerScheduler::remove(uint8_t i)
 {
     if (i >= this->size || !this->items[i].is_used)

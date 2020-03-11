@@ -11,7 +11,7 @@
         <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
         <link href="sb-admin-2.min.css" rel="stylesheet">
     </head>
-    <body onload='lanDisabled();'>
+    <body>
         <div id="wrapper">
             <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
                 <a class="sidebar-brand d-flex align-items-center justify-content-center"  href='https://github.com/pablozg/freeds'>
@@ -117,93 +117,24 @@
                         <div id="Errors"></div>
                         %MESSAGE%
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                            <h1 class="h3 mb-0 text-gray-800">Configuración Red</h1>
+                            <h1 class="h3 mb-0 text-gray-800">Weblog</h1>
                         </div>
                         <div class="row">
                             <div class="col">
                                 <div class="card shadow mb-4 card-size">
-                                    <div id='Red' class="card-body">
-                                        <form method="post" action="/handleCnet">
-                                            <div class="col-xl-12">
-                                                <div class="form-layout form-layout-10">
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-b-10">Datos conexion wifi</h6>
-                                                    <div class="row">
-                                                        <label class="col-sm-4 form-control-label">SSID Wifi 1:</label>
-                                                        <div class="col-sm-8 mg-t-8 mg-sm-t-0">
-                                                            %WIFI1%
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Wifi 1 Password:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id="wifip1" name="wifip1" type="password" class="form-control" placeholder="Escriba la contraseña de Wifi 1" value='%PASS1%'>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">SSID Wifi 2:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            %WIFI2%
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Wifi 2 Password:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id="wifip2" name="wifip2" type="password" class="form-control" placeholder="Escriba la contraseña de Wifi 2" value='%PASS2%'>
-                                                        </div>
-                                                    </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Datos Inversor</h6>
-                                                    <div id='modo' class="row mg-t-2">%WIFIS%</div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Conexi&oacuten de red</h6>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Nombre de Host:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='host' name="host" type="text" maxlength="10" class="form-control" value="%HOST%">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Dirección IP:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='ip' name="ip" type="text" maxlength="16" class="form-control" value="%IP%">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Puerta de enlace:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='gw' name="gw" type="text" maxlength="16" class="form-control" value="%GW%">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Máscara de red:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='mask' name="mask" type="text" maxlength="16" class="form-control" value="%MASK%">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">DNS 1:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='dns1' name="dns1" type="text" maxlength="16" class="form-control" value="%DNS1%">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">DNS 2:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='dns2' name="dns2" type="text" maxlength="16" class="form-control" value="%DNS2%">
-                                                        </div>
-                                                    </div>
-                                                    <label class="custom-control custom-checkbox pb-3">
-                                                        <input id="dhcp" name="dhcp" type="checkbox" class="custom-control-input" onclick="lanDisabled()" %DHCP%>
-                                                        <span class="custom-control-indicator"></span><span>Dirección DHCP</span>
-                                                    </label>
-                                                    
-                                                    <div class="form-layout-footer pt-4 pb-4">
-                                                        <button type="submit" class="btn btn-info">Guardar</button>
-                                                    </div>
-                                                </div>
+                                    <div id='Weblog' class="card-body">
+                                        <div class="container">
+                                            <div class="form-group">
+                                                <textarea id='weblog' rows='20' class="form-control" style="overflow-y: scroll;resize: none;"></textarea>
+                                                <form method='post' onsubmit="return sendwebcmnd();">
+                                                    <input id='webcmnd' name='webcmnd' type="text" class="form-control">
+                                                </form>
                                             </div>
-                                        </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </div>

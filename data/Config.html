@@ -110,7 +110,7 @@
                             <i class="fa fa-bars"></i>
                         </button>
                         <ul class="navbar-nav ml-auto">
-                            <div style="align-content: right">%SELECT_MODE%</div>
+                            <div style="align-content: right">%WORKING_MODE%</div>
                         </ul>
                     </nav>
                     <div class="container-fluid">
@@ -213,11 +213,41 @@
                                                             <input id='autoPowerOffTime' name='autoPowerOffTime' type='text' maxlength='5' class='form-control' value="%AUTOPOWEROFFTIME%">
                                                         </div>
                                                     </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Meter</h6>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Baud rate:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <select id='baudiosmeter' name='baudiosmeter' class='form-control select2'>
+                                                                <option value='300'>300 bps</option>
+                                                                <option value='600'>600 bps</option>
+                                                                <option value='1200'>1200 bps</option>
+                                                                <option value='2400'>2400 bps</option>
+                                                                <option value='4800'>4800 bps</option>
+                                                                <option value='9600' selected>9600 bps</option>
+                                                                <option value='19200'>19200 bps</option>
+                                                                <option value='38400'>38400 bps</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                   <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Meter Id:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='idmeter' name='idmeter' type="text" class="form-control" maxlength='3' value="%IDMETER%">
+                                                        </div>
+                                                    </div>
+                                                    
                                                     <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Tiempo máximo de error</h6>
                                                     <div class="row mg-t-2">
                                                         <label class="col-sm-4 form-control-label">Tiempo máximo de error (ms):</label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='maxerrortime' name='maxerrortime' type='text' maxlength='5' class='form-control' value="%MAXERRORTIME%">
+                                                        </div>
+                                                    </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Tiempo de adquisición de Datos</h6>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Tiempo adquisición datos (ms):</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='getdatatime' name='getdatatime' type='text' maxlength='5' class='form-control' value="%GETDATATIME%">
                                                         </div>
                                                     </div>
                                                     <div class="form-layout-footer pt-4 pb-4">

@@ -20,7 +20,7 @@ void pwmControl()
     temporizadorErrorLecturaDatos = millis();
     memset(&inverter, 0, sizeof(inverter));
     memset(&meter, 0, sizeof(meter));
-    DEBUGLN(F("PWM: Apagando PWM por superar el tiempo máximo en la recepción de datos"));
+    INFOLN(F("PWM: Apagando PWM por superar el tiempo máximo en la recepción de datos del vertido a Red"));
   }
 
   if (!config.P01_on || (!config.pwm_man && (errorLecturaDatos || errorConexionInversor)))
@@ -343,8 +343,6 @@ void calcPwmProgressBar()
   DEBUGLN(pro);
   DEBUG("\r\nPWM VALUE: ");
   DEBUGLN(invert_pwm);
-  DEBUG("\r\nPWM_CALC VALUE: ");
-  DEBUGLN(pwm_calc(invert_pwm));
 }
 
 void relay_control_man(boolean forceOFF)

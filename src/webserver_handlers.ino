@@ -11,9 +11,9 @@ void handleCnet(AsyncWebServerRequest *request)
     {
       strcpy(config.ssid_esp01, request->urlDecode(request->arg("wifis")).c_str());
     }
-    if (config.wversion == 1 || config.wversion == 11)
+    if (config.wversion == 1 || config.wversion == 11 || config.wversion == 10)
     {
-      strcpy(config.invert_ip_v1, request->urlDecode(request->arg("wifis")).c_str());
+      strcpy(config.sensor_ip, request->urlDecode(request->arg("wifis")).c_str());
     }
   }
 
@@ -81,13 +81,20 @@ void handleConfig(AsyncWebServerRequest *request)
 
   strcpy(config.remote_api, request->urlDecode(request->arg("remote_api")).c_str());
 
+  config.baudiosMeter = constrain(request->arg("baudiosmeter").toInt(), 300, 38400);
+  config.idMeter = constrain(request->arg("idmeter").toInt(), 1, 250);
+  SerieMeter.updateBaudRate(config.baudiosMeter);
+
   config.maxErrorTime = constrain(request->arg("maxerrortime").toInt(), 10000, 60000);
+  config.getDataTime = constrain(request->arg("getdatatime").toInt(), 250, 60000);
+  Tickers.updatePeriod(5, config.getDataTime);
 
   config.oledAutoOff = false;
   if (request->arg("autoPowerOff") == "on") {
     temporizadorOledAutoOff = millis();
     config.oledAutoOff = true;
-    config.temporizadorControlOled = constrain(request->arg("autoPowerOffTime").toInt(), 1000, 3000000);
+    config.oledControlTime = constrain(request->arg("autoPowerOffTime").toInt(), 1000, 3000000);
+    Tickers.updatePeriod(8, config.oledControlTime);
   } else {
     config.oledPower = true;
     turnOffOled();
@@ -120,7 +127,8 @@ void handleRelay(AsyncWebServerRequest *request)
 
   config.pwm_min = request->arg("pwmmin").toInt();
   config.pwm_max = request->arg("pwmmax").toInt();
-  config.temporizadorControlPWM = constrain(request->arg("looppwm").toInt(), 500, 10000);
+  config.pwmControlTime = constrain(request->arg("looppwm").toInt(), 500, 10000);
+  Tickers.updatePeriod(6, config.pwmControlTime);
   config.manualControlPWM = constrain(request->arg("manpwm").toInt(), 0, 100);
   config.autoControlPWM = constrain(request->arg("autopwm").toInt(), 0, 100);
 
@@ -173,6 +181,15 @@ String API(void)
   return "{\"Data\":[" + String(httpcode) + "," + String(inverter.pv1c) + "," + String(inverter.pv2c) + "," + String(inverter.pv1v) + "," + String(inverter.pv2v) + "," + String(inverter.pw1) + "," + String(inverter.pw2) + "," + String(inverter.gridv) + "," + String(inverter.wsolar) + "," + String(inverter.wtoday) + "," + String(inverter.wgrid) + "," + String(inverter.wtogrid) + "," + String(invert_pwm) + "," + String(status0) + "," + String(status1) + "]}";
 }
 
+void REBOOTCAUSE(void)
+{
+ INFO("CPU0 reset reason: ");
+ verbose_print_reset_reason(rtc_get_reset_reason(0));
+
+ INFO("CPU1 reset reason: ");
+ verbose_print_reset_reason(rtc_get_reset_reason(1));
+}
+
 String sendJsonWeb(void)
 {
   DynamicJsonDocument jsonValues(512);
@@ -202,43 +219,63 @@ String sendJsonWeb(void)
   jsonValues["wversion"] = config.wversion;
   jsonValues["pwmfrec"] = config.pwmFrequency;
   jsonValues["pwm"] = pro;
+  jsonValues["baudiosMeter"] = config.baudiosMeter;
 
   char tmpString[33];
   dtostrfd(inverter.wgrid, 2, tmpString);
   jsonValues["wgrid"] = tmpString;
 
-  if (config.wversion >= 4 && config.wversion <= 6) {
-    dtostrfd(meter.voltage, 2, tmpString);
-    jsonValues["mvoltage"] = tmpString;
-    dtostrfd(meter.current, 2, tmpString);
-    jsonValues["mcurrent"] = tmpString;
-    dtostrfd(meter.powerFactor, 2, tmpString);
-    jsonValues["mpowerFactor"] = tmpString;
-    dtostrfd(meter.frequency, 2, tmpString);
-    jsonValues["mfrequency"] = tmpString;
-    dtostrfd(meter.importActive, 2, tmpString);
-    jsonValues["mimportActive"] = tmpString;
-    dtostrfd(meter.exportActive, 2, tmpString);
-    jsonValues["mexportActive"] = tmpString;
-  } else {  
-    dtostrfd(inverter.wtoday, 2, tmpString);
-    jsonValues["wtoday"] = tmpString;
-    dtostrfd(inverter.wsolar, 2, tmpString);
-    jsonValues["wsolar"] = tmpString;
-    dtostrfd(inverter.gridv, 2, tmpString);
-    jsonValues["gridv"] = tmpString;
-    dtostrfd(inverter.pv1c, 2, tmpString);
-    jsonValues["pv1c"] = tmpString;
-    dtostrfd(inverter.pv1v, 2, tmpString);
-    jsonValues["pv1v"] = tmpString;
-    dtostrfd(inverter.pw1, 2, tmpString);
-    jsonValues["pw1"] = tmpString;
-    dtostrfd(inverter.pv2c, 2, tmpString);
-    jsonValues["pv2c"] = tmpString;
-    dtostrfd(inverter.pv2v, 2, tmpString);
-    jsonValues["pv2v"] = tmpString;
-    dtostrfd(inverter.pw2, 2, tmpString);
-    jsonValues["pw2"] = tmpString;
+  switch(config.wversion)
+  {
+    case 4:
+    case 5:
+    case 6:
+      dtostrfd(meter.voltage, 2, tmpString);
+      jsonValues["mvoltage"] = tmpString;
+      dtostrfd(meter.current, 2, tmpString);
+      jsonValues["mcurrent"] = tmpString;
+      dtostrfd(meter.powerFactor, 2, tmpString);
+      jsonValues["mpowerFactor"] = tmpString;
+      dtostrfd(meter.frequency, 2, tmpString);
+      jsonValues["mfrequency"] = tmpString;
+      dtostrfd(meter.importActive, 2, tmpString);
+      jsonValues["mimportActive"] = tmpString;
+      dtostrfd(meter.exportActive, 2, tmpString);
+      jsonValues["mexportActive"] = tmpString;
+      break;
+    case 9:
+    case 10:
+      dtostrfd(meter.voltage, 2, tmpString);
+      jsonValues["mvoltage"] = tmpString;
+      dtostrfd(meter.powerFactor, 2, tmpString);
+      jsonValues["mpowerFactor"] = tmpString;
+      dtostrfd(inverter.wsolar, 2, tmpString);
+      jsonValues["wsolar"] = tmpString;
+      dtostrfd(meter.importActive, 2, tmpString);
+      jsonValues["mimportActive"] = tmpString;
+      dtostrfd(meter.exportActive, 2, tmpString);
+      jsonValues["mexportActive"] = tmpString;
+      break;
+    default:
+      dtostrfd(inverter.wtoday, 2, tmpString);
+      jsonValues["wtoday"] = tmpString;
+      dtostrfd(inverter.wsolar, 2, tmpString);
+      jsonValues["wsolar"] = tmpString;
+      dtostrfd(inverter.gridv, 2, tmpString);
+      jsonValues["gridv"] = tmpString;
+      dtostrfd(inverter.pv1c, 2, tmpString);
+      jsonValues["pv1c"] = tmpString;
+      dtostrfd(inverter.pv1v, 2, tmpString);
+      jsonValues["pv1v"] = tmpString;
+      dtostrfd(inverter.pw1, 2, tmpString);
+      jsonValues["pw1"] = tmpString;
+      dtostrfd(inverter.pv2c, 2, tmpString);
+      jsonValues["pv2c"] = tmpString;
+      dtostrfd(inverter.pv2v, 2, tmpString);
+      jsonValues["pv2v"] = tmpString;
+      dtostrfd(inverter.pw2, 2, tmpString);
+      jsonValues["pw2"] = tmpString;
+      break;
   }
 
   String response;
@@ -292,6 +329,11 @@ void setWebConfig(void)
   server.on("/Ota.html", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     checkAuth(request);
     request->send(SPIFFS, "/Ota.html", "text/html", false, processorOta);
+  });
+
+  server.on("/weblog.html", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    checkAuth(request);
+    request->send(SPIFFS, "/weblog.html", "text/html", false, processorOta);
   });
 
   //////////// JAVASCRIPT EN LA MEMORIA SPPIFS ////////
@@ -387,10 +429,10 @@ void setWebConfig(void)
     //checkAuth(request);
     config.wversion = request->arg("data").toInt();
     saveEEPROM();
-    if (config.wversion >= 4 || config.wversion <= 6)
-    {
-      checkChangeBaud = true;
-    }
+    // if (config.wversion >= 4 || config.wversion <= 6)
+    // {
+    //   checkChangeBaud = true;
+    // }
     if (config.wversion == 3) { xTimerStart(mqttReconnectTimer, 0); suscribeMqttMeter();}
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
@@ -455,6 +497,22 @@ void setWebConfig(void)
 
   server.on("/api", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", API());
+    response->addHeader("Connection", "close");
+    request->send(response);
+  });
+
+  server.on("/handlecmnd", HTTP_POST, [](AsyncWebServerRequest *request) {
+    
+    if (request->arg("webcmnd") == "rebootcause") { REBOOTCAUSE(); }
+    if (request->arg("webcmnd") == "getFreeHeap")
+    { 
+      String freeheap;
+      freeheap = ESP.getFreeHeap();
+      freeheap += "{n}";
+      events.send(freeheap.c_str(), "weblog");
+    }
+    
+    AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
     request->send(response);
   });
@@ -536,7 +594,9 @@ void setWebConfig(void)
       Serial.println(client->lastId());
     }
     client->send("Hello!", NULL, millis(), 1000);
+    eventsConnected = true;
   });
+
 
   server.addHandler(&events);
 
@@ -547,5 +607,4 @@ void setWebConfig(void)
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", mdnsUrl);
   server.begin();
-  
 }

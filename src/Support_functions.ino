@@ -1,3 +1,36 @@
+void getSensorData(void)
+{
+  if (config.wifi)
+  {
+    switch (config.wversion)
+    {
+      case 0: // Solax v2 local mode
+        v0_com(); 
+        break;
+      case 1: // Solax v1
+        v1_com(); 
+        break;
+      case 2: // Solax v2
+        m1_com(); 
+        break;
+      case 4: // DDS2382
+      case 5: // DDSU666
+      case 6: // SDM120/220
+        readMeter();
+        break;
+      case 9: // Wibee
+        getWibeeeData(); 
+        break;
+      case 10: // Shelly EM
+        getShellyData(); 
+        break;
+      case 11: // Fronius
+        fronius_com(); 
+        break;
+    }
+  }
+}
+
 char *dtostrfd(double number, unsigned char prec, char *s)
 {
   if ((isnan(number)) || (isinf(number)))
@@ -69,10 +102,13 @@ void changeScreen(void)
       {
         ButtonState = false;
         temporizadorOledAutoOff = millis();
-        if (config.oledAutoOff && !config.oledPower) {
+        if (config.oledAutoOff && !config.oledPower)
+        {
           config.oledPower = true;
           turnOffOled();
-        } else {
+        }
+        else
+        {
           screen++;
           if (screen > MAX_SCREENS)
           {
@@ -97,7 +133,7 @@ void restartFunction(void)
   {
     down_pwm(false);
   }
-  
+
   INFOLN("RESTARTING IN 3 SEC !!!!");
 
   uint8_t tcont = 4;
@@ -118,43 +154,44 @@ void saveEEPROM(void)
 
 void remote_api()
 {
-
   DEBUGLN("\r\nremote_api()");
-
+  HTTPClient clientHttp;
+  WiFiClient clientWifi;
+  clientHttp.setConnectTimeout(4000);
 
   if ((String)config.remote_api != "" && config.wifi)
   {
-    String buf = "http://" + (String)config.remote_api;
-    
-    buf.replace("%pv1c%", String(inverter.pv1c));
-    buf.replace("%pv2c%", String(inverter.pv2c));
-    buf.replace("%pv1v%", String(inverter.pv1v));
-    buf.replace("%pv2v%", String(inverter.pv2v));
-    buf.replace("%gridv%", String(inverter.gridv));
-    buf.replace("%wsolar%", String(inverter.wsolar));
-    buf.replace("%wtoday%", String(inverter.wtoday));
-    buf.replace("%wgrid%", String(inverter.wgrid));
-    buf.replace("%pw1%", String(inverter.pw1));
-    buf.replace("%pw2%", String(inverter.pw2));
-    buf.replace("%wtogrid%", String(inverter.wtogrid));
+    String url = "http://" + (String)config.remote_api;
 
-    DEBUGLN("REMOTE API REQUEST: " + buf);
+    url.replace("%pv1c%", String(inverter.pv1c));
+    url.replace("%pv2c%", String(inverter.pv2c));
+    url.replace("%pv1v%", String(inverter.pv1v));
+    url.replace("%pv2v%", String(inverter.pv2v));
+    url.replace("%gridv%", String(inverter.gridv));
+    url.replace("%wsolar%", String(inverter.wsolar));
+    url.replace("%wtoday%", String(inverter.wtoday));
+    url.replace("%wgrid%", String(inverter.wgrid));
+    url.replace("%pw1%", String(inverter.pw1));
+    url.replace("%pw2%", String(inverter.pw2));
+    url.replace("%wtogrid%", String(inverter.wtogrid));
 
-    char bufferdata[buf.length() + 1];
-    buf.toCharArray(bufferdata, (buf.length() + 1));
-    http.begin(bufferdata);
-    httpcode = http.GET();
+    DEBUGLN("REMOTE API REQUEST: " + url);
+
+    clientHttp.begin(clientWifi, url);
+    httpcode = clientHttp.GET();
 
     DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
 
     if (httpcode < 0 || httpcode == 404)
       numeroErrorConexionRemoteApi++;
+    
     if (httpcode == HTTP_CODE_OK)
     {
       numeroErrorConexionRemoteApi = 0;
       errorRemoteApi = false;
     }
-    http.end();
+    clientHttp.end();
+    clientWifi.stop();
   }
 }
 
@@ -186,7 +223,16 @@ void calc_uptime()
 //******************* Prints the uptime to serial window **********************//
 String print_Uptime()
 {
-  return "Uptime: " + String(uptime.Day) + " Días " + String(uptime.Hour) + " Horas " + String(uptime.Minute) + " Minutos " + String(uptime.Second) + " Segundos";
+  char tmp[33];
+  sprintf(tmp, "Uptime: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+  return tmp;
+};
+
+String print_Uptime_Short()
+{
+  char tmp[33];
+  sprintf(tmp, "%02d:%02d:%02d", uptime.Hour, uptime.Minute, uptime.Second);
+  return tmp;
 };
 
 String print_Uptime_Oled()
@@ -195,3 +241,109 @@ String print_Uptime_Oled()
   sprintf(tmp, "UPTIME: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
   return tmp;
 };
+
+void verbose_print_reset_reason(RESET_REASON reason)
+{
+  switch (reason)
+  {
+    case 1:
+      INFOLN("Vbat power on reset");
+      break;
+    case 3:
+      INFOLN("Software reset digital core");
+      break;
+    case 4:
+      INFOLN("Legacy watch dog reset digital core");
+      break;
+    case 5:
+      INFOLN("Deep Sleep reset digital core");
+      break;
+    case 6:
+      INFOLN("Reset by SLC module, reset digital core");
+      break;
+    case 7:
+      INFOLN("Timer Group0 Watch dog reset digital core");
+      break;
+    case 8:
+      INFOLN("Timer Group1 Watch dog reset digital core");
+      break;
+    case 9:
+      INFOLN("RTC Watch dog Reset digital core");
+      break;
+    case 10:
+      INFOLN("Instrusion tested to reset CPU");
+      break;
+    case 11:
+      INFOLN("Time Group reset CPU");
+      break;
+    case 12:
+      INFOLN("Software reset CPU");
+      break;
+    case 13:
+      INFOLN("RTC Watch dog Reset CPU");
+      break;
+    case 14:
+      INFOLN("for APP CPU, reseted by PRO CPU");
+      break;
+    case 15:
+      INFOLN("Reset when the vdd voltage is not stable");
+      break;
+    case 16:
+      INFOLN("RTC Watch dog reset digital core and rtc module");
+      break;
+    default:
+      INFOLN("NO_MEAN");
+  }
+}
+
+/// BASIC LOGGING
+
+void addLog(String data, bool line)
+{
+  //Serial.println(data);
+  if (logcount > 9)
+    logcount = 0;
+  Logging[logcount].timeStamp = print_Uptime_Short();
+  Logging[logcount].Message = data;
+  Logging[logcount].Message += "{n}";
+  logcount++;
+  if (eventsConnected) sendWeblogStreamTest();
+}
+
+void sendWeblogStreamTest(void)
+{
+  String log;
+
+  for (int counter = 0; counter < logcount; counter++)
+  {
+    log = Logging[counter].timeStamp;
+    log += " - ";
+    log += Logging[counter].Message;
+    events.send(log.c_str(), "weblog");
+  }
+  logcount = 0;
+}
+
+void checkEEPROM(void){
+  
+  // Paso de versión 0x0A a 0x0B
+  if(config.eeinit == 0x0A)
+  {
+    config.pwm_man = false;
+    config.manualControlPWM = 50;
+    config.autoControlPWM = 60;
+    config.pwmFrequency = 3000;
+    config.getDataTime = 1500;
+    strcpy(config.remote_api, "");
+    config.eeinit = 0x0B;
+  }
+
+  // Paso de versión 0x0B a 0x0C
+  if(config.eeinit == 0x0B)
+  {
+    config.baudiosMeter = 9600;
+    config.idMeter = 1; 
+    config.eeinit = 0x0C;
+    saveEEPROM();
+  }
+}

@@ -1,39 +1,3 @@
-void getInverterData(void)
-{
-  DEBUGLN("\r\nGETINVERTERDATA()");
-
-  if (config.wifi)
-  {
-    switch (config.wversion)
-    {
-    case 0:
-      v0_com(); // Solax v2 local mode
-      break;
-    case 1:
-      v1_com(); // Solax v1
-      break;
-    case 2:
-      m1_com(); // Solax v2
-      break;
-    case 11:
-      fronius_com(); // Fronius
-      break;
-    }
-  }
-
-  DEBUGLN(".......................................");
-  DEBUGLN("Tipo de conexión (config.wversion): ..." + String(config.wversion));
-  DEBUGLN("Conexión MQTT Activada: ..............." + String(config.mqtt ? "True" : "False"));
-  DEBUGLN("Error Conexión MQTT: .................." + String(errorConexionMqtt ? "True" : "False"));
-  DEBUGLN("Error Conexión Inversor: .............." + String(errorConexionInversor ? "True" : "False"));
-  DEBUGLN("Error Conexión WiFi: .................." + String(errorConexionWifi ? "True" : "False"));
-  DEBUGLN("Error Lectura Datos: .................." + String(errorLecturaDatos ? "True" : "False"));
-  DEBUGLN("Error Remote API: ....................." + String(errorRemoteApi ? "True" : "False"));
-  DEBUGLN("Contador Error Conexión Remote Api: ..." + String(numeroErrorConexionRemoteApi));
-  DEBUGLN("Control de PWM Activado: .............." + String(config.P01_on ? "True" : "False"));
-  DEBUGLN("Control Manual de PWM Activado: ......." + String(config.pwm_man ? "True" : "False"));
-}
-
 void sendStatusSolaxV2(void)
 {
   DEBUGLN("\r\nSENDSTATUSSOLAXV2()");
@@ -96,73 +60,78 @@ void m1_com(void)
 // Solax v1
 void v1_com(void)
 {
+    HTTPClient clientHttp;
+    WiFiClient clientWifi;
+    clientHttp.setConnectTimeout(3000);
     httpcode = -1;
     
-    String buf = "http://" + (String)config.invert_ip_v1 + "/api/realTimeData.htm";
-    char bufferdata[buf.length() + 1];
-    buf.toCharArray(bufferdata, (buf.length() + 1));
-    http.begin(bufferdata);
-    httpcode = http.GET();
+    String url = "http://" + (String)config.sensor_ip + "/api/realTimeData.htm";
+    clientHttp.begin(clientWifi, url);
+    httpcode = clientHttp.GET();
 
     DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
 
-    String Resp = http.getString();
     if (httpcode == HTTP_CODE_OK)
     {
+      String Resp = clientHttp.getString();
       parseJsonv1(Resp);
       errorConexionInversor = false;
     }
-    http.end();
+    clientHttp.end();
+    clientWifi.stop();
 }
 
 // Solax v2 local
 void v0_com(void)
 { 
+    HTTPClient clientHttp;
+    WiFiClient clientWifi;
+    clientHttp.setConnectTimeout(3000);
     httpcode = -1;
 
-    http.begin("http://5.8.8.8/?optType=ReadRealTimeData");
-    http.addHeader("Host", "5.8.8.8");
-    http.addHeader("Content-Length", "0");
-    http.addHeader("Accept", "/*/");
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    http.addHeader("X-Requested-With", "com.solaxcloud.starter");
+    clientHttp.begin(clientWifi, "http://5.8.8.8/?optType=ReadRealTimeData");
+    clientHttp.addHeader("Host", "5.8.8.8");
+    clientHttp.addHeader("Content-Length", "0");
+    clientHttp.addHeader("Accept", "/*/");
+    clientHttp.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    clientHttp.addHeader("X-Requested-With", "com.solaxcloud.starter");
 
-    httpcode = http.POST("");
+    httpcode = clientHttp.POST("");
 
     DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
 
-    String Resp = http.getString();
     if (httpcode == HTTP_CODE_OK)
     {
+      String Resp = clientHttp.getString();
       parseJsonv1(Resp);
       errorConexionInversor = false;
     }
-    http.end();
+    clientHttp.end();
+    clientWifi.stop();
 }
 
 // Fronius
 void fronius_com(void)
-{
+{  
+    HTTPClient clientHttp;
+    WiFiClient clientWifi;
+    clientHttp.setConnectTimeout(4000);
     httpcode = -1;
-    String buf = "http://" + (String)config.invert_ip_v1 + "/solar_api/v1/GetPowerFlowRealtimeData.fcgi";
-    char bufferdata[buf.length() + 1];
-    buf.toCharArray(bufferdata, (buf.length() + 1));
-    http.begin(bufferdata);
-    httpcode = http.GET();
+    String url = "http://" + (String)config.sensor_ip + "/solar_api/v1/GetPowerFlowRealtimeData.fcgi";
+    clientHttp.begin(clientWifi, url);
+    httpcode = clientHttp.GET();
 
     DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
 
-    String Resp = http.getString();
-
-    DEBUGLN("JSON STRING: " + Resp);
-
     if (httpcode == HTTP_CODE_OK)
     {
+      String Resp = clientHttp.getString();
+      INFOLN("JSON STRING: " + Resp);
       parseJson_fronius(Resp);
       errorConexionInversor = false;
     }
-    http.end();
-  
+    clientHttp.end();
+    clientWifi.stop();
 }
 
 // Solax v2
@@ -237,10 +206,10 @@ void parseJson_fronius(String json)
     httpcode = -1;
   } else {
     DEBUGLN("deserializeJson() OK");
-    inverter.wsolar = (root["Body"]["Data"]["Site"]["P_PV"] == "null" ? 0 : root["Body"]["Data"]["Site"]["P_PV"]); // Potencia solar
-    inverter.wtoday = root["Body"]["Data"]["Site"]["E_Day"];                                                       // Potencia solar diaria
-    inverter.wgrid = root["Body"]["Data"]["Site"]["P_Grid"];                                                       // Potencia de red (Negativo: de red - Positivo: a red)
-    inverter.wgrid = (int)inverter.wgrid * -1;
+    inverter.wsolar = root["Body"]["Data"]["Site"]["P_PV"] == "null" ? 0 : root["Body"]["Data"]["Site"]["P_PV"];     // Potencia solar
+    inverter.wtoday = root["Body"]["Data"]["Site"]["E_Day"] == "null" ? 0 : root["Body"]["Data"]["Site"]["E_Day"];   // Potencia solar diaria
+    inverter.wgrid  = root["Body"]["Data"]["Site"]["P_Grid"] == "null" ? 0 : root["Body"]["Data"]["Site"]["P_Grid"]; // Potencia de red (Negativo: de red - Positivo: a red)
+    inverter.wgrid  *= -1;
     inverter.wtoday = inverter.wtoday / 1000; // w->Kw
     
     errorConexionInversor = false;

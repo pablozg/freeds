@@ -1,7 +1,5 @@
 /* MODBUS*/
 
-#define METER_DEFAULT_ADDR       1       // default Meter Modbus address
-
 // METERS STRUCT DEFINITIONS
 
 const uint16_t Ddsu666_start_addresses[] {
@@ -108,7 +106,7 @@ void ddsu666(void)
 
   if (0 == meter.send_retry || data_ready) {
     meter.send_retry = 5;
-    modbusSend(METER_DEFAULT_ADDR, 0x04, Ddsu666_start_addresses[meter.read_state], 2);
+    modbusSend(config.idMeter, 0x04, Ddsu666_start_addresses[meter.read_state], 2);
   } else {
     meter.send_retry--;
   }
@@ -209,7 +207,7 @@ void sdm120(void)
 
   if (0 == meter.send_retry || data_ready) {
     meter.send_retry = 5;
-    modbusSend(METER_DEFAULT_ADDR, 0x04, sdm120_start_addresses[meter.read_state], 2);
+    modbusSend(config.idMeter, 0x04, sdm120_start_addresses[meter.read_state], 2);
   } else {
     meter.send_retry--;
   }
@@ -231,12 +229,15 @@ void dds2382(void)
 
       #ifdef FREEDS_DEBUG
         DEBUG("Meter response: ");
+        char hexarray[200] = {0};
+        char hexvalue[5] = {0};
         for (int i = 0; i < 45; i++)
         {
-          DEBUG(" 0x");
-          DEBUG(buffer[i], HEX);
+          sprintf(hexvalue, " 0x%02X", buffer[i]);
+          strcpy(hexarray, hexvalue);
+          
         }
-        DEBUGLN();
+        DEBUG(hexarray);
       #endif
 
       float exportActive = 0;
@@ -276,44 +277,27 @@ void dds2382(void)
 
   if (0 == meter.send_retry || data_ready) {
     meter.send_retry = 5;
-    modbusSend(METER_DEFAULT_ADDR, 0x03, 0, 18);
+    modbusSend(config.idMeter, 0x03, 0, 18);
   } else {
     meter.send_retry--;
   }
 }
 
 void readMeter(void)
-{
-  
+{ 
   DEBUG(F("Baudios: "));
   DEBUGLN(SerieMeter.baudRate());
 
-  if (checkChangeBaud){
-    switch (config.wversion)
-    {
-    case 4:
-    case 5:
-      if (SerieMeter.baudRate() != 9600) SerieMeter.updateBaudRate(9600);
-      checkChangeBaud = false;
-      break;
-    case 6:
-      if (SerieMeter.baudRate() != 2400) SerieMeter.updateBaudRate(2400);
-      checkChangeBaud = false;
-      break;    
-    }
-  }
-
   switch (config.wversion)
   {
-  case 4:
-    dds2382();
-    break;
-  case 5:
-    ddsu666();
-    break;
-  case 6:
-    sdm120();
-    break;    
+    case 4:
+      dds2382();
+      break;
+    case 5:
+      ddsu666();
+      break;
+    case 6:
+      sdm120();
+      break;
   }
-  
 }

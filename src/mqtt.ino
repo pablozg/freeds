@@ -1,7 +1,14 @@
 void connectToWifi()
 {
   INFOLN("Connecting to Wi-Fi...");
+
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
   
+  wifiMulti.addAP(config.ssid1, config.pass1);
+  wifiMulti.addAP(config.ssid2, config.pass2);
+
   if (config.dhcp == false)
   {
     IPAddress local_IP, gateway, subnet, primaryDNS, secondaryDNS;
@@ -17,8 +24,6 @@ void connectToWifi()
     }
   }
 
-  wifiMulti.addAP(config.ssid1, config.pass1);
-  wifiMulti.addAP(config.ssid2, config.pass2);
   INFO("\r\nWIFI:");
 
   while (wifiMulti.run() != WL_CONNECTED)
@@ -85,56 +90,56 @@ void WiFiEvent(WiFiEvent_t event)
 
   switch (event)
   {
-  case SYSTEM_EVENT_STA_GOT_IP:
-    INFOLN("WiFi connected");
-    INFOLN("IP address: ");
-    INFOLN(WiFi.localIP());
-    if (config.mqtt && config.wversion != 0)
-    {
-      connectToMqtt();
-    }
-    else
-    {
-      xTimerStop(mqttReconnectTimer, 0);
-    }
-    break;
-  case SYSTEM_EVENT_STA_DISCONNECTED:
-    INFOLN("WiFi lost connection");
-    xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-    xTimerStart(wifiReconnectTimer, 0);
-    break;
-  case SYSTEM_EVENT_WIFI_READY:
-  case SYSTEM_EVENT_SCAN_DONE:
-    scanDoneCounter++;
-    if (scanDoneCounter >= 5)
-    {
-      errorConnectToWifi();
-    }
-    break;
-  case SYSTEM_EVENT_STA_START:
-  case SYSTEM_EVENT_STA_STOP:
-  case SYSTEM_EVENT_STA_CONNECTED:
-  case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
-  case SYSTEM_EVENT_STA_LOST_IP:
-  case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
-  case SYSTEM_EVENT_STA_WPS_ER_FAILED:
-  case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
-  case SYSTEM_EVENT_STA_WPS_ER_PIN:
-  case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP:
-  case SYSTEM_EVENT_AP_START:
-  case SYSTEM_EVENT_AP_STOP:
-  case SYSTEM_EVENT_AP_STACONNECTED:
-  case SYSTEM_EVENT_AP_STADISCONNECTED:
-  case SYSTEM_EVENT_AP_STAIPASSIGNED:
-  case SYSTEM_EVENT_AP_PROBEREQRECVED:
-  case SYSTEM_EVENT_GOT_IP6:
-  case SYSTEM_EVENT_ETH_START:
-  case SYSTEM_EVENT_ETH_STOP:
-  case SYSTEM_EVENT_ETH_CONNECTED:
-  case SYSTEM_EVENT_ETH_DISCONNECTED:
-  case SYSTEM_EVENT_ETH_GOT_IP:
-  case SYSTEM_EVENT_MAX:
-    break;
+    case SYSTEM_EVENT_STA_GOT_IP:
+      INFOLN("WiFi connected");
+      INFOLN("IP address: ");
+      INFOLN(WiFi.localIP());
+      if (config.mqtt && config.wversion != 0)
+      {
+        connectToMqtt();
+      }
+      else
+      {
+        xTimerStop(mqttReconnectTimer, 0);
+      }
+      break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      INFOLN("WiFi lost connection");
+      xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+      xTimerStart(wifiReconnectTimer, 0);
+      break;
+    case SYSTEM_EVENT_WIFI_READY:
+    case SYSTEM_EVENT_SCAN_DONE:
+      scanDoneCounter++;
+      if (scanDoneCounter >= 5)
+      {
+        errorConnectToWifi();
+      }
+      break;
+    case SYSTEM_EVENT_STA_START:
+    case SYSTEM_EVENT_STA_STOP:
+    case SYSTEM_EVENT_STA_CONNECTED:
+    case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
+    case SYSTEM_EVENT_STA_LOST_IP:
+    case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
+    case SYSTEM_EVENT_STA_WPS_ER_FAILED:
+    case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
+    case SYSTEM_EVENT_STA_WPS_ER_PIN:
+    case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP:
+    case SYSTEM_EVENT_AP_START:
+    case SYSTEM_EVENT_AP_STOP:
+    case SYSTEM_EVENT_AP_STACONNECTED:
+    case SYSTEM_EVENT_AP_STADISCONNECTED:
+    case SYSTEM_EVENT_AP_STAIPASSIGNED:
+    case SYSTEM_EVENT_AP_PROBEREQRECVED:
+    case SYSTEM_EVENT_GOT_IP6:
+    case SYSTEM_EVENT_ETH_START:
+    case SYSTEM_EVENT_ETH_STOP:
+    case SYSTEM_EVENT_ETH_CONNECTED:
+    case SYSTEM_EVENT_ETH_DISCONNECTED:
+    case SYSTEM_EVENT_ETH_GOT_IP:
+    case SYSTEM_EVENT_MAX:
+      break;
   }
 }
 
@@ -208,8 +213,7 @@ void publishMqtt()
     publisher("freeds/wgrid", tmpString);
     dtostrfd(inverter.wtogrid, 2, tmpString);
     publisher("freeds/wtogrid", tmpString);
-    dtostrfd((invert_pwm * 100 / 180), 2, tmpString);
-    publisher("freeds/pwm", tmpString);
+    publisher("freeds/pwm", pro.c_str());
     publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
@@ -277,9 +281,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         {
           DEBUGLN("deserializeJson() OK");
 
-          //inverter.wgrid = (float)root["ENERGY"]["Power"] * -1; // Potencia de red (Negativo: de red - Positivo: a red) para usar con los datos de Tasmota
-          inverter.wgrid = (float)root["Power"]; // Potencia de red (Negativo: de red - Positivo: a red) para usar con mi sniffer
-
+          inverter.wgrid = (float)root["ENERGY"]["Power"] * -1; // Potencia de red (Negativo: de red - Positivo: a red) para usar con los datos de Tasmota
+                    
           errorConexionInversor = false;
           errorConexionMqtt = false;
           temporizadorErrorConexionRed = millis();
