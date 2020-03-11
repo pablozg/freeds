@@ -11,7 +11,7 @@ void handleCnet(AsyncWebServerRequest *request)
     {
       strcpy(config.ssid_esp01, request->urlDecode(request->arg("wifis")).c_str());
     }
-    if (config.wversion == 1 || config.wversion == 11 || config.wversion == 10)
+    if (config.wversion == 1 || config.wversion == 9 || config.wversion == 10 || config.wversion == 11)
     {
       strcpy(config.sensor_ip, request->urlDecode(request->arg("wifis")).c_str());
     }
@@ -224,6 +224,40 @@ String sendJsonWeb(void)
   char tmpString[33];
   dtostrfd(inverter.wgrid, 2, tmpString);
   jsonValues["wgrid"] = tmpString;
+
+  // if (config.wversion >= 4 && config.wversion <= 6) {
+  //   dtostrfd(meter.voltage, 2, tmpString);
+  //   jsonValues["mvoltage"] = tmpString;
+  //   dtostrfd(meter.current, 2, tmpString);
+  //   jsonValues["mcurrent"] = tmpString;
+  //   dtostrfd(meter.powerFactor, 2, tmpString);
+  //   jsonValues["mpowerFactor"] = tmpString;
+  //   dtostrfd(meter.frequency, 2, tmpString);
+  //   jsonValues["mfrequency"] = tmpString;
+  //   dtostrfd(meter.importActive, 2, tmpString);
+  //   jsonValues["mimportActive"] = tmpString;
+  //   dtostrfd(meter.exportActive, 2, tmpString);
+  //   jsonValues["mexportActive"] = tmpString;
+  // } else {  
+  //   dtostrfd(inverter.wtoday, 2, tmpString);
+  //   jsonValues["wtoday"] = tmpString;
+  //   dtostrfd(inverter.wsolar, 2, tmpString);
+  //   jsonValues["wsolar"] = tmpString;
+  //   dtostrfd(inverter.gridv, 2, tmpString);
+  //   jsonValues["gridv"] = tmpString;
+  //   dtostrfd(inverter.pv1c, 2, tmpString);
+  //   jsonValues["pv1c"] = tmpString;
+  //   dtostrfd(inverter.pv1v, 2, tmpString);
+  //   jsonValues["pv1v"] = tmpString;
+  //   dtostrfd(inverter.pw1, 2, tmpString);
+  //   jsonValues["pw1"] = tmpString;
+  //   dtostrfd(inverter.pv2c, 2, tmpString);
+  //   jsonValues["pv2c"] = tmpString;
+  //   dtostrfd(inverter.pv2v, 2, tmpString);
+  //   jsonValues["pv2v"] = tmpString;
+  //   dtostrfd(inverter.pw2, 2, tmpString);
+  //   jsonValues["pw2"] = tmpString;
+  // }
 
   switch(config.wversion)
   {
@@ -607,4 +641,5 @@ void setWebConfig(void)
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", mdnsUrl);
   server.begin();
+  
 }
