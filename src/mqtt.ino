@@ -1,14 +1,40 @@
+/*
+  mqtt.ino - FreeDs mqtt functions
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+  
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 void connectToWifi()
 {
-  INFOLN("Connecting to Wi-Fi...");
+  Serial.println("Connecting to Wi-Fi...");
+  #ifdef OLED
+    showLogo(_CONNECTING_, false);
+  #endif
 
-  WiFi.persistent(false);
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  
   wifiMulti.addAP(config.ssid1, config.pass1);
   wifiMulti.addAP(config.ssid2, config.pass2);
 
+  while (wifiMulti.run() != WL_CONNECTED)
+  {
+    delay(500);
+    INFO(".");
+  }
+  
   if (config.dhcp == false)
   {
     IPAddress local_IP, gateway, subnet, primaryDNS, secondaryDNS;
@@ -20,23 +46,18 @@ void connectToWifi()
 
     if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS))
     {
-      INFOLN("Fixed IP -  Failed to configure");
+      Serial.println("Fixed IP -  Failed to configure");
     }
   }
 
-  INFO("\r\nWIFI:");
-
-  while (wifiMulti.run() != WL_CONNECTED)
-  {
-    delay(500);
-    INFO(".");
-  }
+  WiFi.setSleep(false);
+  WiFi.persistent(false);
   scanDoneCounter = 0;
 }
 
 void errorConnectToWifi(void)
 {
-  errorConexionWifi = true;
+  Error.ConexionWifi = true;
 #ifdef OLED
   display.clear();
   display.setFont(ArialMT_Plain_10);
@@ -44,24 +65,25 @@ void errorConnectToWifi(void)
   display.drawString(64, 0, "WIFI");
   display.drawString(64, 16, "ERROR");
   display.drawString(64, 30, _PRGRESTORE_);
-  display.drawString(64, 40, _WAIT_15_SECS_);
+  display.drawString(64, 40, _WAIT_);
   display.display();
 #endif
-  temporizadorErrorConexionWifi = millis();
-  INFOLN("AP Not valid, Waiting 15 seg. before restart, press 'prg' button to defaults settings");
+  timers.ErrorConexionWifi = millis();
+  INFOLN(PSTR("AP Not valid, Waiting 30 seconds before restart, press 'prg' button to defaults settings or 'rst' button to restart now"));
   
-  while ((millis() - temporizadorErrorConexionWifi) < 15000)
+  while ((millis() - timers.ErrorConexionWifi) < 30000)
   {
     if (digitalRead(0) == LOW)
     {
       ButtonLongPress = true;
       break;
     }
+    yield();
   }
   
   if (ButtonLongPress)
   {
-    INFOLN("Prg pressed");
+    INFOLN(PSTR("Prg pressed"));
     defaultValues();
     saveEEPROM();
     delay(1000);
@@ -69,7 +91,7 @@ void errorConnectToWifi(void)
   }
   else
   {
-    INFOLN("No PRG pressed");
+    INFOLN(PSTR("No PRG pressed"));
     ESP.restart();
   }
 }
@@ -78,75 +100,77 @@ void connectToMqtt()
 {
   if (config.wversion != 0 && config.mqtt)
   {
-    INFOLN("Connecting to MQTT...");
+    INFOLN(PSTR("Connecting to MQTT..."));
     mqttClient.connect();
   }
 }
 
 void WiFiEvent(WiFiEvent_t event)
 {
-  INFO("[WiFi-event] event: ");
+  INFO(PSTR("[WiFi-event] event: "));
   INFOLN(event);
 
   switch (event)
   {
-    case SYSTEM_EVENT_STA_GOT_IP:
-      INFOLN("WiFi connected");
-      INFOLN("IP address: ");
-      INFOLN(WiFi.localIP());
-      if (config.mqtt && config.wversion != 0)
-      {
-        connectToMqtt();
-      }
-      else
-      {
-        xTimerStop(mqttReconnectTimer, 0);
-      }
-      break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-      INFOLN("WiFi lost connection");
-      xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-      xTimerStart(wifiReconnectTimer, 0);
-      break;
-    case SYSTEM_EVENT_WIFI_READY:
-    case SYSTEM_EVENT_SCAN_DONE:
-      scanDoneCounter++;
-      if (scanDoneCounter >= 5)
-      {
-        errorConnectToWifi();
-      }
-      break;
-    case SYSTEM_EVENT_STA_START:
-    case SYSTEM_EVENT_STA_STOP:
-    case SYSTEM_EVENT_STA_CONNECTED:
-    case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
-    case SYSTEM_EVENT_STA_LOST_IP:
-    case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
-    case SYSTEM_EVENT_STA_WPS_ER_FAILED:
-    case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
-    case SYSTEM_EVENT_STA_WPS_ER_PIN:
-    case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP:
-    case SYSTEM_EVENT_AP_START:
-    case SYSTEM_EVENT_AP_STOP:
-    case SYSTEM_EVENT_AP_STACONNECTED:
-    case SYSTEM_EVENT_AP_STADISCONNECTED:
-    case SYSTEM_EVENT_AP_STAIPASSIGNED:
-    case SYSTEM_EVENT_AP_PROBEREQRECVED:
-    case SYSTEM_EVENT_GOT_IP6:
-    case SYSTEM_EVENT_ETH_START:
-    case SYSTEM_EVENT_ETH_STOP:
-    case SYSTEM_EVENT_ETH_CONNECTED:
-    case SYSTEM_EVENT_ETH_DISCONNECTED:
-    case SYSTEM_EVENT_ETH_GOT_IP:
-    case SYSTEM_EVENT_MAX:
-      break;
+  case SYSTEM_EVENT_STA_GOT_IP:
+    Error.ConexionWifi = false;
+    INFOLN(PSTR("WiFi connected"));
+    INFO(PSTR("IP address: "));
+    INFOLN(WiFi.localIP());
+    if (config.mqtt && config.wversion != 0)
+    {
+      connectToMqtt();
+    }
+    else
+    {
+      xTimerStop(mqttReconnectTimer, 0);
+    }
+    break;
+  case SYSTEM_EVENT_STA_DISCONNECTED:
+    Error.ConexionWifi = true;
+    INFOLN(PSTR("WiFi lost connection"));
+    xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+    xTimerStart(wifiReconnectTimer, 0);
+    break;
+  case SYSTEM_EVENT_WIFI_READY:
+  case SYSTEM_EVENT_SCAN_DONE:
+    scanDoneCounter++;
+    if (scanDoneCounter >= 5)
+    {
+      errorConnectToWifi();
+    }
+    break;
+  case SYSTEM_EVENT_STA_START:
+  case SYSTEM_EVENT_STA_STOP:
+  case SYSTEM_EVENT_STA_CONNECTED:
+  case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
+  case SYSTEM_EVENT_STA_LOST_IP:
+  case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
+  case SYSTEM_EVENT_STA_WPS_ER_FAILED:
+  case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
+  case SYSTEM_EVENT_STA_WPS_ER_PIN:
+  case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP:
+  case SYSTEM_EVENT_AP_START:
+  case SYSTEM_EVENT_AP_STOP:
+  case SYSTEM_EVENT_AP_STACONNECTED:
+  case SYSTEM_EVENT_AP_STADISCONNECTED:
+  case SYSTEM_EVENT_AP_STAIPASSIGNED:
+  case SYSTEM_EVENT_AP_PROBEREQRECVED:
+  case SYSTEM_EVENT_GOT_IP6:
+  case SYSTEM_EVENT_ETH_START:
+  case SYSTEM_EVENT_ETH_STOP:
+  case SYSTEM_EVENT_ETH_CONNECTED:
+  case SYSTEM_EVENT_ETH_DISCONNECTED:
+  case SYSTEM_EVENT_ETH_GOT_IP:
+  case SYSTEM_EVENT_MAX:
+    break;
   }
 }
 
 void onMqttConnect(bool sessionPresent)
 {
   INFOLN("Connected to MQTT");
-  errorConexionMqtt = false;
+  Error.ConexionMqtt = false;
 
   mqttClient.subscribe("freeds/cmnd/pwm", 0);
   mqttClient.subscribe("freeds/cmnd/pwmman", 0);
@@ -187,7 +211,7 @@ void publishMqtt()
 
   DEBUGLN("\r\nPUBLISHMQTT()");
 
-  if (config.mqtt && !errorConexionMqtt && config.wversion != 0)
+  if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
   {
     static char tmpString[33];
 
@@ -248,7 +272,7 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
   INFOLN("Disconnected from MQTT");
 
-  errorConexionMqtt = true;
+  Error.ConexionMqtt = true;
 
   if (WiFi.isConnected() && config.mqtt && config.wversion != 0)
   {
@@ -283,9 +307,9 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
           inverter.wgrid = (float)root["ENERGY"]["Power"] * -1; // Potencia de red (Negativo: de red - Positivo: a red) para usar con los datos de Tasmota
                     
-          errorConexionInversor = false;
-          errorConexionMqtt = false;
-          temporizadorErrorConexionRed = millis();
+          Error.ConexionInversor = false;
+          Error.ConexionMqtt = false;
+          timers.ErrorConexionRed = millis();
         }
       }
 
@@ -333,8 +357,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
     if (strcmp(topic, "freeds/cmnd/pwmman") == 0)
     { // pwm control manual ON-OFF
-      INFOLN("Mqtt _ Manual PWM control");
-      config.pwm_man = (int)(char)payload[0] ? true : false;
+      String Mode = (char)payload[0] == '1' ? "MANUAL" : "AUTO";
+      INFOLN("Mqtt _ Manual PWM control set to :");
+      INFOLN(Mode);
+      config.pwm_man = (char)payload[0] == '1' ? true : false;
       saveEEPROM();
     }
 
@@ -384,9 +410,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       }
       INFO("Mqtt _ Change screen brightness: ");
       INFOLN(strData);
-      uint8_t brightness = ((constrain(strData.toInt(), 0, 100) * 255) / 100);
-      display.resetDisplay();
-      display.setBrightness(brightness);
+      config.oledBrightness = ((constrain(strData.toInt(), 0, 100) * 255) / 100);
+      Flags.setBrightness = true;
     }
   }
 }

@@ -1,11 +1,33 @@
+/*
+  display.ino - Display Support
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+
+  Based in opends+ (https://github.com/iqas/derivador)
+  
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 void data_display(void)
 {
   DEBUGLN("\r\nDATA_DISPLAY()");
 #ifdef OLED
-  if ((millis() - temporizadorFlashDisplay) > 1000)
+  if ((millis() - timers.FlashDisplay) > 1000)
   {
-    temporizadorFlashDisplay = millis();
-    flash = !flash;
+    timers.FlashDisplay = millis();
+    Flags.flash = !Flags.flash;
   }
 
   if (config.wifi)
@@ -22,7 +44,7 @@ void data_display(void)
           case 4:
           case 5:
           case 6:
-            display.drawString(0, 0, (flash ? "Voltage" : "Current"));
+            display.drawString(0, 0, (Flags.flash ? "Voltage" : "Current"));
             break;
           default:
             display.drawString(0, 0, (_SOLAR_));
@@ -33,20 +55,20 @@ void data_display(void)
         display.drawString(128, 0, (_GRID_));
 
         display.setTextAlignment(TEXT_ALIGN_CENTER);
-        if (flash)
+        if (Flags.flash)
         {
-          display.drawString(64, 0, (String(errorConexionInversor ? "S " : "S ") + String(errorConexionWifi ? "W " : "W ") + String(errorConexionMqtt ? "M " : "M  ")));
+          display.drawString(64, 0, (String(Error.ConexionInversor ? "S " : "S ") + String(Error.ConexionWifi ? "W " : "W ") + String(Error.ConexionMqtt ? "M " : "M  ")));
           display.drawString(85, 0, (String(config.wversion)));
         }
         else
         {
-          display.drawString(64, 0, (String(errorConexionInversor ? "_ " : "S ") + String(errorConexionWifi ? "_ " : "W ") + String(errorConexionMqtt ? "_ " : "M  ")));
+          display.drawString(64, 0, (String(Error.ConexionInversor ? "_ " : "S ") + String(Error.ConexionWifi ? "_ " : "W ") + String(Error.ConexionMqtt ? "_ " : "M  ")));
           display.drawString(85, 0, "v");
         }
 
-        if (Updating)
+        if (Flags.Updating)
           display.drawString(64, 38, _UPDATING_);
-        else if ((!config.P01_on || (!config.pwm_man && (errorLecturaDatos || errorConexionInversor))) && invert_pwm <= 1)
+        else if ((!config.P01_on || (!config.pwm_man && (Error.LecturaDatos || Error.ConexionInversor))) && invert_pwm <= 1)
           display.drawString(64, 38, WiFi.localIP().toString());
         else
           display.drawProgressBar(0, 38, 120, 10, progressbar); // draw the progress bar
@@ -67,7 +89,7 @@ void data_display(void)
           case 5:
           case 6:
             display.setFont(ArialMT_Plain_16);
-            display.drawString(0, 14, (flash ? String(meter.voltage) : String(meter.current)));
+            display.drawString(0, 14, (Flags.flash ? String(meter.voltage) : String(meter.current)));
             break;
           default:
             display.drawString(0, 12, (String)(int)inverter.wsolar);

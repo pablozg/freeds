@@ -1,3 +1,25 @@
+/*
+  Support_functions.ino - FreeDs support functions
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+
+  Based in opends+ (https://github.com/iqas/derivador)
+  
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 void getSensorData(void)
 {
   if (config.wifi)
@@ -27,8 +49,20 @@ void getSensorData(void)
       case 11: // Fronius
         fronius_com(); 
         break;
+      case 12: // Master FreeDS
+        getMasterFreeDsData();
+        break;
     }
   }
+}
+
+String midString(String str, String start, String finish){
+  int locStart = str.indexOf(start);
+  if (locStart == -1) return "";
+  locStart += start.length();
+  int locFinish = str.indexOf(finish, locStart);
+  if (locFinish == -1) return "";
+  return str.substring(locStart, locFinish);
 }
 
 char *dtostrfd(double number, unsigned char prec, char *s)
@@ -41,6 +75,16 @@ char *dtostrfd(double number, unsigned char prec, char *s)
   else
   {
     return dtostrf(number, 1, prec, s);
+  }
+}
+
+void buildWifiArray(void)
+{
+  WiFi.scanNetworks();
+  for (int i = 0; i < 15; ++i) {
+    if(WiFi.SSID(i) == "") { break; }
+    scanNetworks[i] = WiFi.SSID(i);
+    INFOLN(scanNetworks[i]);
   }
 }
 
@@ -101,7 +145,7 @@ void changeScreen(void)
       else
       {
         ButtonState = false;
-        temporizadorOledAutoOff = millis();
+        timers.OledAutoOff = millis();
         if (config.oledAutoOff && !config.oledPower)
         {
           config.oledPower = true;
@@ -128,11 +172,13 @@ void turnOffOled(void)
 
 void restartFunction(void)
 {
-  saveEEPROM();
-  if (!firstInit)
+  
+  if (!Flags.firstInit)
   {
     down_pwm(false);
   }
+
+  saveEEPROM();
 
   INFOLN("RESTARTING IN 3 SEC !!!!");
 
@@ -188,7 +234,7 @@ void remote_api()
     if (httpcode == HTTP_CODE_OK)
     {
       numeroErrorConexionRemoteApi = 0;
-      errorRemoteApi = false;
+      Error.RemoteApi = false;
     }
     clientHttp.end();
     clientWifi.stop();
@@ -307,7 +353,7 @@ void addLog(String data, bool line)
   Logging[logcount].Message = data;
   Logging[logcount].Message += "{n}";
   logcount++;
-  if (eventsConnected) sendWeblogStreamTest();
+  if (Flags.eventsConnected) sendWeblogStreamTest();
 }
 
 void sendWeblogStreamTest(void)
@@ -344,6 +390,15 @@ void checkEEPROM(void){
     config.baudiosMeter = 9600;
     config.idMeter = 1; 
     config.eeinit = 0x0C;
+  }
+
+  // Paso de versión 0x0C a 0x0D
+  if(config.eeinit == 0x0C)
+  {
+    config.pwmSlaveOn = 0;
+    config.potmanpwm = 0;
+    config.flags.potManPwmActive = false;
+    config.eeinit = 0x0D;
     saveEEPROM();
   }
 }

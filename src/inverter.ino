@@ -1,3 +1,25 @@
+/*
+  inverter.ino - FreeDs inverter functions
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+
+  Based in opends+ (https://github.com/iqas/derivador)
+  
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 void sendStatusSolaxV2(void)
 {
   DEBUGLN("\r\nSENDSTATUSSOLAXV2()");
@@ -29,20 +51,20 @@ void m1_com(void)
         SerieEsp.println("###SSID=" + String(config.ssid_esp01) + "$$$");
       else
       {
-        errorConexionInversor = false;
-        temporizadorErrorConexionRed = millis();
+        Error.ConexionInversor = false;
+        timers.ErrorConexionRed = millis();
       }
     }
     if (currentLine.startsWith("###PAYLOAD"))
     {
-      errorConexionInversor = false;
+      Error.ConexionInversor = false;
       esp01_payload = currentLine.substring(currentLine.indexOf("{\"Data\""), currentLine.indexOf("$$$"));
       parseJson(esp01_payload);
     }
     if (currentLine.startsWith("##D M1: NOT CONNECT"))
     {
       INFOLN("-----M1: Mo conectado a inversor");
-      errorConexionInversor = true;
+      Error.ConexionInversor = true;
     }
     if (currentLine.startsWith("###HTTPCODE"))
     {
@@ -62,7 +84,7 @@ void v1_com(void)
 {
     HTTPClient clientHttp;
     WiFiClient clientWifi;
-    clientHttp.setConnectTimeout(3000);
+    clientHttp.setConnectTimeout(2000);
     httpcode = -1;
     
     String url = "http://" + (String)config.sensor_ip + "/api/realTimeData.htm";
@@ -75,7 +97,7 @@ void v1_com(void)
     {
       String Resp = clientHttp.getString();
       parseJsonv1(Resp);
-      errorConexionInversor = false;
+      Error.ConexionInversor = false;
     }
     clientHttp.end();
     clientWifi.stop();
@@ -86,7 +108,7 @@ void v0_com(void)
 { 
     HTTPClient clientHttp;
     WiFiClient clientWifi;
-    clientHttp.setConnectTimeout(3000);
+    clientHttp.setConnectTimeout(1000);
     httpcode = -1;
 
     clientHttp.begin(clientWifi, "http://5.8.8.8/?optType=ReadRealTimeData");
@@ -103,8 +125,8 @@ void v0_com(void)
     if (httpcode == HTTP_CODE_OK)
     {
       String Resp = clientHttp.getString();
-      parseJsonv1(Resp);
-      errorConexionInversor = false;
+      parseJsonv2local(Resp);
+      Error.ConexionInversor = false;
     }
     clientHttp.end();
     clientWifi.stop();
@@ -128,7 +150,7 @@ void fronius_com(void)
       String Resp = clientHttp.getString();
       INFOLN("JSON STRING: " + Resp);
       parseJson_fronius(Resp);
-      errorConexionInversor = false;
+      Error.ConexionInversor = false;
     }
     clientHttp.end();
     clientWifi.stop();
@@ -160,15 +182,50 @@ void parseJson(String json)
     inverter.wgrid = root["Data"][10];   // Potencia de red (Negativo: de red - Positivo: a red)
     inverter.wtogrid = root["Data"][11]; // Potencia diaria enviada a red
 
-    errorConexionInversor = false;
-    temporizadorErrorConexionRed = millis();
+    Error.ConexionInversor = false;
+    timers.ErrorConexionRed = millis();
   }
 }
 
-// Solax v1 y v2 local
+// Solax v1
 void parseJsonv1(String json)
 {
   DEBUGLN("JSON:" + json);
+  uint16_t start = json.indexOf(":[");
+  uint16_t stop = json.indexOf(",", start);
+  float res[14];
+
+  res[0] = json.substring(start + 2, stop).toFloat(); 
+
+  for (int i = 1; i <= 41; i++)
+  {
+    start = json.indexOf(",", stop);
+    stop = json.indexOf(",", start + 1);
+    if (i <= 12) { res[i] = json.substring(start + 1, stop).toFloat(); }
+    if (i == 41) { res[13] = json.substring(start + 1, stop).toFloat(); }
+  }
+  
+    inverter.pv1c = res[0];     // Corriente string 1
+    inverter.pv2c = res[1];     // Corriente string 2
+    inverter.pv1v = res[2];     // Tension string 1
+    inverter.pv2v = res[3];     // Tension string 2
+    inverter.gridv = res[5];    // Tension de red
+    inverter.wsolar = res[6];   // Potencia solar
+    inverter.wtoday = res[8];   // Potencia solar diaria
+    inverter.wgrid = res[10];   // Potencia de red (Negativo: de red - Positivo: a red)
+    inverter.pw1 = res[11];     // Potencia string 1
+    inverter.pw2 = res[12];     // Potencia string 2
+    inverter.wtogrid = res[13]; // Potencia diaria enviada a red
+
+    Error.ConexionInversor = false;
+    timers.ErrorConexionRed = millis();
+}
+
+// Solax v2 local
+void parseJsonv2local(String json)
+{
+  DEBUGLN("JSON:" + json);
+  
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {
@@ -189,8 +246,8 @@ void parseJsonv1(String json)
     inverter.pw2 = root["Data"][12];     // Potencia string 2
     inverter.wtogrid = root["Data"][41]; // Potencia diaria enviada a red
 
-    errorConexionInversor = false;
-    temporizadorErrorConexionRed = millis();
+    Error.ConexionInversor = false;
+    timers.ErrorConexionRed = millis();
   }
 }
 
@@ -212,7 +269,7 @@ void parseJson_fronius(String json)
     inverter.wgrid  *= -1;
     inverter.wtoday = inverter.wtoday / 1000; // w->Kw
     
-    errorConexionInversor = false;
-    temporizadorErrorConexionRed = millis();
+    Error.ConexionInversor = false;
+    timers.ErrorConexionRed = millis();
   }
 }

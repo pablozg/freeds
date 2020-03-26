@@ -1,0 +1,23 @@
+Versión 1.0.4
+Refactorización de Código
+Añadida opción para pasar a modo manual si potencia solar es menor a un valor programable.
+Actualizado modo de funcionamiento función esclavo (Ahora se puede referenciar a otro esclavo o al master y
+activar independientemente el pwm cada esclavo según el valor configurado.)
+Solucionado problema que no permitia guardar la clave de web.
+
+Version 1.0.3
+Solución de errores:
+	- Solucionado errores en los signos de wibeee y shelly
+	- Solucionado error al procesar los datos del Solax V1
+Añadido función esclavo
+
+Version 1.0.2
+Optimización Coódigo
+Solución de errores
+
+Versión 1.0.1
+Actualización Liberías
+Añadido contador en funcionamiento
+
+Version 1.0.0
+Primera versión

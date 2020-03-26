@@ -1,18 +1,29 @@
-/**
- * Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
- * (OLED = TRUE for Wifi Kit 32, false for ESP32)
- *
- *  Basado en opends+ de iqas
- *  (C) 2020 Pablo Zerón
- *
- */
+/*
+  FreeDS.ino - Main source file
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
 
-#define eepromVersion 0x0C
+  Based in opends+ (https://github.com/iqas/derivador)
+  
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#define eepromVersion 0x0D
 
 //#define FREEDS_DEBUG
 #define FREEDS_INFO
-
-bool eventsConnected = false;
 
 #ifdef FREEDS_INFO
   #define INFO(x) {Serial.print(x); addLog((String)x, false);}
@@ -32,22 +43,20 @@ bool eventsConnected = false;
 
 #include <Update.h>
 #include <Wire.h>
+#include <WiFi.h>
 #include <WiFiMulti.h>
 #include <EEPROM.h>
 #include <TickerScheduler.h>
-#include <esp_system.h>
 #include <HardwareSerial.h>
-#include <rom/rtc.h>
 
-#include <AsyncJson.h>
+#include <ArduinoJson.h>
+#include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncMqttClient.h>
 #include <ESPmDNS.h>
 #include <HTTPClient.h>
 #include <SPIFFS.h>
-#include <driver/dac.h>
 #include <bitmap.h>
-#include <tinyxml2.h>
 #include <DNSServer.h>
 
 extern "C"
@@ -55,6 +64,9 @@ extern "C"
 #include <crypto/base64.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
+#include <rom/rtc.h>
+#include <driver/dac.h>
+#include <esp_system.h>
 }
 
 #define LANGUAGE_ES
@@ -105,22 +117,24 @@ extern "C"
 #define TX1 23
 
 //// Temporizadores
-unsigned long temporizadorErrorConexionWifi = 0;
-unsigned long temporizadorErrorLecturaDatos = 0;
-unsigned long temporizadorErrorConexionRed = 0;
-unsigned long temporizadorFlashDisplay = 0;
-unsigned long temporizadorOledAutoOff = 0;
-unsigned long temporizadorLecturaDatos = 0;
+
+struct {
+    unsigned long ErrorConexionWifi = 0;
+    unsigned long ErrorLecturaDatos = 0;
+    unsigned long ErrorConexionRed = 0;
+    unsigned long FlashDisplay = 0;
+    unsigned long OledAutoOff = 0;
+} timers;
 
 ///// Debounce control
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 80;
+unsigned long debounceDelay = 100;
 bool ButtonState = false;
 bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "1.0.2";
+const char version[] PROGMEM = "1.0.4";
 
 const char *www_username = "admin";
 
@@ -141,41 +155,71 @@ uint8_t Message = 0;
 
 uint8_t screen = 0;
 uint8_t workingMode;
+uint8_t masterMode = 0;
 
 uint8_t scanDoneCounter = 0;
 
 size_t outputLength; // For base64
 
 // Flags
-boolean Updating = false;
-boolean RelayTurnOn = true;
-boolean RelayTurnOff = false;
-boolean flash;
-boolean reboot = false;
-boolean checkChangeBaud = false;
-boolean firstInit = false;
-boolean Relay01Auto = false;
-boolean Relay02Auto = false;
-boolean Relay03Auto = false;
-boolean Relay04Auto = false;
-
-boolean setBrightness = false;
-
-boolean httpClientConnectSend = false;
+union {
+  uint32_t data;
+  struct {
+    uint32_t firstInit : 1;       // Bit 0
+    uint32_t Updating : 1;        // Bit 1
+    uint32_t flash : 1;           // Bit 2
+    uint32_t reboot : 1;          // Bit 3
+    uint32_t RelayTurnOn : 1;     // Bit 4
+    uint32_t RelayTurnOff : 1;    // Bit 5
+    uint32_t Relay01Auto : 1;     // Bit 6
+    uint32_t Relay02Auto : 1;     // Bit 7
+    uint32_t Relay03Auto : 1;     // Bit 8
+    uint32_t Relay04Auto : 1;     // Bit 9
+    uint32_t Relay01Man : 1;      // Bit 10
+    uint32_t Relay02Man : 1;      // Bit 11
+    uint32_t Relay03Man : 1;      // Bit 12
+    uint32_t Relay04Man : 1;      // Bit 13
+    uint32_t setBrightness : 1;   // Bit 14
+    uint32_t eventsConnected : 1; // Bit 15
+    uint32_t free : 16;           // Bit 16 - 31
+  };
+} Flags;
 
 //// Flags Errores
-boolean errorConexionWifi = true;     // Error en conexión Wifi
-boolean errorConexionInversor = true; // Error conexión inversor
-boolean errorConexionMqtt = true;     // Error de conexión a mqtt
-boolean errorLecturaDatos = true;     // Error en lectura de Datos
-boolean errorRemoteApi = false;       // Error en remote api
+union {
+  uint8_t data;
+  struct {
+    uint8_t ConexionWifi : 1;
+    uint8_t ConexionInversor : 1;
+    uint8_t ConexionMqtt : 1;
+    uint8_t LecturaDatos : 1;
+    uint8_t RemoteApi : 1;
+    uint8_t spare5 : 1;
+    uint8_t spare6 : 1;
+    uint8_t spare7 : 1;
+  };
+} Error;
 
 // Estructuras
+
+typedef union {
+  uint8_t data;
+  struct {
+    uint8_t potManPwmActive : 1;
+    uint8_t spare1 : 1;
+    uint8_t spare2 : 1;
+    uint8_t spare3 : 1;
+    uint8_t spare4 : 1;
+    uint8_t spare5 : 1;
+    uint8_t spare6 : 1;
+    uint8_t spare7 : 1;
+  };
+} SysBitfield;
 
 struct CONFIG
 {
   byte eeinit;
-  byte wversion;
+  uint8_t wversion;
   boolean dhcp;
   boolean P01_on;
   boolean wifi;
@@ -261,8 +305,11 @@ struct CONFIG
   // RESERVAS
   uint16_t baudiosMeter;
   uint8_t idMeter;
-  uint8_t free;
-  uint32_t reserved[3] = {0};
+  uint8_t pwmSlaveOn;
+  uint16_t potmanpwm;
+  SysBitfield flags;
+  uint8_t free_8;
+  uint32_t reserved[2] = {0};
 } config;
 
 struct METER
@@ -320,19 +367,18 @@ int logcount=-1;
 
 //// Definiciones Conexiones
 
-WiFiClient espClient; // TODO: Depurar el motivo del kernel panic sin esta linea
+WiFiClient espClient; // Depurar el motivo de kernel panic sin esta linea
 WiFiMulti wifiMulti;
+
+AsyncWebServer server(80);
+AsyncEventSource events("/events");
+AsyncMqttClient mqttClient;
 
 HardwareSerial SerieEsp(2);   // RX, TX para esp-01
 HardwareSerial SerieMeter(1); // RX, TX para los Meter rs485/modbus
 DynamicJsonDocument root(2048);
 
-AsyncWebServer server(80);
-AsyncEventSource events("/events");
-
 TickerScheduler Tickers(7);
-
-AsyncMqttClient mqttClient;
 
 DNSServer dnsServer;
 
@@ -365,7 +411,7 @@ public:
         EEPROM.commit();
         Serial.print("DATA SAVED!!!!, RESTARTING!!!!");
         request->redirect("/");
-        delay(500); // Only to be able to redirect client.
+        delay(500); // Only to be able to redirect client, 
         ESP.restart();
 
     } else {
@@ -467,6 +513,9 @@ void defaultValues()
   config.oledBrightness = 255;
   config.baudiosMeter = 9600;
   config.idMeter = 1;
+  config.pwmSlaveOn = 0;
+  config.potmanpwm = 0;
+  config.flags.potManPwmActive = false;
 
   config.eeinit = eepromVersion;
   config.wifi = false;
@@ -486,6 +535,9 @@ void setup()
   timerAlarmWrite(timer, 30000000, false); //set time in us (30 seconds)
   timerAlarmEnable(timer);                 //enable interrupt
   /////////////////////////////////////////////////
+
+  Flags.data = 0; // All Bits to false
+  Flags.RelayTurnOn = true;
 
   Serial.begin(115200); // Se inicia la UART0 para debug
   Serial.setDebugOutput(true);
@@ -546,12 +598,8 @@ void setup()
     INFOLN("SSID: FreeDS - 192.168.4.1");
     INFO("Hostname: ");
     INFOLN(config.hostServer);
-    WiFi.scanNetworks();
-    for (int i = 0; i < 15; ++i) {
-      if(WiFi.SSID(i) == "") { break; }
-      scanNetworks[i] = WiFi.SSID(i);
-    }
-    firstInit = true;
+    buildWifiArray();
+    Flags.firstInit = true;
     dnsServer.start(53, "*", myIP);
   }
   else
@@ -572,33 +620,18 @@ void setup()
     mqttClient.setKeepAlive(30);
     mqttClient.setCredentials(config.MQTT_user, config.MQTT_password);
     mqttClient.setServer(config.MQTT_broker, config.MQTT_port);
-
-#ifdef OLED
-    showLogo(_CONNECTING_, false);
-#endif
     
     connectToWifi();
 
     if (wifiMulti.run() == WL_CONNECTED) // Si conecta continuamos
     {
-      errorConexionWifi = false;
+      Error.ConexionWifi = false;
      
 #ifdef OLED
       showLogo("IP: " + WiFi.localIP().toString(), true);
 #endif
-      INFOLN("");
-      INFOLN("WiFi connected");
-      INFOLN("SSID: ");
-      INFOLN(WiFi.SSID());
-      INFOLN("IP address: ");
-      INFOLN(WiFi.localIP().toString());
-
-      WiFi.scanNetworks();
-      for (int i = 0; i < 15; ++i) {
-        if(WiFi.SSID(i) == "") { break; }
-        scanNetworks[i] = WiFi.SSID(i);
-        INFOLN(scanNetworks[i]);
-      }
+      
+      buildWifiArray();
 
       // Configuramos las salidas
       pinMode(PIN_RL1, OUTPUT);
@@ -609,8 +642,8 @@ void setup()
       digitalWrite(PIN_RL2, LOW);
       digitalWrite(PIN_RL3, LOW);
       digitalWrite(PIN_RL4, LOW);
-      // SERIAL
-
+      
+      // Serial
       SerieMeter.begin(config.baudiosMeter, SERIAL_8N1, RX1, TX1); // UART1 para meter
       SerieEsp.begin(115200, SERIAL_8N1, pin_rx, pin_tx); // UART2 para ESP01
 
@@ -656,10 +689,10 @@ void setup()
       Tickers.add(6, config.pwmControlTime, [&](void *) { pwmControl(); }, nullptr, true);  // Pwm Control loop
 
       // Inicialización de Temporizadores
-      temporizadorErrorConexionWifi = millis();
-      temporizadorErrorLecturaDatos = millis();
-      temporizadorErrorConexionRed = millis();
-      temporizadorOledAutoOff = millis();
+      // timers.ErrorConexionWifi = millis();
+      timers.ErrorLecturaDatos = millis();
+      timers.ErrorConexionRed = millis();
+      timers.OledAutoOff = millis();
 
       if (config.P01_on && !config.pwm_man)
       {
@@ -674,7 +707,7 @@ void setup()
         workingMode = 2;
       } // OFF
 
-      errorConexionInversor = true;
+      Error.ConexionInversor = true;
     }
   }
 
@@ -700,21 +733,21 @@ void loop()
 
   //long tme = millis();
 
-  if (config.wifi && !firstInit)
+  if (config.wifi && !Flags.firstInit)
   {
     Tickers.update(); // Actualiza todos los tareas Temporizadas
     changeScreen();
 
-    if (setBrightness) {
+    if (Flags.setBrightness) {
       saveEEPROM();
       display.setBrightness((uint8_t)((config.oledBrightness * 255) / 100));
       display.resetDisplay();
-      setBrightness = false;
+      Flags.setBrightness = false;
     }
 
-    if (events.count() == 0) { eventsConnected = false; }
+    if (events.count() == 0) { Flags.eventsConnected = false; }
 
-    if ((millis() - temporizadorOledAutoOff) > config.oledControlTime)
+    if ((millis() - timers.OledAutoOff) > config.oledControlTime)
     {
       if (config.oledAutoOff) {
         config.oledPower = false;
@@ -722,43 +755,19 @@ void loop()
       }
     }
 
-    if ((millis() - temporizadorErrorConexionRed) > config.maxErrorTime)
+    if ((millis() - timers.ErrorConexionRed) > config.maxErrorTime)
     {
-      errorConexionInversor = true;
-      temporizadorErrorConexionRed = millis();
+      Error.ConexionInversor = true;
+      timers.ErrorConexionRed = millis();
       DEBUGLN("INVERTER ERROR: Error de comunicación");
     }
 
-    if (wifiMulti.run() != WL_CONNECTED)
-    {
-      if ((millis() - temporizadorErrorConexionWifi) > config.maxErrorTime)
-      {
-        errorConexionWifi = true;
-        down_pwm(false);
-        INFO(">>WiFi not connected! run returned: ");
-        INFO("RESTARTING..");
-        byte tcont = 6;
-        while (tcont-- > 0)
-        {
-#ifdef OLED
-          display.setTextAlignment(TEXT_ALIGN_CENTER);
-          display.setFont(ArialMT_Plain_10);
-          display.clear();
-          display.drawString(64, 0, "WIFI CONNECTION LOST");
-          display.drawString(64, 16, "RESTARTING");
-          display.drawString(64, 32, "IN " + (String)tcont + " SECONDS");
-          display.display();
-#endif
-          INFO(".." + (String)tcont);
-          delay(1000);
-        }
-        ESP.restart();
+    if (config.flags.potManPwmActive) {
+      if (inverter.wsolar < config.potmanpwm) {
+        config.pwm_man = true;
+      } else {
+        config.pwm_man = false;
       }
-    }
-    else
-    {
-      temporizadorErrorConexionWifi = millis();
-      errorConexionWifi = false;
     }
   }
   else

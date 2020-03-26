@@ -1,3 +1,24 @@
+/*
+  webserver_processors.ino - FreeDs webserver processor
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+  
+  Copyright (C) 2020 Theo arendst (https://github.com/arendst/Tasmota)
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 String workingModeString(void)
 {
   if (config.wversion == 0)
@@ -40,6 +61,10 @@ String workingModeString(void)
   {
     return "Fronius";
   }
+  if (config.wversion == 12)
+  {
+    return "Slave FreeDS";
+  }
   return String();
 }
 
@@ -48,7 +73,7 @@ String processorFreeDS(const String &var)
   if (var == "SELECT_MODE")
   {
     return "<select class='form-control select2 mg-b-2 mg-r-30' onchange='run()' id='version'>"
-           "<option value='1'" +
+                                                                              "<option value='1'" +
            String((config.wversion == 1) ? " selected='selected' " : " ") + ">Solax Wifi v1 - Hibridos</option>"
                                                                               "<option value='2'" +
            String((config.wversion == 2) ? " selected='selected' " : " ") + ">Solax Wifi v2</option>"
@@ -65,9 +90,11 @@ String processorFreeDS(const String &var)
                                                                               "<option value='11'" +
            String((config.wversion == 11) ? " selected='selected' " : " ") + ">Fronius</option>" +
                                                                               "<option value='9'" +
-           String((config.wversion == 9) ? " selected='selected' " : " ") + ">Wibee (En desarrollo)</option>" +
+           String((config.wversion == 9) ? " selected='selected' " : " ") + ">Wibee</option>" +
                                                                               "<option value='10'" +                                                                   
-           String((config.wversion == 10) ? " selected='selected' " : " ") + ">Shelly EM (En desarrollo)</option></select>";
+           String((config.wversion == 10) ? " selected='selected' " : " ") + ">Shelly EM</option>"
+                                                                              "<option value='12'" +
+           String((config.wversion == 12) ? " selected='selected' " : " ") + ">Slave FreeDS</option></select>";
   }
 
   if (var == "MESSAGE")
@@ -175,6 +202,12 @@ String processorRed(const String &var)
     if (config.wversion == 11)
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Fronius:</label>"
+             "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
+             String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
+    }
+    if (config.wversion == 12)
+    {
+      return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Master FreeDS:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
              String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
     }
@@ -371,6 +404,18 @@ String processorSalidas(const String &var)
   if (var == "MANPWM")
   {
     return String(config.manualControlPWM);
+  }
+  if (var == "SLAVEPWM")
+  {
+    return String(config.pwmSlaveOn);
+  }
+  if (var == "POTMANPWM")
+  {
+    return String(config.potmanpwm);
+  }
+  if (var == "POTPWMACTIVE")
+  {
+    return config.flags.potManPwmActive ? "checked" : "";
   }
   if (var == "AUTOPWM")
   {

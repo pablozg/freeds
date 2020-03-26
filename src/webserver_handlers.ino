@@ -1,3 +1,23 @@
+/*
+  webserver_handlers.ino - FreeDs webserver handlers
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+  
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 void handleCnet(AsyncWebServerRequest *request)
 {
   strcpy(config.ssid1, request->urlDecode(request->arg("wifi1")).c_str());
@@ -11,7 +31,8 @@ void handleCnet(AsyncWebServerRequest *request)
     {
       strcpy(config.ssid_esp01, request->urlDecode(request->arg("wifis")).c_str());
     }
-    if (config.wversion == 1 || config.wversion == 9 || config.wversion == 10 || config.wversion == 11)
+    // if (config.wversion == 1 || config.wversion == 9 || config.wversion == 10 || config.wversion == 11)
+    if (config.wversion == 1 || (config.wversion >= 9 && config.wversion <= 12))
     {
       strcpy(config.sensor_ip, request->urlDecode(request->arg("wifis")).c_str());
     }
@@ -51,7 +72,7 @@ void handleCnet(AsyncWebServerRequest *request)
 void handleConfig(AsyncWebServerRequest *request)
 {
   config.mqtt = false;
-  errorConexionMqtt = false;
+  Error.ConexionMqtt = false;
 
   if (request->arg("mqttactive") == "on")
   {
@@ -73,11 +94,12 @@ void handleConfig(AsyncWebServerRequest *request)
       strcpy(config.Meter_mqtt, request->urlDecode(request->arg("meter")).c_str());
     }
   }
-
+  
   if (request->urlDecode(request->arg("oldpass")) == String(config.password))
   {
     strcpy(config.password, request->urlDecode(request->arg("newpass")).c_str());
   }
+   INFOLN(String(config.password));
 
   strcpy(config.remote_api, request->urlDecode(request->arg("remote_api")).c_str());
 
@@ -87,11 +109,21 @@ void handleConfig(AsyncWebServerRequest *request)
 
   config.maxErrorTime = constrain(request->arg("maxerrortime").toInt(), 10000, 60000);
   config.getDataTime = constrain(request->arg("getdatatime").toInt(), 250, 60000);
+  switch (config.wversion) {   
+    case 0:
+    case 1:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+      if (config.getDataTime < 2000) config.getDataTime = 2000;
+      break;
+  }
   Tickers.updatePeriod(5, config.getDataTime);
 
   config.oledAutoOff = false;
   if (request->arg("autoPowerOff") == "on") {
-    temporizadorOledAutoOff = millis();
+    timers.OledAutoOff = millis();
     config.oledAutoOff = true;
     config.oledControlTime = constrain(request->arg("autoPowerOffTime").toInt(), 1000, 3000000);
     Tickers.updatePeriod(8, config.oledControlTime);
@@ -115,12 +147,9 @@ void handleConfig(AsyncWebServerRequest *request)
 
 void handleRelay(AsyncWebServerRequest *request)
 {
-  if (request->arg("pwmactive") == "on")
-  {
+  if (request->arg("pwmactive") == "on") {
     config.P01_on = true;
-  }
-  else
-  {
+  } else {
     config.P01_on = false;
     down_pwm(true);
   }
@@ -131,7 +160,15 @@ void handleRelay(AsyncWebServerRequest *request)
   Tickers.updatePeriod(6, config.pwmControlTime);
   config.manualControlPWM = constrain(request->arg("manpwm").toInt(), 0, 100);
   config.autoControlPWM = constrain(request->arg("autopwm").toInt(), 0, 100);
-
+  config.pwmSlaveOn = constrain(request->arg("slavepwm").toInt(), 0, 100);
+  if (request->arg("potpwmactive") == "on") {
+    config.flags.potManPwmActive = true;
+    config.potmanpwm = constrain(request->arg("potmanpwm").toInt(), 0, 9999);
+  } else {
+    config.flags.potManPwmActive = false;
+    config.pwm_man = false;
+  }
+  
   config.R01_min = request->arg("r01min").toInt();
   config.R02_min = request->arg("r02min").toInt();
   config.R03_min = request->arg("r03min").toInt();
@@ -165,13 +202,13 @@ String API(void)
   int8_t status0 = 0;
   int8_t status1 = 0; //Reserve to future
   // Return a byte with status
-  // byte RL4|RL3|RL2|RL1|errorConexionMqtt|errorConexionWifi|errorConexionInversor|
+  // byte RL4|RL3|RL2|RL1|Error.ConexionMqtt|Error.ConexionWifi|Error.ConexionInversor|
 
-  if (errorConexionInversor == 1)
+  if (Error.ConexionInversor)
     status0 = status0 + 1;
-  if (errorConexionWifi == 1)
+  if (Error.ConexionWifi)
     status0 = status0 + 2;
-  if (errorConexionMqtt == 1)
+  if (Error.ConexionMqtt)
     status0 = status0 + 4;
   status0 = (digitalRead(PIN_RL1) ? 1 : 0) * 8;
   status0 = (digitalRead(PIN_RL2) ? 1 : 0) * 16;
@@ -194,14 +231,15 @@ String sendJsonWeb(void)
 {
   DynamicJsonDocument jsonValues(512);
   uint8_t error = 0;
+  uint8_t wversion = 0;
 
-  if (errorConexionWifi)
+  if (Error.ConexionWifi)
     error = 1;
-  if (errorConexionMqtt && config.mqtt)
+  if (Error.ConexionMqtt && config.mqtt)
     error = 2;
-  if (errorConexionInversor)
+  if (Error.ConexionInversor)
     error = 3;
-  if (errorLecturaDatos)
+  if (Error.LecturaDatos)
     error = 4;
   if (!config.mqtt && config.wversion == 3)
     error = 5;
@@ -216,50 +254,23 @@ String sendJsonWeb(void)
   jsonValues["POn"] = config.P01_on;
   jsonValues["PwmMan"] = config.pwm_man;
   jsonValues["Msg"] = Message;
-  jsonValues["wversion"] = config.wversion;
   jsonValues["pwmfrec"] = config.pwmFrequency;
   jsonValues["pwm"] = pro;
   jsonValues["baudiosMeter"] = config.baudiosMeter;
 
+  if (config.wversion == 12) {
+    jsonValues["wversion"] = masterMode;
+    wversion = masterMode;
+  } else {
+    jsonValues["wversion"] = config.wversion;
+    wversion = config.wversion;
+  }
+
   char tmpString[33];
   dtostrfd(inverter.wgrid, 2, tmpString);
   jsonValues["wgrid"] = tmpString;
-
-  // if (config.wversion >= 4 && config.wversion <= 6) {
-  //   dtostrfd(meter.voltage, 2, tmpString);
-  //   jsonValues["mvoltage"] = tmpString;
-  //   dtostrfd(meter.current, 2, tmpString);
-  //   jsonValues["mcurrent"] = tmpString;
-  //   dtostrfd(meter.powerFactor, 2, tmpString);
-  //   jsonValues["mpowerFactor"] = tmpString;
-  //   dtostrfd(meter.frequency, 2, tmpString);
-  //   jsonValues["mfrequency"] = tmpString;
-  //   dtostrfd(meter.importActive, 2, tmpString);
-  //   jsonValues["mimportActive"] = tmpString;
-  //   dtostrfd(meter.exportActive, 2, tmpString);
-  //   jsonValues["mexportActive"] = tmpString;
-  // } else {  
-  //   dtostrfd(inverter.wtoday, 2, tmpString);
-  //   jsonValues["wtoday"] = tmpString;
-  //   dtostrfd(inverter.wsolar, 2, tmpString);
-  //   jsonValues["wsolar"] = tmpString;
-  //   dtostrfd(inverter.gridv, 2, tmpString);
-  //   jsonValues["gridv"] = tmpString;
-  //   dtostrfd(inverter.pv1c, 2, tmpString);
-  //   jsonValues["pv1c"] = tmpString;
-  //   dtostrfd(inverter.pv1v, 2, tmpString);
-  //   jsonValues["pv1v"] = tmpString;
-  //   dtostrfd(inverter.pw1, 2, tmpString);
-  //   jsonValues["pw1"] = tmpString;
-  //   dtostrfd(inverter.pv2c, 2, tmpString);
-  //   jsonValues["pv2c"] = tmpString;
-  //   dtostrfd(inverter.pv2v, 2, tmpString);
-  //   jsonValues["pv2v"] = tmpString;
-  //   dtostrfd(inverter.pw2, 2, tmpString);
-  //   jsonValues["pw2"] = tmpString;
-  // }
-
-  switch(config.wversion)
+  
+  switch(wversion)
   {
     case 4:
     case 5:
@@ -318,6 +329,96 @@ String sendJsonWeb(void)
   return response;
 }
 
+String sendMasterData(void)
+{
+  DynamicJsonDocument jsonValues(512);
+  
+  jsonValues["wversion"] = config.wversion;
+  jsonValues["PwmMaster"] = pro.toInt();
+  
+  char tmpString[33];
+  dtostrfd(inverter.wgrid, 2, tmpString);
+  jsonValues["wgrid"] = tmpString;
+  
+  switch(config.wversion)
+  {
+    case 4:
+    case 5:
+    case 6:
+      dtostrfd(meter.voltage, 2, tmpString);
+      jsonValues["mvoltage"] = tmpString;
+      dtostrfd(meter.current, 2, tmpString);
+      jsonValues["mcurrent"] = tmpString;
+      dtostrfd(meter.powerFactor, 2, tmpString);
+      jsonValues["mpowerFactor"] = tmpString;
+      dtostrfd(meter.frequency, 2, tmpString);
+      jsonValues["mfrequency"] = tmpString;
+      dtostrfd(meter.importActive, 2, tmpString);
+      jsonValues["mimportActive"] = tmpString;
+      dtostrfd(meter.exportActive, 2, tmpString);
+      jsonValues["mexportActive"] = tmpString;
+      dtostrfd(meter.energyTotal, 2, tmpString);
+      jsonValues["menergyTotal"] = tmpString;
+      dtostrfd(meter.activePower, 2, tmpString);
+      jsonValues["mactivePower"] = tmpString;
+      dtostrfd(meter.aparentPower, 2, tmpString);
+      jsonValues["maparentPower"] = tmpString;
+      dtostrfd(meter.reactivePower, 2, tmpString);
+      jsonValues["mreactivePower"] = tmpString;
+      dtostrfd(meter.importReactive, 2, tmpString);
+      jsonValues["mimportReactive"] = tmpString;
+      dtostrfd(meter.exportReactive, 2, tmpString);
+      jsonValues["mexportReactive"] = tmpString;
+      dtostrfd(meter.phaseAngle, 2, tmpString);
+      jsonValues["mphaseAngle"] = tmpString;
+      break;
+    case 9:
+    case 10:
+      dtostrfd(meter.voltage, 2, tmpString);
+      jsonValues["mvoltage"] = tmpString;
+      dtostrfd(meter.powerFactor, 2, tmpString);
+      jsonValues["mpowerFactor"] = tmpString;
+      dtostrfd(inverter.wsolar, 2, tmpString);
+      jsonValues["wsolar"] = tmpString;
+      dtostrfd(meter.importActive, 2, tmpString);
+      jsonValues["mimportActive"] = tmpString;
+      dtostrfd(meter.exportActive, 2, tmpString);
+      jsonValues["mexportActive"] = tmpString;
+      dtostrfd(meter.activePower, 2, tmpString);
+      jsonValues["mactivePower"] = tmpString;
+      dtostrfd(meter.reactivePower, 2, tmpString);
+      jsonValues["mreactivePower"] = tmpString;
+      dtostrfd(inverter.gridv, 2, tmpString);
+      jsonValues["gridv"] = tmpString;
+      break;
+    default:
+      dtostrfd(inverter.wtoday, 2, tmpString);
+      jsonValues["wtoday"] = tmpString;
+      dtostrfd(inverter.wsolar, 2, tmpString);
+      jsonValues["wsolar"] = tmpString;
+      dtostrfd(inverter.gridv, 2, tmpString);
+      jsonValues["gridv"] = tmpString;
+      dtostrfd(inverter.pv1c, 2, tmpString);
+      jsonValues["pv1c"] = tmpString;
+      dtostrfd(inverter.pv1v, 2, tmpString);
+      jsonValues["pv1v"] = tmpString;
+      dtostrfd(inverter.pw1, 2, tmpString);
+      jsonValues["pw1"] = tmpString;
+      dtostrfd(inverter.pv2c, 2, tmpString);
+      jsonValues["pv2c"] = tmpString;
+      dtostrfd(inverter.pv2v, 2, tmpString);
+      jsonValues["pv2v"] = tmpString;
+      dtostrfd(inverter.pw2, 2, tmpString);
+      jsonValues["pw2"] = tmpString;
+      break;
+  }
+
+  String response;
+  serializeJson(jsonValues, response);
+
+  return response;
+}
+
 void checkAuth(AsyncWebServerRequest *request)
 {
   char *toDecode = config.password;
@@ -339,7 +440,7 @@ void setWebConfig(void)
   server.on("/", [](AsyncWebServerRequest *request) {
     checkAuth(request);
     config.wifi ? request->send(SPIFFS, "/index.html", "text/html", false, processorFreeDS) : request->send(SPIFFS, "/Red.html", "text/html", false, processorRed);
-    if (reboot)
+    if (Flags.reboot)
     {
       restartFunction();
     }
@@ -455,19 +556,31 @@ void setWebConfig(void)
   server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     checkAuth(request);
     Message = 2;
-    reboot = true;
+    Flags.reboot = true;
     request->redirect("/");
   });
 
   server.on("/selectversion", HTTP_POST, [](AsyncWebServerRequest *request) {
     //checkAuth(request);
     config.wversion = request->arg("data").toInt();
+    switch (config.wversion) {
+      case 3:
+        xTimerStart(mqttReconnectTimer, 0);
+        suscribeMqttMeter();
+        break;
+      
+      case 0:
+      case 1:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+        if (config.getDataTime < 2000) config.getDataTime = 2000;
+        break;
+    }
+
     saveEEPROM();
-    // if (config.wversion >= 4 || config.wversion <= 6)
-    // {
-    //   checkChangeBaud = true;
-    // }
-    if (config.wversion == 3) { xTimerStart(mqttReconnectTimer, 0); suscribeMqttMeter();}
+
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
     request->send(response);
@@ -477,7 +590,7 @@ void setWebConfig(void)
     //checkAuth(request);
     config.oledBrightness = request->arg("data").toInt();
     config.oledPower = true;
-    setBrightness = true;
+    Flags.setBrightness = true;
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
     request->send(response);
@@ -493,19 +606,19 @@ void setWebConfig(void)
     switch (button)
     {
     case 1: // Activación Manual Relé 1
-      config.R01_man = !config.R01_man;
+      Flags.Relay01Man = !Flags.Relay01Man;
       break;
     case 2: // Activación Manual Relé 2
-      config.R02_man = !config.R02_man;
+      Flags.Relay02Man = !Flags.Relay02Man;
       break;
     case 3: // Activación Manual Relé 3
-      config.R03_man = !config.R03_man;
+      Flags.Relay03Man = !Flags.Relay03Man;
       break;
     case 4: // Activación Manual Relé 4
-      config.R04_man = !config.R04_man;
+      Flags.Relay04Man = !Flags.Relay04Man;
       break;
     case 5: // Encender / Apagar OLED
-      temporizadorOledAutoOff = millis();
+      timers.OledAutoOff = millis();
       config.oledPower = !config.oledPower;
       turnOffOled();
       saveEEPROM();
@@ -532,6 +645,12 @@ void setWebConfig(void)
   server.on("/api", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", API());
     response->addHeader("Connection", "close");
+    request->send(response);
+  });
+
+  server.on("/masterdata", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/json", sendMasterData());
+    //response->addHeader("Connection", "close");
     request->send(response);
   });
 
@@ -587,11 +706,12 @@ void setWebConfig(void)
   });
 
   server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
-      // DO ANYTHING
+      
     }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
     if (!index) {
       Serial.printf("Update Start: %s\n", filename.c_str());
-      Updating = true;
+      for (int i = 1; i <= 5; i++) { Tickers.disable(i); }
+      Flags.Updating = true;
       config.P01_on = false;
       down_pwm(false);
       if (filename == "spiffs.bin") {
@@ -628,10 +748,10 @@ void setWebConfig(void)
       Serial.println(client->lastId());
     }
     client->send("Hello!", NULL, millis(), 1000);
-    eventsConnected = true;
+    Flags.eventsConnected = true;
   });
 
-
+  // attach EventSource
   server.addHandler(&events);
 
   String mdnsUrl = "http://";
@@ -641,5 +761,4 @@ void setWebConfig(void)
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", mdnsUrl);
   server.begin();
-  
 }

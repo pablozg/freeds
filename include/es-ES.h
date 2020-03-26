@@ -16,5 +16,5 @@
 #define _CONNECTSSID_ "CONÉCTESE AL SSID:"
 #define _CONFIGPAGE_ "192.168.4.1"
 #define _PRGRESTORE_ "Pulsa PRG para restablecer"
-#define _WAIT_15_SECS_ "O espera 15 segundos"
+#define _WAIT_ "o espera 30 segundos"
 #define _UPDATING_ "Actualizando, espere"

@@ -1,4 +1,23 @@
-/* MODBUS*/
+/*
+  modbus.ino - FreeDs Modbus Support
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+  
+  Copyright (C) 2020 Theo arendst (https://github.com/arendst/Tasmota)
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 // METERS STRUCT DEFINITIONS
 
@@ -94,9 +113,9 @@ void ddsu666(void)
 
       meter.read_state++;
 
-      errorLecturaDatos = false;
-      errorConexionInversor = false;
-      temporizadorErrorConexionRed = millis();
+      Error.LecturaDatos = false;
+      Error.ConexionInversor = false;
+      timers.ErrorConexionRed = millis();
       
       if (meter.read_state == 8) { // 8
         meter.read_state = 0;
@@ -191,9 +210,9 @@ void sdm120(void)
 
       meter.read_state++;
 
-      errorLecturaDatos = false;
-      errorConexionInversor = false;
-      temporizadorErrorConexionRed = millis();
+      Error.LecturaDatos = false;
+      Error.ConexionInversor = false;
+      timers.ErrorConexionRed = millis();
       
       if (meter.read_state == sdm_start_address_count) {
         meter.read_state = 0;
@@ -269,9 +288,9 @@ void dds2382(void)
                meter.importActive = (float)((buffer[23] << 24) + (buffer[24] << 16) + (buffer[25] << 8) + buffer[26]) / 100.0;  // 429496.729 kW
         }
       
-      errorLecturaDatos = false;
-      errorConexionInversor = false;
-      temporizadorErrorConexionRed = millis();
+      Error.LecturaDatos = false;
+      Error.ConexionInversor = false;
+      timers.ErrorConexionRed = millis();
     }
   } // end data ready
 
@@ -284,20 +303,22 @@ void dds2382(void)
 }
 
 void readMeter(void)
-{ 
+{
+  
   DEBUG(F("Baudios: "));
   DEBUGLN(SerieMeter.baudRate());
 
   switch (config.wversion)
   {
-    case 4:
-      dds2382();
-      break;
-    case 5:
-      ddsu666();
-      break;
-    case 6:
-      sdm120();
-      break;
+  case 4:
+    dds2382();
+    break;
+  case 5:
+    ddsu666();
+    break;
+  case 6:
+    sdm120();
+    break;    
   }
+  
 }
