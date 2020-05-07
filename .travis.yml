@@ -30,14 +30,9 @@ cache:
     directories:
         - "~/.platformio"
 
-env:
-    - PLATFORMIO_CI_SRC=src/FreeDS.ino
-    - CPPLINT=true
-
 install:
     - pip install -U platformio
-    - pip install -U cpplint
-    - platformio lib -g install file://.
+    - platformio update
 
 script:
-    - if [[ "$CPPLINT" ]]; then cpplint --repository=. --recursive --linelength=200 --filter=-build/include,-build/header_guard ./src; else platformio ci --lib="." --board=heltec32; fi
+    - platformio run
