@@ -17,3 +17,5 @@ AsyncTCP -> <url>https://github.com/me-no-dev/AsyncTCP.git</url>
 ESPAsyncWebServer-> <url>https://github.com/me-no-dev/ESPAsyncWebServer.git</url>
 
 Esp8266-oled-ssd1306 -> <url>https://github.com/ThingPulse/esp8266-oled-ssd1306.git</url>
+
+esp32ModbusTCP -> <url>https://github.com/bertmelis/esp32ModbusTCP.git</url>
