@@ -41,3 +41,8 @@ install:
 
 script:
     - if [[ "$CPPLINT" ]]; then cpplint --repository=. --recursive --linelength=200 --filter=-build/include,-build/header_guard ./src; else platformio ci --lib="." --board=heltec32; fi
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
