@@ -1,0 +1,13 @@
+language: python
+python:
+    - '2.7'
+sudo: false
+cache:
+    directories:
+        - "~/.platformio"
+install:
+    - pip install -U platformio
+    - pio lib install ESPAsyncTCP
+    - pio lib install AsyncTCP
+script:
+    - pushd examples/fauxmoESP_Basic && cp credentials.sample.h credentials.h && pio run -e esp32 && popd

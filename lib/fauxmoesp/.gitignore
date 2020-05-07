@@ -1,0 +1,14 @@
+credentials.h
+utils
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# PlatformIO folders
+.pio*
+pio
+.clang_complete
+.gcc-flags.json
+.pioenvs
+.piolibdeps

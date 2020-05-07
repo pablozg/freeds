@@ -22,15 +22,20 @@
 
 void data_display(void)
 {
-  DEBUGLN("\r\nDATA_DISPLAY()");
+  //if (config.flags.moreDebug) { INFOV("DATA_DISPLAY()\n"); }
 #ifdef OLED
+  uint8_t wversion = 0;
+
   if ((millis() - timers.FlashDisplay) > 1000)
   {
     timers.FlashDisplay = millis();
     Flags.flash = !Flags.flash;
   }
 
-  if (config.wifi)
+  if (config.wversion == 12) { wversion = masterMode; }
+  else { wversion = config.wversion; }
+
+  if (config.flags.wifi)
   {
     switch (screen)
     {
@@ -39,12 +44,15 @@ void data_display(void)
         display.setFont(ArialMT_Plain_10);
         display.setTextAlignment(TEXT_ALIGN_LEFT);
 
-        switch (config.wversion)
+        switch (wversion)
         {
           case 4:
           case 5:
           case 6:
             display.drawString(0, 0, (Flags.flash ? "Voltage" : "Current"));
+            break;
+          case 14:
+            display.drawString(0, 0, (_BATTERY_));
             break;
           default:
             display.drawString(0, 0, (_SOLAR_));
@@ -58,7 +66,7 @@ void data_display(void)
         if (Flags.flash)
         {
           display.drawString(64, 0, (String(Error.ConexionInversor ? "S " : "S ") + String(Error.ConexionWifi ? "W " : "W ") + String(Error.ConexionMqtt ? "M " : "M  ")));
-          display.drawString(85, 0, (String(config.wversion)));
+          display.drawString(85, 0, (String(wversion)));
         }
         else
         {
@@ -68,14 +76,16 @@ void data_display(void)
 
         if (Flags.Updating)
           display.drawString(64, 38, _UPDATING_);
-        else if ((!config.P01_on || (!config.pwm_man && (Error.LecturaDatos || Error.ConexionInversor))) && invert_pwm <= 1)
+        else if ((!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.LecturaDatos || Error.ConexionInversor))) && invert_pwm <= 1)
           display.drawString(64, 38, WiFi.localIP().toString());
         else
           display.drawProgressBar(0, 38, 120, 10, progressbar); // draw the progress bar
 
         display.setTextAlignment(TEXT_ALIGN_LEFT);
-        if (config.pwm_man) { display.drawString(0, 52, "PWM:MAN"); }
-        else { display.drawString(0, 52, (config.P01_on ? "PWM:" + pro + "%" : "PWM:OFF")); }
+        if (config.flags.pwmEnabled == false) { display.drawString(0, 52, "PWM:OFF"); }
+        else {
+          display.drawString(0, 52, (config.flags.pwmMan ? "PWM:MAN" : "PWM:" + pro + "%"));
+        }
 
         display.setTextAlignment(TEXT_ALIGN_RIGHT);
         display.drawString(128, 52, (_RELAY_ + String((digitalRead(PIN_RL1) ? "1 " : "_ ")) + String((digitalRead(PIN_RL2) ? "2 " : "_ ")) + String((digitalRead(PIN_RL3) ? "3 " : "_ ")) + String((digitalRead(PIN_RL4) ? "4 " : "_ "))));
@@ -83,7 +93,7 @@ void data_display(void)
         display.setFont(ArialMT_Plain_24);
         display.setTextAlignment(TEXT_ALIGN_LEFT);
 
-        switch (config.wversion)
+        switch (wversion)
         {
           case 4:
           case 5:
@@ -103,7 +113,7 @@ void data_display(void)
         break;
 
       case 1:
-          if (config.wversion < 4 || config.wversion > 6) {
+          if (wversion < 4 || wversion > 6) {
             display.clear();
             display.setFont(ArialMT_Plain_10);
             display.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -125,7 +135,7 @@ void data_display(void)
           break;
       
       case 2:
-          if (config.wversion >= 4 && config.wversion <= 6) {
+          if (wversion >= 4 && wversion <= 6) {
             display.clear();
             display.setFont(ArialMT_Plain_10);
             display.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -153,11 +163,27 @@ void data_display(void)
           display.drawString(0, 12, ("SSID: " + WiFi.SSID()));
           display.drawString(0, 24, ("FREC. PWM: " + String((float)config.pwmFrequency / 1000) + "Khz"));
           display.drawString(0, 36, ("PWM: " + pro + "% (" + String(invert_pwm) + ")"));
-          display.drawString(0, 48, print_Uptime_Oled());
+          display.drawString(0, 48, printUptimeOled());
+          // if (Flags.ntpTime) {
+          //   display.drawString(0, 60, printDateOled());
+          // }
           display.display();
           break;
 
-      case 4:
+      case 5:
+          display.clear();
+          display.setFont(ArialMT_Plain_10);
+          display.setTextAlignment(TEXT_ALIGN_CENTER);
+          display.drawString(0, 0,  ("TEMPERATURAS"));
+          display.setTextAlignment(TEXT_ALIGN_LEFT);
+          display.drawString(0, 12, ("TEMP TERMO: " + String(temperaturaTermo) + "ºC"));
+          display.drawString(0, 24, ("TEMP TRIAC: " + String(temperaturaTriac) + "ºC"));
+          display.drawString(0, 24, (String(config.nombreSensor) + ": " + String(temperaturaCustom) + "ºC"));
+          //display.drawString(0, 48, printUptimeOled());
+          display.display();
+          break;
+      
+      case 6:
           display.clear();
           display.setFont(ArialMT_Plain_24);
           display.setTextAlignment(TEXT_ALIGN_CENTER);    
@@ -190,4 +216,3 @@ void showLogo(String Texto, bool timeDelay)
   display.display();
   if (timeDelay) { delay(2000); } // Innecesario salvo para mostrar el mensaje ;-)
 }
-

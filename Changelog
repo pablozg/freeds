@@ -1,8 +1,26 @@
+Versión 1.0.5
+Añadida publicación del estado del pwm por mqtt (AUTO, MAN, OFF), Topic: freeds/stat/pwm
+Solucionado bug en el que no se mostraba correctamente el estado del PWM en la Pantalla Oled
+Frecuencia publicación Mqtt Configurable
+Añadida conexión mediante MODBUS TCP (en desarrollo, pero funcional) para:
+	- SMA
+	- FRONIUS
+	- VICTRON
+	- HUAWEI
+Añadido Soporte para ICC Solar (Mqtt)
+Redistribución configuración en página web
+Solucionado error por el que el pwm no pasaba de 19% en ciertas circunstancias.
+Cambio de los topics por defecto para permitir la publicación de datos por mqtt a varios freeds, ahora usa como nombre principal el nombre de host configurado. (IMPORTANTE PARA LOS QUE LO USEN PARA AUTOMATIZACIONES)
+Ejemplo: de freeds/wgrid a freeds_XXXX/wgrid o nombre asignado como host.
+Sustitución cliente HTTP sincrono por peticiones Asíncronas.
+Añadido control mediante Alexa (en desarrollo)
+Añadido control de Temperatura del Termo (Control de encendido y apagado por temperatura), Temperatura del Triac (en desarrollo) y una tercera sonda personalizable.
+Solucionado malfuncionamiento del derivador esclavo en ciertas circustancias.
+
 Versión 1.0.4
-Refactorización de Código
+Refactorización del código
 Añadida opción para pasar a modo manual si potencia solar es menor a un valor programable.
-Actualizado modo de funcionamiento función esclavo (Ahora se puede referenciar a otro esclavo o al master y
-activar independientemente el pwm cada esclavo según el valor configurado.)
+Actualizado modo de funcionamiento función esclavo (Ahora se puede referenciar a otro esclavo o al master y activar independientemente el pwm cada esclavo según el valor configurado.)
 Solucionado problema que no permitia guardar la clave de web.
 
 Version 1.0.3

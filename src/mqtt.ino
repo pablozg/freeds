@@ -18,6 +18,28 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+struct topicData
+{
+    float *variable;
+    char topics[12];
+};
+
+topicData topicRegisters[] = {
+    &inverter.pw1, "pw1",
+    &inverter.pv1v, "pv1v",
+    &inverter.pv1c, "pv1c",
+    &inverter.pw2, "pw2",
+    &inverter.pv2v, "pv2v",
+    &inverter.pv2c, "pv2c",
+    &inverter.wsolar, "wsolar",
+    &inverter.wtoday, "wtoday",
+    &inverter.wgrid, "wgrid",        
+    &inverter.wtogrid, "wtogrid",
+    &inverter.gridv, "gridv",
+    &temperaturaTermo, "tempTermo",
+    &temperaturaTriac, "tempTriac",
+    &temperaturaCustom, "tempCustom"
+};
 
 void connectToWifi()
 {
@@ -32,10 +54,10 @@ void connectToWifi()
   while (wifiMulti.run() != WL_CONNECTED)
   {
     delay(500);
-    INFO(".");
+    Serial.print(".");
   }
   
-  if (config.dhcp == false)
+  if (config.flags.dhcp == false)
   {
     IPAddress local_IP, gateway, subnet, primaryDNS, secondaryDNS;
     local_IP.fromString((String)config.ip);
@@ -49,7 +71,7 @@ void connectToWifi()
       Serial.println("Fixed IP -  Failed to configure");
     }
   }
-
+  
   WiFi.setSleep(false);
   WiFi.persistent(false);
   scanDoneCounter = 0;
@@ -69,7 +91,7 @@ void errorConnectToWifi(void)
   display.display();
 #endif
   timers.ErrorConexionWifi = millis();
-  INFOLN(PSTR("AP Not valid, Waiting 30 seconds before restart, press 'prg' button to defaults settings or 'rst' button to restart now"));
+  INFOV(PSTR("AP Not valid, Waiting 30 seconds before restart, press 'prg' button to defaults settings or 'rst' button to restart now\n"));
   
   while ((millis() - timers.ErrorConexionWifi) < 30000)
   {
@@ -83,41 +105,35 @@ void errorConnectToWifi(void)
   
   if (ButtonLongPress)
   {
-    INFOLN(PSTR("Prg pressed"));
+    INFOV(PSTR("Prg pressed\n"));
     defaultValues();
     saveEEPROM();
     delay(1000);
-    ESP.restart();
   }
-  else
-  {
-    INFOLN(PSTR("No PRG pressed"));
-    ESP.restart();
-  }
+  else { INFOV(PSTR("No PRG pressed\n")); }
+  ESP.restart();
 }
 
 void connectToMqtt()
 {
-  if (config.wversion != 0 && config.mqtt)
+  if (config.wversion != 0 && config.flags.mqtt)
   {
-    INFOLN(PSTR("Connecting to MQTT..."));
+    INFOV(PSTR("Connecting to MQTT...\n"));
     mqttClient.connect();
   }
 }
 
 void WiFiEvent(WiFiEvent_t event)
 {
-  INFO(PSTR("[WiFi-event] event: "));
-  INFOLN(event);
+  INFOV(PSTR("[WiFi-event] event: %i\n"), event);
 
   switch (event)
   {
   case SYSTEM_EVENT_STA_GOT_IP:
     Error.ConexionWifi = false;
-    INFOLN(PSTR("WiFi connected"));
-    INFO(PSTR("IP address: "));
-    INFOLN(WiFi.localIP());
-    if (config.mqtt && config.wversion != 0)
+    INFOV(PSTR("WiFi connected\n"));
+    INFOV(PSTR("IP address: %s\n"),WiFi.localIP().toString().c_str());
+    if (config.flags.mqtt && config.wversion != 0)
     {
       connectToMqtt();
     }
@@ -128,7 +144,7 @@ void WiFiEvent(WiFiEvent_t event)
     break;
   case SYSTEM_EVENT_STA_DISCONNECTED:
     Error.ConexionWifi = true;
-    INFOLN(PSTR("WiFi lost connection"));
+    INFOV(PSTR("WiFi lost connection\n"));
     xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
     xTimerStart(wifiReconnectTimer, 0);
     break;
@@ -169,23 +185,49 @@ void WiFiEvent(WiFiEvent_t event)
 
 void onMqttConnect(bool sessionPresent)
 {
-  INFOLN("Connected to MQTT");
+  INFOV("Connected to MQTT\n");
   Error.ConexionMqtt = false;
 
-  mqttClient.subscribe("freeds/cmnd/pwm", 0);
-  mqttClient.subscribe("freeds/cmnd/pwmman", 0);
-  mqttClient.subscribe("freeds/cmnd/pwmmanvalue", 0);
-  mqttClient.subscribe("freeds/cmnd/screen", 0);
-  mqttClient.subscribe("freeds/cmnd/pwmfrec", 0);
-  mqttClient.subscribe("freeds/cmnd/brightness", 0);
+  static char tmpTopic[33];
+  static char topics[][12] = {"pwm","pwmman","pwmmanvalue","screen","pwmfrec","brightness","pwmvalue"};
 
-  if (config.wversion == 3) { suscribeMqttMeter(); }
+  int nTopics = sizeof(topics) / sizeof(topics[0]);
+  for (int i=0; i < nTopics; i++)
+  {
+    sprintf(tmpTopic, "%s/cmnd/%s", config.hostServer, topics[i]);
+    mqttClient.subscribe(tmpTopic, 0);
+  }
+
+  for (int i = 1; i <= 4; i++)
+  {
+    sprintf(tmpTopic, "%s/relay/%d/CMND", config.hostServer, i);
+    mqttClient.subscribe(tmpTopic, 0);
+  }
+
+  if (config.wversion == 3 || config.wversion == 13) { suscribeMqttMeter(); }
 }
 
 void suscribeMqttMeter(void)
 {
-  mqttClient.subscribe(config.Solax_mqtt, 0);
-  mqttClient.subscribe(config.Meter_mqtt, 0);
+  switch (config.wversion)
+  {
+    case 3:
+      mqttClient.subscribe(config.Solax_mqtt, 0);
+      mqttClient.subscribe(config.Meter_mqtt, 0);
+      break;
+    case 13:
+      mqttClient.subscribe("Inverter/GridWatts", 0);
+      mqttClient.subscribe("Inverter/MPPT1_Watts", 0);
+      mqttClient.subscribe("Inverter/MPPT2_Watts", 0);
+      mqttClient.subscribe("Inverter/MPPT1_Volts", 0);
+      mqttClient.subscribe("Inverter/MPPT2_Volts", 0);
+      mqttClient.subscribe("Inverter/MPPT1_Amps", 0);
+      mqttClient.subscribe("Inverter/MPPT2_Amps", 0);
+      mqttClient.subscribe("Inverter/PvWattsTotal", 0);
+      mqttClient.subscribe("Inverter/SolarKwUse", 0);
+      mqttClient.subscribe("Inverter/BatteryWatts", 0);
+      break;
+  }
 }
 
 void publisher(const char *topic, const char *topublish)
@@ -196,48 +238,47 @@ void publisher(const char *topic, const char *topublish)
 void publishMqtt()
 {
   //  MQTT TOPICS:
-  // freeds/pwm -> PWM Value
-  // freeds/pv1c -> corriente string 1
-  // freeds/pv2c -> corriente string 2
-  // freeds/pv1v -> tension string 1
-  // freeds/pv2v -> tension string 2
-  // freeds/pw1 -> potencia string 1
-  // freeds/pw2 -> potencia string 2
-  // freeds/gridv ->  tension de red
-  // freeds/wsolar ->  Potencia solar
-  // freeds/wtoday ->  Potencia solar diaria
-  // freeds/wgrid ->  Potencia de red (Negativo: de red - Positivo: a red)
-  // freeds/wtogrid -> Potencia enviada a red
+  // nombrehost/pwm -> PWM Value
+  // nombrehost/pv1c -> corriente string 1
+  // nombrehost/pv2c -> corriente string 2
+  // nombrehost/pv1v -> tension string 1
+  // nombrehost/pv2v -> tension string 2
+  // nombrehost/pw1 -> potencia string 1
+  // nombrehost/pw2 -> potencia string 2
+  // nombrehost/gridv ->  tension de red
+  // nombrehost/wsolar ->  Potencia solar
+  // nombrehost/wtoday ->  Potencia solar diaria
+  // nombrehost/wgrid ->  Potencia de red (Negativo: de red - Positivo: a red)
+  // nombrehost/wtogrid -> Potencia enviada a red
+  // nombrehost/stat/pwm -> Modo actual de funcionamiento
+  // nombrehost/Meter -> En caso de usar el modo meter envía los datos del meter en este Topic
 
-  DEBUGLN("\r\nPUBLISHMQTT()");
+  if (config.flags.moreDebug) { INFOV("PUBLISHMQTT()\n"); }
 
-  if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+  if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
   {
     static char tmpString[33];
+    static char tmpTopic[33];
 
-    dtostrfd(inverter.pv1c, 2, tmpString);
-    publisher("freeds/pv1c", tmpString);
-    dtostrfd(inverter.pv2c, 2, tmpString);
-    publisher("freeds/pv2c", tmpString);
-    dtostrfd(inverter.pw1, 2, tmpString);
-    publisher("freeds/pw1", tmpString);
-    dtostrfd(inverter.pw2, 2, tmpString);
-    publisher("freeds/pw2", tmpString);
-    dtostrfd(inverter.pv1v, 2, tmpString);
-    publisher("freeds/pv1v", tmpString);
-    dtostrfd(inverter.pv2v, 2, tmpString);
-    publisher("freeds/pv2v", tmpString);
-    dtostrfd(inverter.gridv, 2, tmpString);
-    publisher("freeds/gridv", tmpString);
-    dtostrfd(inverter.wsolar, 2, tmpString);
-    publisher("freeds/wsolar", tmpString);
-    dtostrfd(inverter.wtoday, 2, tmpString);
-    publisher("freeds/wtoday", tmpString);
-    dtostrfd(inverter.wgrid, 2, tmpString);
-    publisher("freeds/wgrid", tmpString);
-    dtostrfd(inverter.wtogrid, 2, tmpString);
-    publisher("freeds/wtogrid", tmpString);
-    publisher("freeds/pwm", pro.c_str());
+    int nTopics = sizeof(topicRegisters) / sizeof(topicRegisters[0]);
+    for (int i=0; i < nTopics; i++)
+    {
+      dtostrfd(*topicRegisters[i].variable, 2, tmpString);
+      sprintf(tmpTopic, "%s/%s", config.hostServer, topicRegisters[i].topics);
+      publisher(tmpTopic, tmpString);
+    }
+
+    sprintf(tmpTopic, "%s/pwm", config.hostServer);
+    publisher(tmpTopic, pro.c_str());
+
+    if (config.flags.pwmEnabled == false) { strcpy(tmpString, "OFF"); }
+    else {
+      if (config.flags.pwmMan) { strcpy(tmpString, "MAN"); }
+      else { strcpy(tmpString, "AUTO"); }
+    }
+    
+    sprintf(tmpTopic, "%s/stat/pwm", config.hostServer);
+    publisher(tmpTopic, tmpString);
     publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
@@ -263,18 +304,20 @@ void publishMqtt()
       jsonValues["ExportReactive"] = meter.exportReactive;
       jsonValues["PhaseAngle"] = meter.phaseAngle;
       size_t n = serializeJson(jsonValues, buffer);
-      mqttClient.publish("freeds/METER", 0, true, buffer, n);
+
+      sprintf(tmpTopic, "%s/Meter", config.hostServer);
+      mqttClient.publish(tmpTopic, 0, true, buffer, n);
     }
   }
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
-  INFOLN("Disconnected from MQTT");
+  INFOV("Disconnected from MQTT\n");
 
   Error.ConexionMqtt = true;
 
-  if (WiFi.isConnected() && config.mqtt && config.wversion != 0)
+  if (WiFi.isConnected() && config.flags.mqtt && config.wversion != 0)
   {
     xTimerStart(mqttReconnectTimer, 0);
   }
@@ -282,13 +325,11 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
 {
-  DEBUGLN("Publish received.");
-  DEBUG("  topic: ");
-  DEBUGLN(topic);
-  DEBUG("  total: ");
-  DEBUGLN(total);
+  if (config.flags.debugOutput) { 
+    INFOV("Publish received, Topic: %s, Size: %lu\n", topic, total);
+  }
 
-  if (config.mqtt && config.wversion != 0)
+  if (config.flags.mqtt && config.wversion != 0)
   {
     if (config.wversion == 3)
     {
@@ -298,13 +339,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
         if (error)
         {
-          INFO("deserializeJson() Meter MQTT failed: ");
-          INFOLN(error.c_str());
+          INFOV("deserializeJson() Meter MQTT failed: %s\n", error.c_str());
         }
         else
         {
-          DEBUGLN("deserializeJson() OK");
-
           inverter.wgrid = (float)root["ENERGY"]["Power"] * -1; // Potencia de red (Negativo: de red - Positivo: a red) para usar con los datos de Tasmota
                     
           Error.ConexionInversor = false;
@@ -319,13 +357,10 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 
         if (error)
         {
-          INFO("deserializeJson() Solax MQTT failed: ");
-          INFOLN(error.c_str());
+          INFOV("deserializeJson() Solax MQTT failed: %s\n", error.c_str());
         }
         else
         {
-          DEBUGLN("deserializeJson() OK");
-
           inverter.pv1c = (float)root["ENERGY"]["Pv1Current"]; // Corriente string 1
           inverter.pv2c = (float)root["ENERGY"]["Pv2Current"]; // Corriente string 2
           inverter.pv1v = (float)root["ENERGY"]["Pv1Voltage"]; // Tension string 1
@@ -335,83 +370,113 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
           inverter.gridv = (float)root["ENERGY"]["Voltage"];   // Tension de red
           inverter.wtoday = (float)root["ENERGY"]["Today"];    // Potencia solar diaria
           inverter.wsolar = (float)root["ENERGY"]["Power"];    // Potencia solar actual
+
+          Error.ConexionMqtt = false;
+          timers.ErrorConexionRed = millis();
         }
       }
     }
 
-    if (strcmp(topic, "freeds/cmnd/pwm") == 0)
+    if (config.wversion == 13)
+    {
+      timers.ErrorConexionRed = millis();
+      Error.ConexionInversor = false;
+      Error.ConexionMqtt = false;
+
+      if (strcmp(topic, "Inverter/GridWatts") == 0) { inverter.wgrid = atoi(payload) * -1; }
+      if (strcmp(topic, "Inverter/MPPT1_Watts") == 0) { inverter.pw1 = atoi(payload) / 10.0; }
+      if (strcmp(topic, "Inverter/MPPT2_Watts") == 0) { inverter.pw2 = atoi(payload) / 10.0; }
+      if (strcmp(topic, "Inverter/MPPT1_Volts") == 0) { inverter.pv1v = atoi(payload) / 10.0; }
+      if (strcmp(topic, "Inverter/MPPT2_Volts") == 0) { inverter.pv2v = atoi(payload) / 10.0; }
+      if (strcmp(topic, "Inverter/MPPT1_Amps") == 0) { inverter.pv1c = atof(payload); }
+      if (strcmp(topic, "Inverter/MPPT2_Amps") == 0) { inverter.pv2c = atof(payload); }
+      if (strcmp(topic, "Inverter/PvWattsTotal") == 0) { inverter.wsolar = atoi(payload) / 10.0; }
+      if (strcmp(topic, "Inverter/SolarKwUse") == 0) { inverter.wtoday = atof(payload); }
+      //if (strcmp(topic, "Inverter/BatteryWatts") == 0) { inverter.wtoday = atof(payload); }
+    }
+
+    static char tmpTopic[50]; 
+
+    
+    for (uint8_t i = 1; i <= 4; i++)
+    {
+      sprintf(tmpTopic, "%s/relay/%d/CMND", config.hostServer, i);
+      if (strcmp(topic, tmpTopic) == 0)
+      { // pwm control ON-OFF
+        INFOV("Mqtt - Relay %d control: %s\n", i, (char)payload[0] == '1' ? "ON" : "OFF");
+        uint32_t op;
+        if ((char)payload[0] == '1') {
+          op = 0x200 << i;
+          Flags.data = Flags.data | op;
+        } else { 
+          op = 0x200 << i;
+          Flags.data = Flags.data ^ op;
+        }
+        relay_control_man(false);
+      }
+    }
+    
+    sprintf(tmpTopic, "%s/cmnd/pwm", config.hostServer);
+    if (strcmp(topic, tmpTopic) == 0)
     { // pwm control ON-OFF
-      INFOLN("Mqtt _ PWM control");
-      if ((char)payload[0] == '1')
-      {
-        INFOLN("PWM ACTIVATED");
-        config.P01_on = true;
-      }
-      else
-      {
-        config.P01_on = false;
-        down_pwm(true);
-      }
+      INFOV("Mqtt - PWM control: %s\n", (char)payload[0] == '1' ? "ON" : "OFF");
+      if ((char)payload[0] == '1') { config.flags.pwmEnabled = true; }
+      else { config.flags.pwmEnabled = false; down_pwm(true); }
       saveEEPROM();
     }
 
-    if (strcmp(topic, "freeds/cmnd/pwmman") == 0)
+    sprintf(tmpTopic, "%s/cmnd/pwmman", config.hostServer);
+    if (strcmp(topic, tmpTopic) == 0)
     { // pwm control manual ON-OFF
-      String Mode = (char)payload[0] == '1' ? "MANUAL" : "AUTO";
-      INFOLN("Mqtt _ Manual PWM control set to :");
-      INFOLN(Mode);
-      config.pwm_man = (char)payload[0] == '1' ? true : false;
+      INFOV("Mqtt - PWM mode set to: %s\n", (char)payload[0] == '1' ? "MANUAL" : "AUTO");
+      config.flags.pwmMan = (char)payload[0] == '1' ? true : false;
       saveEEPROM();
     }
 
-    if (strcmp(topic, "freeds/cmnd/pwmmanvalue") == 0)
+    sprintf(tmpTopic, "%s/cmnd/pwmmanvalue", config.hostServer);
+    if (strcmp(topic, tmpTopic) == 0)
     { // Manual pwm control value
-      INFOLN("Mqtt _ Manual PWM control value");
-      String strData;
-      for (int i = 0; i < len; i++)
-      {
-        strData += (char)payload[i];
-      }
-      INFO("MQTT PAYLOAD: ");
-      INFOLN(strData);
-      config.manualControlPWM = constrain(strData.toInt(), 0, 100);
+      int strData = atoi(payload);
+      INFOV("Mqtt - Manual PWM value set to: %i\n", strData);
+      config.manualControlPWM = constrain(strData, 0, 100);
       saveEEPROM();
     }
 
-    if (strcmp(topic, "freeds/cmnd/pwmfrec") == 0)
+    sprintf(tmpTopic, "%s/cmnd/pwmfrec", config.hostServer);
+    if (strcmp(topic, tmpTopic) == 0)
     { // Pwm frequency
-      INFOLN("Mqtt _ Manual PWM Frequency control value");
-      String strData;
-      for (int i = 0; i < len; i++)
-      {
-        strData += (char)payload[i];
-      }
-      INFO("MQTT PAYLOAD: ");
-      INFOLN(strData);
-      config.pwmFrequency = constrain(strData.toInt(), 500, 3000);
+      int strData = atoi(payload);
+      INFOV("Mqtt - PWM Frequency set to: %i\n", strData);
+      config.pwmFrequency = constrain(strData, 500, 3000);
       saveEEPROM();
     }
 
-    if (strcmp(topic, "freeds/cmnd/screen") == 0)
+    sprintf(tmpTopic, "%s/cmnd/screen", config.hostServer);
+    if (strcmp(topic, tmpTopic) == 0)
     { // Info Screen
-      INFO("Mqtt _ Change to Screen: ");
-      INFOLN(int(payload[0] - '0'));
       screen = constrain(int(payload[0] - '0'), 0, MAX_SCREENS);
+      INFOV("Mqtt - Change to Screen: %i\n", screen);      
+      
       if ((config.wversion < 4 || config.wversion > 6) && screen == 2) { screen = 1; }
       if ((config.wversion >= 4 && config.wversion <= 6)  && screen == 1) { screen = 2; }
+      if (!config.flags.sensorTemperatura && screen == 5) { screen = 6; }
     }
 
-    if (strcmp(topic, "freeds/cmnd/brightness") == 0)
+    sprintf(tmpTopic, "%s/cmnd/brightness", config.hostServer);
+    if (strcmp(topic, tmpTopic) == 0)
     { // Oled brightness value
-      String strData;
-      for (int i = 0; i < len; i++)
-      {
-        strData += (char)payload[i];
-      }
-      INFO("Mqtt _ Change screen brightness: ");
-      INFOLN(strData);
-      config.oledBrightness = ((constrain(strData.toInt(), 0, 100) * 255) / 100);
+      int strData = atoi(payload);
+      INFOV("Mqtt - Change screen brightness to: %i\n", strData);
+      config.oledBrightness = ((constrain(strData, 0, 100) * 255) / 100);
       Flags.setBrightness = true;
+    }
+
+    sprintf(tmpTopic, "%s/cmnd/pwmvalue", config.hostServer);
+    if (strcmp(topic, tmpTopic) == 0)
+    { // Manual pwm control value
+      uint16_t strData = atoi(payload);
+      INFOV("Mqtt - PWM value set to: %i\n", strData);
+      invert_pwm = constrain(strData, 0, 1023);
     }
   }
 }

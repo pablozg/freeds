@@ -18,61 +18,26 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-void getMasterFreeDsData(void)
-{
-  DEBUGLN("\r\nGETMASTERFREEDSDATA()");
-
-  if (config.wifi)
-  {
-    if (config.wversion == 12)
-    {
-        MasterFreeDsCom();
-    }
-  }
-}
-
-void MasterFreeDsCom(void)
-{
-    HTTPClient clientHttp;
-    WiFiClient clientWifi;
-    clientHttp.setConnectTimeout(1500);
-    httpcode = -1;
-    
-    String url = "http://" + (String)config.sensor_ip + "/masterdata";
-    clientHttp.begin(clientWifi, url);
-    httpcode = clientHttp.GET();
-
-    DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
-
-    if (httpcode == HTTP_CODE_OK)
-    {
-      String Resp = clientHttp.getString();
-      parseMasterFreeDs(Resp);
-      Error.ConexionInversor = false;
-    }
-    clientHttp.end();
-    clientWifi.stop();
-}
-
-///////// Procesa los datos recibidos desde el ESP32 Maestro
 void parseMasterFreeDs(String json)
 {
-  DEBUGLN("JSON:" + json);
+  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
+
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {
-    INFO("deserializeJson() failed: ");
-    INFOLN(error.c_str());
+    INFOV("deserializeJson() failed: %s\n", error.c_str());
     httpcode = -1;
   } else {
-    DEBUGLN("deserializeJson() OK");
     masterMode = (int)root["wversion"];
     inverter.wgrid =  (float)root["wgrid"]; // Potencia de red
-    
+      
     if ((int)root["PwmMaster"] >= config.pwmSlaveOn) {
-      config.P01_on = true;
+      Flags.pwmIsWorking = true;
     } else {
-      config.P01_on = false;
+      if (!config.flags.pwmMan) {
+        Flags.pwmIsWorking = false;
+        down_pwm(false);
+      }
     }
     
     switch (masterMode)
@@ -88,45 +53,45 @@ void parseMasterFreeDs(String json)
         inverter.wtoday = (float)root["wtoday"];    // Potencia solar diaria
         inverter.wsolar = (float)root["wsolar"];    // Potencia solar actual
         break;
-    case 4:
-    case 5:
-    case 6:
-      meter.voltage =      (float)root["mvoltage"];
-      meter.current =      (float)root["mcurrent"];
-      meter.powerFactor =  (float)root["mpowerFactor"];
-      meter.frequency =    (float)root["mfrequency"];
-      meter.importActive = (float)root["mimportActive"];
-      meter.exportActive = (float)root["mexportActive"];
-      meter.energyTotal =  (float)root["menergyTotal"];
-      meter.activePower =  (float)root["mactivePower"];
-      meter.aparentPower = (float)root["maparentPower"];
-      meter.reactivePower =  (float)root["mreactivePower"];
-      meter.importReactive = (float)root["mimportReactive"];
-      meter.exportReactive = (float)root["mexportReactive"];
-      meter.phaseAngle =     (float)root["mphaseAngle"];
-      break;
-    case 9:
-    case 10:
-      meter.voltage =      (float)root["mvoltage"];
-      meter.powerFactor =  (float)root["mpowerFactor"];
-      meter.importActive = (float)root["mimportActive"];
-      meter.exportActive = (float)root["mexportActive"];
-      meter.activePower =  (float)root["mactivePower"];
-      meter.reactivePower =  (float)root["mreactivePower"];
-      inverter.wsolar =    (float)root["wsolar"];
-      inverter.gridv =    (float)root["gridv"];
-      break;
-    default:
-      inverter.wtoday = (float)root["wtoday"];
-      inverter.wsolar = (float)root["wsolar"];
-      inverter.gridv =  (float)root["gridv"];
-      inverter.pv1c =   (float)root["pv1c"];
-      inverter.pv1v =   (float)root["pv1v"];
-      inverter.pw1 =    (float)root["pw1"];
-      inverter.pv2c =   (float)root["pv2c"];
-      inverter.pv2v =   (float)root["pv2v"];
-      inverter.pw2 =    (float)root["pw2"];
-      break;
+      case 4:
+      case 5:
+      case 6:
+        meter.voltage =      (float)root["mvoltage"];
+        meter.current =      (float)root["mcurrent"];
+        meter.powerFactor =  (float)root["mpowerFactor"];
+        meter.frequency =    (float)root["mfrequency"];
+        meter.importActive = (float)root["mimportActive"];
+        meter.exportActive = (float)root["mexportActive"];
+        meter.energyTotal =  (float)root["menergyTotal"];
+        meter.activePower =  (float)root["mactivePower"];
+        meter.aparentPower = (float)root["maparentPower"];
+        meter.reactivePower =  (float)root["mreactivePower"];
+        meter.importReactive = (float)root["mimportReactive"];
+        meter.exportReactive = (float)root["mexportReactive"];
+        meter.phaseAngle =     (float)root["mphaseAngle"];
+        break;
+      case 9:
+      case 10:
+        meter.voltage =      (float)root["mvoltage"];
+        meter.powerFactor =  (float)root["mpowerFactor"];
+        meter.importActive = (float)root["mimportActive"];
+        meter.exportActive = (float)root["mexportActive"];
+        meter.activePower =  (float)root["mactivePower"];
+        meter.reactivePower =  (float)root["mreactivePower"];
+        inverter.wsolar =    (float)root["wsolar"];
+        inverter.gridv =    (float)root["gridv"];
+        break;
+      default:
+        inverter.wtoday = (float)root["wtoday"];
+        inverter.wsolar = (float)root["wsolar"];
+        inverter.gridv =  (float)root["gridv"];
+        inverter.pv1c =   (float)root["pv1c"];
+        inverter.pv1v =   (float)root["pv1v"];
+        inverter.pw1 =    (float)root["pw1"];
+        inverter.pv2c =   (float)root["pv2c"];
+        inverter.pv2v =   (float)root["pv2v"];
+        inverter.pw2 =    (float)root["pw2"];
+        break;
     }
     Error.ConexionInversor = false;
     timers.ErrorConexionRed = millis();

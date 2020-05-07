@@ -64,8 +64,7 @@ void ddsu666(void)
     uint32_t error = modbusReceiveBuffer(buffer, 2); 
 
     if (error) {
-      INFO("DDSU666 error: ");
-      INFOLN(error);
+      INFOV("DDSU666 error: %i\n", error);
     } else {
      
       //  0  1  2  3  4  5  6  7  8
@@ -141,8 +140,7 @@ void sdm120(void)
     uint32_t error = modbusReceiveBuffer(buffer, 2); 
 
     if (error) {
-      INFO("SDM120 error: ");
-      INFOLN(error);
+      INFOV("SDM120 error: %i\n", error);
     } else {
      
       //  0  1  2  3  4  5  6  7  8
@@ -242,12 +240,10 @@ void dds2382(void)
     uint32_t error = modbusReceiveBuffer(buffer, 18); 
     
     if (error) {
-      INFO("DDS238-2 error: ");
-      INFOLN(error);
+      INFOV("DDS238-2 error: %i\n", error);
     } else {
 
-      #ifdef FREEDS_DEBUG
-        DEBUG("Meter response: ");
+      if (config.flags.debugOutput) { 
         char hexarray[200] = {0};
         char hexvalue[5] = {0};
         for (int i = 0; i < 45; i++)
@@ -256,8 +252,8 @@ void dds2382(void)
           strcpy(hexarray, hexvalue);
           
         }
-        DEBUG(hexarray);
-      #endif
+        INFOV("Meter response: %s\n", hexarray);
+      }
 
       float exportActive = 0;
       float importActive = 0;
@@ -302,23 +298,37 @@ void dds2382(void)
   }
 }
 
-void readMeter(void)
+
+
+void readModbus(void)
 {
   
-  DEBUG(F("Baudios: "));
-  DEBUGLN(SerieMeter.baudRate());
+  if (config.flags.debugOutput) { 
+    INFOV(PSTR("Baudios: %lu\n"), SerieMeter.baudRate());
+  }
 
   switch (config.wversion)
   {
-  case 4:
-    dds2382();
-    break;
-  case 5:
-    ddsu666();
-    break;
-  case 6:
-    sdm120();
-    break;    
-  }
-  
+    case 4:
+      dds2382();
+      break;
+    case 5:
+      ddsu666();
+      break;
+    case 6:
+      sdm120();
+      break;
+    case 8:
+      sma();
+      break;
+    case 14:
+      victron();
+      break;
+    case 15:
+      fronius();
+      break;
+    case 16:
+      huawei();
+      break;
+    }
 }

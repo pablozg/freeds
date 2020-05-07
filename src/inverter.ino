@@ -22,9 +22,11 @@
 
 void sendStatusSolaxV2(void)
 {
-  DEBUGLN("\r\nSENDSTATUSSOLAXV2()");
-
-  if (config.wversion == 2) { SerieEsp.println("###STATUS"); }
+  if (config.wversion == 2) { 
+    
+    if (config.flags.moreDebug) { INFOV("SENDSTATUSSOLAXV2()\n"); }
+    SerieEsp.println("###STATUS");
+  }
 }
 
 // Solax v2
@@ -40,7 +42,7 @@ void m1_com(void)
     }
     if (currentLine.startsWith("###JSONERROR"))
     {
-      INFOLN("-----M1: Error decodificando JSON");
+      INFOV("-----M1: Error decodificando JSON\n");
     }
     if (currentLine.startsWith("###STATUS"))
     {
@@ -63,7 +65,7 @@ void m1_com(void)
     }
     if (currentLine.startsWith("##D M1: NOT CONNECT"))
     {
-      INFOLN("-----M1: Mo conectado a inversor");
+      INFOV("-----M1: Mo conectado a inversor\n");
       Error.ConexionInversor = true;
     }
     if (currentLine.startsWith("###HTTPCODE"))
@@ -74,101 +76,23 @@ void m1_com(void)
     }
     if (currentLine.startsWith("##D"))
     { 
-      DEBUGLN(currentLine.substring(currentLine.indexOf("##D") + 3, currentLine.indexOf("\n")));
+      if (config.flags.moreDebug) { INFOV("%s\n",currentLine.substring(currentLine.indexOf("##D") + 3, currentLine.indexOf("\n")).c_str()); }
     }
   }
-}
-
-// Solax v1
-void v1_com(void)
-{
-    HTTPClient clientHttp;
-    WiFiClient clientWifi;
-    clientHttp.setConnectTimeout(2000);
-    httpcode = -1;
-    
-    String url = "http://" + (String)config.sensor_ip + "/api/realTimeData.htm";
-    clientHttp.begin(clientWifi, url);
-    httpcode = clientHttp.GET();
-
-    DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
-
-    if (httpcode == HTTP_CODE_OK)
-    {
-      String Resp = clientHttp.getString();
-      parseJsonv1(Resp);
-      Error.ConexionInversor = false;
-    }
-    clientHttp.end();
-    clientWifi.stop();
-}
-
-// Solax v2 local
-void v0_com(void)
-{ 
-    HTTPClient clientHttp;
-    WiFiClient clientWifi;
-    clientHttp.setConnectTimeout(1000);
-    httpcode = -1;
-
-    clientHttp.begin(clientWifi, "http://5.8.8.8/?optType=ReadRealTimeData");
-    clientHttp.addHeader("Host", "5.8.8.8");
-    clientHttp.addHeader("Content-Length", "0");
-    clientHttp.addHeader("Accept", "/*/");
-    clientHttp.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    clientHttp.addHeader("X-Requested-With", "com.solaxcloud.starter");
-
-    httpcode = clientHttp.POST("");
-
-    DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
-
-    if (httpcode == HTTP_CODE_OK)
-    {
-      String Resp = clientHttp.getString();
-      parseJsonv2local(Resp);
-      Error.ConexionInversor = false;
-    }
-    clientHttp.end();
-    clientWifi.stop();
-}
-
-// Fronius
-void fronius_com(void)
-{  
-    HTTPClient clientHttp;
-    WiFiClient clientWifi;
-    clientHttp.setConnectTimeout(4000);
-    httpcode = -1;
-    String url = "http://" + (String)config.sensor_ip + "/solar_api/v1/GetPowerFlowRealtimeData.fcgi";
-    clientHttp.begin(clientWifi, url);
-    httpcode = clientHttp.GET();
-
-    DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
-
-    if (httpcode == HTTP_CODE_OK)
-    {
-      String Resp = clientHttp.getString();
-      INFOLN("JSON STRING: " + Resp);
-      parseJson_fronius(Resp);
-      Error.ConexionInversor = false;
-    }
-    clientHttp.end();
-    clientWifi.stop();
 }
 
 // Solax v2
 void parseJson(String json)
 {
-  DEBUGLN("JSON:" + json);
+  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
+  
   DeserializationError error = deserializeJson(root, json);
   
   if (error)  {
-    INFO("deserializeJson() failed: ");
-    INFOLN(error.c_str());
+    INFOV("deserializeJson() failed: %s\n", error.c_str());
     httpcode = -1;
   } else {
-    DEBUGLN("deserializeJson() OK");
-
+    
     httpcode = root["Data"][0];          // Error code
     inverter.pv1c = root["Data"][1];     // Corriente string 1
     inverter.pv2c = root["Data"][2];     // Corriente string 2
@@ -190,7 +114,7 @@ void parseJson(String json)
 // Solax v1
 void parseJsonv1(String json)
 {
-  DEBUGLN("JSON:" + json);
+  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
   uint16_t start = json.indexOf(":[");
   uint16_t stop = json.indexOf(",", start);
   float res[14];
@@ -224,15 +148,13 @@ void parseJsonv1(String json)
 // Solax v2 local
 void parseJsonv2local(String json)
 {
-  DEBUGLN("JSON:" + json);
+  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
   
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {
-    INFO("deserializeJson() failed: ");
-    INFOLN(error.c_str());
+    INFOV("deserializeJson() failed: %s\n", error.c_str());
   } else {
-    DEBUGLN("deserializeJson() OK");
 
     inverter.pv1c = root["Data"][0];     // Corriente string 1
     inverter.pv2c = root["Data"][1];     // Corriente string 2
@@ -254,15 +176,13 @@ void parseJsonv2local(String json)
 // Fronius
 void parseJson_fronius(String json)
 {
-  DEBUGLN("JSON:" + json);
+  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {
-    INFO("deserializeJson() failed: ");
-    INFOLN(error.c_str());
+    INFOV("deserializeJson() failed: %s\n", error.c_str());
     httpcode = -1;
   } else {
-    DEBUGLN("deserializeJson() OK");
     inverter.wsolar = root["Body"]["Data"]["Site"]["P_PV"] == "null" ? 0 : root["Body"]["Data"]["Site"]["P_PV"];     // Potencia solar
     inverter.wtoday = root["Body"]["Data"]["Site"]["E_Day"] == "null" ? 0 : root["Body"]["Data"]["Site"]["E_Day"];   // Potencia solar diaria
     inverter.wgrid  = root["Body"]["Data"]["Site"]["P_Grid"] == "null" ? 0 : root["Body"]["Data"]["Site"]["P_Grid"]; // Potencia de red (Negativo: de red - Positivo: a red)

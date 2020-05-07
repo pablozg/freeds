@@ -2,6 +2,7 @@
 
 #define _GRID_ "Red"
 #define _SOLAR_ "Solar"
+#define _BATTERY_ "Batería"
 #define _INVERTERINFO_ "Datos Inversor"
 #define _METERINFO_ "Datos Meter"
 #define _OLEDPOWER_ "Potencia"

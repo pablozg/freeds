@@ -22,39 +22,73 @@
 
 void getSensorData(void)
 {
-  if (config.wifi)
+  if (config.flags.wifi)
   {
     switch (config.wversion)
     {
-      case 0: // Solax v2 local mode
-        v0_com(); 
-        break;
-      case 1: // Solax v1
-        v1_com(); 
-        break;
       case 2: // Solax v2
-        m1_com(); 
+        m1_com();
+        break;
+      case 0: // Solax v2 local mode
+      case 1: // Solax v1
+      case 9: // Wibee
+      case 10: // Shelly EM
+      case 11: // Fronius
+      case 12: // Master FreeDS
+        runAsyncClient();
         break;
       case 4: // DDS2382
       case 5: // DDSU666
       case 6: // SDM120/220
-        readMeter();
-        break;
-      case 9: // Wibee
-        getWibeeeData(); 
-        break;
-      case 10: // Shelly EM
-        getShellyData(); 
-        break;
-      case 11: // Fronius
-        fronius_com(); 
-        break;
-      case 12: // Master FreeDS
-        getMasterFreeDsData();
+      case 8: // SMA
+      case 14: // Victron
+      case 15: // Fronius
+      case 16: // Huawei
+        readModbus();
         break;
     }
   }
 }
+
+// void getSensorData(void)
+// {
+//   if (config.flags.wifi)
+//   {
+//     switch (config.wversion)
+//     {
+//       case 0: // Solax v2 local mode
+//         v0_com(); 
+//         break;
+//       case 1: // Solax v1
+//         v1_com(); 
+//         break;
+//       case 2: // Solax v2
+//         m1_com(); 
+//         break;
+//       case 4: // DDS2382
+//       case 5: // DDSU666
+//       case 6: // SDM120/220
+//       case 8: // SMA
+//       case 14: // Victron
+//       case 15: // Fronius
+//       case 16: // Huawei
+//         readModbus();
+//         break;
+//       case 9: // Wibee
+//         getWibeeeData();
+//         break;
+//       case 10: // Shelly EM
+//         getShellyData();
+//         break;
+//       case 11: // Fronius
+//         fronius_com(); 
+//         break;
+//       case 12: // Master FreeDS
+//         getMasterFreeDsData();
+//         break;
+//     }
+//   }
+// }
 
 String midString(String str, String start, String finish){
   int locStart = str.indexOf(start);
@@ -78,13 +112,28 @@ char *dtostrfd(double number, unsigned char prec, char *s)
   }
 }
 
+int WifiGetRssiAsQuality(int rssi)
+{
+  int quality = 0;
+
+  if (rssi <= -100) {
+    quality = 0;
+  } else if (rssi >= -50) {
+    quality = 100;
+  } else {
+    quality = 2 * (rssi + 100);
+  }
+  return quality;
+}
+
 void buildWifiArray(void)
 {
   WiFi.scanNetworks();
   for (int i = 0; i < 15; ++i) {
     if(WiFi.SSID(i) == "") { break; }
     scanNetworks[i] = WiFi.SSID(i);
-    INFOLN(scanNetworks[i]);
+    rssiNetworks[i] = (int8_t)WiFi.RSSI(i);
+    INFOV("SSID %i - %s (%d%%, %d dBm)\n", i, scanNetworks[i].c_str(), WifiGetRssiAsQuality(rssiNetworks[i]), rssiNetworks[i]);
   }
 }
 
@@ -110,18 +159,18 @@ void changeScreen(void)
       switch (workingMode)
       {
       case 0: // AUTO
-        config.P01_on = true;
-        config.pwm_man = false;
+        config.flags.pwmEnabled = true;
+        config.flags.pwmMan = false;
         break;
 
       case 1: // MANUAL
-        config.P01_on = true;
-        config.pwm_man = true;
+        config.flags.pwmEnabled = true;
+        config.flags.pwmMan = true;
         break;
 
       case 2: // OFF
-        config.P01_on = false;
-        config.pwm_man = false;
+        config.flags.pwmEnabled = false;
+        config.flags.pwmMan = false;
         break;
       }
       saveEEPROM();
@@ -146,9 +195,9 @@ void changeScreen(void)
       {
         ButtonState = false;
         timers.OledAutoOff = millis();
-        if (config.oledAutoOff && !config.oledPower)
+        if (config.flags.oledAutoOff && !config.flags.oledPower)
         {
-          config.oledPower = true;
+          config.flags.oledPower = true;
           turnOffOled();
         }
         else
@@ -167,7 +216,7 @@ void changeScreen(void)
 void turnOffOled(void)
 {
   display.clear();
-  config.oledPower ? display.displayOn() : display.displayOff();
+  config.flags.oledPower ? display.displayOn() : display.displayOff();
 }
 
 void restartFunction(void)
@@ -180,12 +229,10 @@ void restartFunction(void)
 
   saveEEPROM();
 
-  INFOLN("RESTARTING IN 3 SEC !!!!");
-
   uint8_t tcont = 4;
   while (tcont-- > 0)
   {
-    INFO(".." + (String)tcont);
+    INFOV(PSTR("RESTARTING IN %i SEC !!!!\n"), tcont);
     delay(1000);
   }
   ESP.restart();
@@ -195,58 +242,57 @@ void saveEEPROM(void)
 {
   EEPROM.put(0, config);
   EEPROM.commit();
-  INFOLN("DATA SAVED!!!!");
+  INFOV("DATA SAVED!!!!\n");
 }
 
-void remote_api()
-{
-  DEBUGLN("\r\nremote_api()");
-  HTTPClient clientHttp;
-  WiFiClient clientWifi;
-  clientHttp.setConnectTimeout(4000);
+// void remote_api()
+// {
+//   if (config.flags.moreDebug) { INFOV("remote_api()\n"); }
+//   HTTPClient clientHttp;
+//   WiFiClient clientWifi;
+//   clientHttp.setConnectTimeout(4000);
 
-  if ((String)config.remote_api != "" && config.wifi)
-  {
-    String url = "http://" + (String)config.remote_api;
+//   if ((String)config.remote_api != "" && config.flags.wifi)
+//   {
+//     String url = "http://" + (String)config.remote_api;
 
-    url.replace("%pv1c%", String(inverter.pv1c));
-    url.replace("%pv2c%", String(inverter.pv2c));
-    url.replace("%pv1v%", String(inverter.pv1v));
-    url.replace("%pv2v%", String(inverter.pv2v));
-    url.replace("%gridv%", String(inverter.gridv));
-    url.replace("%wsolar%", String(inverter.wsolar));
-    url.replace("%wtoday%", String(inverter.wtoday));
-    url.replace("%wgrid%", String(inverter.wgrid));
-    url.replace("%pw1%", String(inverter.pw1));
-    url.replace("%pw2%", String(inverter.pw2));
-    url.replace("%wtogrid%", String(inverter.wtogrid));
+//     url.replace("%pv1c%", String(inverter.pv1c));
+//     url.replace("%pv2c%", String(inverter.pv2c));
+//     url.replace("%pv1v%", String(inverter.pv1v));
+//     url.replace("%pv2v%", String(inverter.pv2v));
+//     url.replace("%gridv%", String(inverter.gridv));
+//     url.replace("%wsolar%", String(inverter.wsolar));
+//     url.replace("%wtoday%", String(inverter.wtoday));
+//     url.replace("%wgrid%", String(inverter.wgrid));
+//     url.replace("%pw1%", String(inverter.pw1));
+//     url.replace("%pw2%", String(inverter.pw2));
+//     url.replace("%wtogrid%", String(inverter.wtogrid));
 
-    DEBUGLN("REMOTE API REQUEST: " + url);
+//     if (config.flags.debugOutput) { INFOV("REMOTE API REQUEST: %s\n", url.c_str()); }
 
-    clientHttp.begin(clientWifi, url);
-    httpcode = clientHttp.GET();
+//     clientHttp.begin(clientWifi, url);
+//     httpcode = clientHttp.GET();
 
-    DEBUGLN("HTTPCODE ERROR: " + (String)httpcode);
+//     if (config.flags.moreDebug) { INFOV("HTTPCODE ERROR: %i\n", httpcode); }
 
-    if (httpcode < 0 || httpcode == 404)
-      numeroErrorConexionRemoteApi++;
+//     if (httpcode < 0 || httpcode == 404)
+//       numeroErrorConexionRemoteApi++;
     
-    if (httpcode == HTTP_CODE_OK)
-    {
-      numeroErrorConexionRemoteApi = 0;
-      Error.RemoteApi = false;
-    }
-    clientHttp.end();
-    clientWifi.stop();
-  }
-}
+//     if (httpcode == HTTP_CODE_OK)
+//     {
+//       numeroErrorConexionRemoteApi = 0;
+//       Error.RemoteApi = false;
+//     }
+//     clientHttp.end();
+//     clientWifi.stop();
+//   }
+// }
 
-///////////////////////// TIME FUNCTIONS from https://hackaday.io/project/7008-fly-wars-a-hackers-solution-to-world-hunger/log/25043-updated-uptime-counter /////////////////
-
-//************************ Uptime Code - Makes a count of the total up time since last start ****************//
-
-void calc_uptime()
+void updateUptime()
 {
+  //************************ Time function from https://hackaday.io/project/7008-fly-wars-a-hackers-solution-to-world-hunger/log/25043-updated-uptime-counter ****************// 
+  //************************ Uptime Code - Makes a count of the total up time since last start ****************// 
+  
   //** Making Note of an expected rollover *****//
   if (millis() >= 3000000000)
   {
@@ -267,138 +313,233 @@ void calc_uptime()
 };
 
 //******************* Prints the uptime to serial window **********************//
-String print_Uptime()
+String printUptime()
 {
-  char tmp[33];
-  sprintf(tmp, "Uptime: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+  char tmp[80];
+ 
+  if (Flags.ntpTime) {
+    sprintf(tmp, "Fecha: %02d/%02d/%04d Hora: %02d:%02d:%02d<br>Uptime: %li días %02d:%02d:%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+  } else {
+    sprintf(tmp, "Uptime: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+  }
   return tmp;
 };
 
-String print_Uptime_Short()
-{
-  char tmp[33];
-  sprintf(tmp, "%02d:%02d:%02d", uptime.Hour, uptime.Minute, uptime.Second);
-  return tmp;
-};
-
-String print_Uptime_Oled()
+String printUptimeOled()
 {
   char tmp[33];
   sprintf(tmp, "UPTIME: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
   return tmp;
 };
 
-void verbose_print_reset_reason(RESET_REASON reason)
+String printDateOled()
 {
-  switch (reason)
+  char tmp[33];
+  sprintf(tmp, "Fecha: %02d/%02d/%04d Hora: %02d:%02d:%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  return tmp;
+};
+
+void updateLocalTime(void)
+{
+  if(!getLocalTime(&timeinfo)){
+    if (config.flags.debugOutput) { INFOV("Failed to obtain time\n"); }
+    Flags.ntpTime = false;
+    return;
+  }
+  //Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  //INFOV("Fecha: %02d/%02d/%04d Hora: %02d:%02d:%02d\n", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  if (timeinfo.tm_year >= 120) { Flags.ntpTime = true; }
+}
+
+uint16_t getHour(uint16_t n) 
+{ 
+  return n / 100;
+} 
+
+uint16_t getMin(uint16_t n) 
+{ 
+  return (n % 100);
+}
+
+void checkTimer(void)
+{
+  if (config.flags.timerEnabled && Flags.ntpTime) {
+    boolean changeToManual = false;
+  
+    if (getHour(config.timerStart) <= getHour(config.timerStop)) {
+      if (((timeinfo.tm_hour == getHour(config.timerStart) && timeinfo.tm_min >= getMin(config.timerStart)) || timeinfo.tm_hour > getHour(config.timerStart)) &&
+          ((timeinfo.tm_hour == getHour(config.timerStop) && timeinfo.tm_min < getMin(config.timerStop)) || timeinfo.tm_hour < getHour(config.timerStop)) )
+      {
+        changeToManual = true;
+      } else {
+        changeToManual = false;
+      }
+    }
+
+    if (getHour(config.timerStart) > getHour(config.timerStop)){
+        if (((timeinfo.tm_hour == getHour(config.timerStart) && timeinfo.tm_min >= getMin(config.timerStart)) || timeinfo.tm_hour > getHour(config.timerStart)) &&
+              timeinfo.tm_hour <= 23)
+        {
+          changeToManual = true;
+        } else if ((timeinfo.tm_hour == getHour(config.timerStop) && timeinfo.tm_min < getMin(config.timerStop)) || timeinfo.tm_hour < getHour(config.timerStop)) {
+          changeToManual = true;
+        } else if ((timeinfo.tm_hour == getHour(config.timerStop) && timeinfo.tm_min > getMin(config.timerStop)) || timeinfo.tm_hour > getHour(config.timerStop))  {
+          changeToManual = false;
+        }
+    }
+        
+    if (changeToManual) {
+      if (!Flags.timerSet) { INFOV("Timer started\n"); Flags.timerSet = true; config.flags.pwmMan = true; }
+
+    } else {
+      if (Flags.timerSet) { INFOV("Timer stopped\n"); Flags.timerSet = false; config.flags.pwmMan = false; }
+    }
+  }
+}
+
+void verbose_print_reset_reason(int cpu)
+{
+  const char * reason;
+
+  switch ((int)rtc_get_reset_reason(cpu))
   {
     case 1:
-      INFOLN("Vbat power on reset");
+      reason = {"Vbat power on reset"};
       break;
     case 3:
-      INFOLN("Software reset digital core");
+      reason = {"Software reset digital core"};
       break;
     case 4:
-      INFOLN("Legacy watch dog reset digital core");
+      reason = {"Legacy watch dog reset digital core"};
       break;
     case 5:
-      INFOLN("Deep Sleep reset digital core");
+      reason = {"Deep Sleep reset digital core"};
       break;
     case 6:
-      INFOLN("Reset by SLC module, reset digital core");
+      reason = {"Reset by SLC module, reset digital core"};
       break;
     case 7:
-      INFOLN("Timer Group0 Watch dog reset digital core");
+      reason = {"Timer Group0 Watch dog reset digital core"};
       break;
     case 8:
-      INFOLN("Timer Group1 Watch dog reset digital core");
+      reason = {"Timer Group1 Watch dog reset digital core"};
       break;
     case 9:
-      INFOLN("RTC Watch dog Reset digital core");
+      reason = {"RTC Watch dog Reset digital core"};
       break;
     case 10:
-      INFOLN("Instrusion tested to reset CPU");
+      reason = {"Instrusion tested to reset CPU"};
       break;
     case 11:
-      INFOLN("Time Group reset CPU");
+      reason = {"Time Group reset CPU"};
       break;
     case 12:
-      INFOLN("Software reset CPU");
+      reason = {"Software reset CPU"};
       break;
     case 13:
-      INFOLN("RTC Watch dog Reset CPU");
+      reason = {"RTC Watch dog Reset CPU"};
       break;
     case 14:
-      INFOLN("for APP CPU, reseted by PRO CPU");
+      reason = {"for APP CPU, reseted by PRO CPU"};
       break;
     case 15:
-      INFOLN("Reset when the vdd voltage is not stable");
+      reason = {"Reset when the vdd voltage is not stable"};
       break;
     case 16:
-      INFOLN("RTC Watch dog reset digital core and rtc module");
+      reason = {"RTC Watch dog reset digital core and rtc module"};
       break;
     default:
-      INFOLN("NO_MEAN");
+      reason = {"NO_MEAN"};
   }
+  
+  INFOV("CPU%i reset reason: %s\n", cpu, reason);
 }
 
 /// BASIC LOGGING
 
-void addLog(String data, bool line)
+void addLog(String data)
 {
-  //Serial.println(data);
-  if (logcount > 9)
-    logcount = 0;
-  Logging[logcount].timeStamp = print_Uptime_Short();
+  if (logcount > (sizeOfArray(Logging) - 1)) { logcount = 0; }
+  if (Flags.ntpTime) {
+    sprintf(Logging[logcount].timeStamp, "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  } else {
+    sprintf(Logging[logcount].timeStamp, "%02d:%02d:%02d", uptime.Hour, uptime.Minute, uptime.Second);
+  }
   Logging[logcount].Message = data;
-  Logging[logcount].Message += "{n}";
   logcount++;
-  if (Flags.eventsConnected) sendWeblogStreamTest();
+
+  if (Flags.weblogConnected) sendWeblogStreamTest();
 }
 
 void sendWeblogStreamTest(void)
 {
-  String log;
+  char log[1024];
 
-  for (int counter = 0; counter < logcount; counter++)
-  {
-    log = Logging[counter].timeStamp;
-    log += " - ";
-    log += Logging[counter].Message;
-    events.send(log.c_str(), "weblog");
+  // Print old messages
+  if (Logging[logcount].Message != "" && logcount > 1) {
+    for (int counter = logcount; counter < sizeOfArray(Logging); counter++)
+    {
+      sprintf(log, "%s - %s\n", Logging[counter].timeStamp, Logging[counter].Message.c_str());
+      Logging[counter].Message = "";
+      webLogs.send(log, "weblog");
+    }
   }
+
+  // Print new messages
+  for (int counter = 0; counter < logcount; counter++) {
+    sprintf(log, "%s - %s\n", Logging[counter].timeStamp, Logging[counter].Message.c_str());
+    Logging[counter].Message = "";
+    webLogs.send(log, "weblog");
+  }
+
   logcount = 0;
+}
+
+// int INFOV(const char * __restrict format, ...)
+// {
+// 	va_list arg;
+// 	int rcode = 0;
+//   int len = strlen(format) + 150; // 50 chars to acomodate the variables values
+//   char *buffer{ new char[len]{} };
+    
+//   if (buffer) {
+
+//     va_start(arg, format);
+//     rcode = vsprintf(buffer, format, arg);
+//     va_end(arg);
+
+//     if (config.flags.serialOutput) Serial.print(buffer);
+//     if (config.flags.weblogOutput) addLog((String)buffer);
+
+//     delete[] buffer;
+//   }
+
+// 	return rcode;
+// }
+
+int INFOV(const char * __restrict format, ...)
+{
+	va_list arg;
+	int rcode = 0;
+  char buffer[1024];
+    
+  va_start(arg, format);
+  rcode = vsprintf(buffer, format, arg);
+  va_end(arg);
+
+  if (config.flags.serialOutput) Serial.print(buffer);
+  if (config.flags.weblogOutput) addLog((String)buffer);
+
+	return rcode;
 }
 
 void checkEEPROM(void){
   
-  // Paso de versión 0x0A a 0x0B
-  if(config.eeinit == 0x0A)
+  // Paso de versión 0x0A - 0x10 a 0x11
+  if(config.eeinit >= 0x0A && config.eeinit <= 0x10)
   {
-    config.pwm_man = false;
-    config.manualControlPWM = 50;
-    config.autoControlPWM = 60;
-    config.pwmFrequency = 3000;
-    config.getDataTime = 1500;
-    strcpy(config.remote_api, "");
-    config.eeinit = 0x0B;
-  }
-
-  // Paso de versión 0x0B a 0x0C
-  if(config.eeinit == 0x0B)
-  {
-    config.baudiosMeter = 9600;
-    config.idMeter = 1; 
-    config.eeinit = 0x0C;
-  }
-
-  // Paso de versión 0x0C a 0x0D
-  if(config.eeinit == 0x0C)
-  {
-    config.pwmSlaveOn = 0;
-    config.potmanpwm = 0;
-    config.flags.potManPwmActive = false;
-    config.eeinit = 0x0D;
+    defaultValues();
+    config.eeinit = 0x11;
     saveEEPROM();
   }
 }

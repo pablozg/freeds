@@ -1,4 +1,34 @@
 <!DOCTYPE html>
+<script>
+    var scroll = false;
+    if (typeof (EventSource) !== "undefined") {
+        var webLog = new EventSource("/weblog");
+        webLog.addEventListener('open', function(e) {
+            console.log("Weblog Connected");
+        }, false);
+        webLog.addEventListener('error', function(e) {
+            if (e.target.readyState != EventSource.OPEN) {
+                console.log("Weblog Disconnected");
+            }
+        }, false);
+        webLog.addEventListener('weblog', function(e) {
+            if ($("#weblog").length) {
+                $("#weblog").get(0).value += e.data;
+                if (scroll) { $('#weblog').scrollTop($('#weblog')[0].scrollHeight); }
+            }
+        }, false);
+
+    }
+    function checkScroll() {
+        if ($("#scrollactive:checked").length) {
+            $("#scrollText").text("Scroll Automático Activado");
+            scroll = true;
+        } else {
+            $("#scrollText").text("Scroll Automático Desactivado");
+            scroll = false;
+        }
+    }
+</script>
 <html lang="es">
     <head>
         <meta charset="utf-8">
@@ -11,7 +41,7 @@
         <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
         <link href="sb-admin-2.min.css" rel="stylesheet">
     </head>
-    <body>
+    <body onload="checkScroll();">
         <div id="wrapper">
             <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
                 <a class="sidebar-brand d-flex align-items-center justify-content-center"  href='http://freeds.es/'>
@@ -31,6 +61,12 @@
                     <a class="nav-link" href="Red.html">
                         <i class="fas fa-wifi"></i>
                         <span>Ajustes de Red</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Mqtt.html">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Configuración MQTT</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -109,6 +145,7 @@
                         <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
                             <i class="fa fa-bars"></i>
                         </button>
+                        <div style="align-content: left" id="temperatura"></div>
                         <ul class="navbar-nav ml-auto">
                             <div style="align-content: right">%WORKING_MODE%</div>
                         </ul>
@@ -126,6 +163,19 @@
                                         <div class="container">
                                             <div class="form-group">
                                                 <textarea id='weblog' rows='20' class="form-control" style="overflow-y: scroll;resize: none;"></textarea>
+                                                <div class="row pb-3">
+                                                    <div class="col">
+                                                        <button type="button" class="btn btn-danger" onclick='$("#weblog").get(0).value = "";'>Borrar log</button>
+                                                    </div>
+                                                    <div class="col-5">
+                                                        <label class="custom-control custom-checkbox pb-2">
+                                                            <input id="scrollactive" name="scrollactive" type="checkbox"  class="custom-control-input" onchange="checkScroll();" %TIMERACTIVE%>
+                                                            <span class="custom-control-indicator"></span><span id='scrollText'></span> 
+
+                                                        </label>
+                                                    </div>
+
+                                                </div>
                                                 <form method='post' onsubmit="return sendwebcmnd();">
                                                     <input id='webcmnd' name='webcmnd' type="text" class="form-control">
                                                 </form>

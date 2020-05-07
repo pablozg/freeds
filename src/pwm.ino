@@ -26,11 +26,11 @@
 void pwmControl()
 {
 
-  DEBUGLN("\r\nPWMCONTROL()");
+  if (config.flags.moreDebug) { INFOV("PWMCONTROL()\n"); }
 
   // Check pwm_output
 
-  if (inverter.wgrid_control != inverter.wgrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
+  if (inverter.wgrid_control != inverter.wgrid || config.wversion == 13) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
   {
     inverter.wgrid_control = inverter.wgrid;
     Error.LecturaDatos = false;
@@ -39,19 +39,20 @@ void pwmControl()
 
   if (((millis() - timers.ErrorLecturaDatos) > config.maxErrorTime))
   {
+    INFOV(PSTR("PWM: Apagando PWM por superar el tiempo máximo en la recepción de los datos del consumo de Red\n"));
     Error.LecturaDatos = true;
     timers.ErrorLecturaDatos = millis();
     memset(&inverter, 0, sizeof(inverter));
     memset(&meter, 0, sizeof(meter));
-    INFOLN(F("PWM: Apagando PWM por superar el tiempo máximo en la recepción de datos del vertido a Red"));
   }
 
-  if (!config.P01_on || (!config.pwm_man && (Error.LecturaDatos || Error.ConexionInversor)))
+  if (!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.LecturaDatos || Error.ConexionInversor)))
   {
     down_pwm(true);
   }
 
-  if (config.pwm_man && config.P01_on)
+  // Control manual del pwm
+  if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
   {
     uint16_t maxPwm = (1023 * config.manualControlPWM) / 100;
 
@@ -67,7 +68,7 @@ void pwmControl()
       invert_pwm = constrain(invert_pwm, 0, maxPwm);
       if (invert_pwm != last_invert_pwm)
       {
-        DEBUGLN(F("PWM MANUAL: SUBIENDO POTENCIA"));
+        if (config.flags.debugOutput) { INFOV(PSTR("PWM MANUAL: SUBIENDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm);
@@ -79,7 +80,7 @@ void pwmControl()
       invert_pwm = constrain(invert_pwm, 0, 1023);
       if (invert_pwm != last_invert_pwm)
       {
-        DEBUGLN(F("PWM MANUAL: BAJANDO POTENCIA"));
+        if (config.flags.debugOutput) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm);
@@ -88,30 +89,31 @@ void pwmControl()
   }
 
   // Control automatico del pwm
-  if (config.P01_on && !config.pwm_man && !Error.LecturaDatos && inverter.wgrid != 0)
+  //if (config.flags.pwmEnabled && !config.flags.pwmMan && !Error.LecturaDatos && inverter.wgrid != 0)
+  if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.LecturaDatos && Flags.pwmIsWorking)
   {
-    if (inverter.wgrid > config.pwm_min)
+    if (inverter.wgrid > config.pwmMin)
     {
-      if (inverter.wgrid > config.pwm_max && invert_pwm < slowPwm)
+      if (inverter.wgrid > config.pwmMax && invert_pwm <= slowPwm)
         invert_pwm += 10;
-      else if (inverter.wgrid > config.pwm_max && invert_pwm > slowPwm)
+      else if (inverter.wgrid > config.pwmMax && invert_pwm > slowPwm)
         invert_pwm += 25;
 
       invert_pwm = constrain(invert_pwm, 0, 1023); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)
       {
-        DEBUGLN(F("PWM: SUBIENDO POTENCIA"));
+        if (config.flags.debugOutput) { INFOV(PSTR("PWM: SUBIENDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm); // Write new pwm value
       dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
     }
 
-    else if (inverter.wgrid < config.pwm_max)
+    else if (inverter.wgrid < config.pwmMax)
     {
-      if (inverter.wgrid < config.pwm_max && invert_pwm > slowPwm)
+      if (inverter.wgrid < config.pwmMax && invert_pwm > slowPwm)
         invert_pwm -= 35; // 50
-      else if (inverter.wgrid < config.pwm_max && invert_pwm < slowPwm)
+      else if (inverter.wgrid < config.pwmMax && invert_pwm <= slowPwm)
       {
         if (invert_pwm > 20)
           invert_pwm -= 20;
@@ -125,7 +127,7 @@ void pwmControl()
       invert_pwm = constrain(invert_pwm, 0, 1023); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)
       {
-        DEBUGLN(F("PWM: BAJANDO POTENCIA"));
+        if (config.flags.debugOutput) { INFOV(PSTR("PWM: BAJANDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm); // Write new pwm value
@@ -139,49 +141,49 @@ void pwmControl()
 
   // Start at defined pwm value
 
-  if (!config.pwm_man)
+  if (!config.flags.pwmMan)
   {
-    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && (progressbar >= config.R01_min))
+    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && (progressbar >= config.R01Min))
     {
       // Start relay1
       digitalWrite(PIN_RL1, HIGH);
-      INFOLN("Encendido por % Salida 1");
+      INFOV("Encendido por %% Salida 1\n");
       Flags.RelayTurnOn = false;
       Flags.Relay01Auto = true;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && (progressbar >= config.R02_min))
+    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && (progressbar >= config.R02Min))
     {
       // Start relay2
       digitalWrite(PIN_RL2, HIGH);
-      INFOLN("Encendido por % Salida 2");
+      INFOV("Encendido por %% Salida 2\n");
       Flags.RelayTurnOn = false;
       Flags.Relay02Auto = true;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && (progressbar >= config.R03_min))
+    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && (progressbar >= config.R03Min))
     {
       // Start relay3
       digitalWrite(PIN_RL3, HIGH);
-      INFOLN("Encendido por % Salida 3");
+      INFOV("Encendido por %% Salida 3\n");
       Flags.RelayTurnOn = false;
       Flags.Relay03Auto = true;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && (progressbar >= config.R04_min))
+    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && (progressbar >= config.R04Min))
     {
       // Start relay4
       digitalWrite(PIN_RL4, HIGH);
-      INFOLN("Encendido por % Salida 4");
+      INFOV("Encendido por %% Salida 4\n");
       Flags.RelayTurnOn = false;
       Flags.Relay04Auto = true;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
     }
   }
@@ -190,46 +192,46 @@ void pwmControl()
 
   if (!Flags.RelayTurnOff)
   {
-    if (!(Flags.Relay04Man || config.R04_man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (progressbar < config.R04_min) && config.R04_min != 999)
+    if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (progressbar < config.R04Min) && config.R04Min != 999)
     {
       digitalWrite(PIN_RL4, LOW);
-      INFOLN("Apagado por % Salida 4");
+      INFOV("Apagado por %% Salida 4\n");
       Flags.RelayTurnOff = true;
       Flags.Relay04Auto = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       {
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay03Man || config.R03_man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (progressbar < config.R03_min) && config.R03_min != 999)
+    if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (progressbar < config.R03Min) && config.R03Min != 999)
     {
       digitalWrite(PIN_RL3, LOW);
-      INFOLN("Apagado por % Salida 3");
+      INFOV("Apagado por %% Salida 3\n");
       Flags.RelayTurnOff = true;
       Flags.Relay03Auto = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       {
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay02Man || config.R02_man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (progressbar < config.R02_min) && config.R02_min != 999)
+    if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (progressbar < config.R02Min) && config.R02Min != 999)
     {
       digitalWrite(PIN_RL2, LOW);
-      INFOLN("Apagado por % Salida 2");
+      INFOV("Apagado por %% Salida 2\n");
       Flags.RelayTurnOff = true;
       Flags.Relay02Auto = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       {
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay01Man || config.R01_man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (progressbar < config.R01_min) && config.R01_min != 999)
+    if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (progressbar < config.R01Min) && config.R01Min != 999)
     {
       digitalWrite(PIN_RL1, LOW);
-      INFOLN("Apagado por % Salida 1");
+      INFOV("Apagado por %% Salida 1\n");
       Flags.RelayTurnOff = true;
       Flags.Relay01Auto = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       {
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
       }
@@ -240,93 +242,93 @@ void pwmControl()
 
   // Start at defined power on
 
-  if (!config.pwm_man && config.P01_on && (progressbar >= config.autoControlPWM))
+  if (!config.flags.pwmMan && config.flags.pwmEnabled && (progressbar >= config.autoControlPWM))
   {
-    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01_min == 999 && (inverter.wgrid > config.R01_poton))
+    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (inverter.wgrid > config.R01PotOn))
     {
       // Start relay1
       digitalWrite(PIN_RL1, HIGH);
-      INFOLN("Encendido por W Salida 1");
+      INFOV("Encendido por W Salida 1\n");
       Flags.Relay01Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     }
-    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && config.R02_min == 999 && (inverter.wgrid > config.R02_poton))
+    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && config.R02Min == 999 && (inverter.wgrid > config.R02PotOn))
     {
       // Start relay2
       digitalWrite(PIN_RL2, HIGH);
-      INFOLN("Encendido por W Salida 2");
+      INFOV("Encendido por W Salida 2\n");
       Flags.Relay02Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     }
-    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && config.R03_min == 999 && (inverter.wgrid > config.R03_poton))
+    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && config.R03Min == 999 && (inverter.wgrid > config.R03PotOn))
     {
       // Start relay3
       digitalWrite(PIN_RL3, HIGH);
-      INFOLN("Encendido por W Salida 3");
+      INFOV("Encendido por W Salida 3\n");
       Flags.Relay03Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
     }
-    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && config.R04_min == 999 && (inverter.wgrid > config.R04_poton))
+    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && config.R04Min == 999 && (inverter.wgrid > config.R04PotOn))
     {
       // Start relay4
       digitalWrite(PIN_RL4, HIGH);
-      INFOLN("Encendido por W Salida 4");
+      INFOV("Encendido por W Salida 4\n");
       Flags.Relay04Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
     }
   }
 
   // Stop at defined power off
 
-  if (!(Flags.Relay04Man || config.R04_man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && config.R04_min == 999 && (inverter.wgrid < config.R04_potoff))
+  if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && config.R04Min == 999 && (inverter.wgrid < config.R04PotOff))
   {
     // Start relay4
     digitalWrite(PIN_RL4, LOW);
-    INFOLN("Apagado por W Salida 4");
+    INFOV("Apagado por W Salida 4\n");
     Flags.Relay04Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
   }
 
-  if (!(Flags.Relay03Man || config.R03_man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && config.R03_min == 999 && (inverter.wgrid < config.R03_potoff))
+  if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && config.R03Min == 999 && (inverter.wgrid < config.R03PotOff))
   {
     // Start relay3
     digitalWrite(PIN_RL3, LOW);
-    INFOLN("Apagado por W Salida 3");
+    INFOV("Apagado por W Salida 3\n");
     Flags.Relay03Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
   }
 
-  if (!(Flags.Relay02Man || config.R02_man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && config.R02_min == 999 && (inverter.wgrid < config.R02_potoff))
+  if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && config.R02Min == 999 && (inverter.wgrid < config.R02PotOff))
   {
     // Start relay2
     digitalWrite(PIN_RL2, LOW);
-    INFOLN("Apagado por W Salida 2");
+    INFOV("Apagado por W Salida 2\n");
     Flags.Relay02Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
   }
 
-  if (!(Flags.Relay01Man || config.R01_man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && config.R01_min == 999 && (inverter.wgrid < config.R01_potoff))
+  if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && config.R01Min == 999 && (inverter.wgrid < config.R01PotOff))
   {
     // Start relay1
     digitalWrite(PIN_RL1, LOW);
-    INFOLN("Apagado por W Salida 1");
+    INFOV("Apagado por W Salida 1\n");
     Flags.Relay01Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
       publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
   }
 
@@ -362,44 +364,38 @@ void calcPwmProgressBar()
   progressbar = ((invert_pwm * 100) / 1022);
 
   // Print PWM Values
-  DEBUG("\r\nPWM VALUE: % ");
-  DEBUGLN(pro);
-  DEBUG("\r\nPWM VALUE: ");
-  DEBUGLN(invert_pwm);
+  if (config.flags.debugOutput) {
+    INFOV("PWM Value: %s%%, %lu\n", tmp, invert_pwm);
+  }
 }
 
 void relay_control_man(boolean forceOFF)
 {
 
-  DEBUGLN("\r\nrelay_control_man()");
+  if (config.flags.moreDebug) { INFOV("relay_control_man()\n"); }
 
-  // if (!(Flags.Relay01Man || config.R01_man) && !Flags.Relay01Auto)
+  // if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && !Flags.Relay01Auto)
   //   digitalWrite(PIN_RL1, LOW);
-  // if (!(Flags.Relay02Man || config.R02_man) && !Flags.Relay02Auto)
+  // if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && !Flags.Relay02Auto)
   //   digitalWrite(PIN_RL2, LOW);
-  // if (!(Flags.Relay03Man || config.R03_man) && !Flags.Relay03Auto)
+  // if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && !Flags.Relay03Auto)
   //   digitalWrite(PIN_RL3, LOW);
-  // if (!(Flags.Relay04Man || config.R04_man) && !Flags.Relay04Auto)
+  // if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && !Flags.Relay04Auto)
   //   digitalWrite(PIN_RL4, LOW);
 
   // Se activan las salidas seleccionadas manualmente si no lo están ya
-  if ((Flags.Relay01Man || config.R01_man) && !digitalRead(PIN_RL1))
-    digitalWrite(PIN_RL1, HIGH);
-  if ((Flags.Relay02Man || config.R02_man) && !digitalRead(PIN_RL2))
-    digitalWrite(PIN_RL2, HIGH);
-  if ((Flags.Relay03Man || config.R03_man) && !digitalRead(PIN_RL3))
-    digitalWrite(PIN_RL3, HIGH);
-  if ((Flags.Relay04Man || config.R04_man) && !digitalRead(PIN_RL4))
-    digitalWrite(PIN_RL4, HIGH);
+  if ((Flags.Relay01Man || config.relaysFlags.R01Man) && !digitalRead(PIN_RL1)) { digitalWrite(PIN_RL1, HIGH); INFOV("Relay 1 Forced On\n");}
+  if ((Flags.Relay02Man || config.relaysFlags.R02Man) && !digitalRead(PIN_RL2)) { digitalWrite(PIN_RL2, HIGH); INFOV("Relay 2 Forced On\n");}
+  if ((Flags.Relay03Man || config.relaysFlags.R03Man) && !digitalRead(PIN_RL3)) { digitalWrite(PIN_RL3, HIGH); INFOV("Relay 3 Forced On\n");}
+  if ((Flags.Relay04Man || config.relaysFlags.R04Man) && !digitalRead(PIN_RL4)) { digitalWrite(PIN_RL4, HIGH); INFOV("Relay 4 Forced On\n");}
 
   // Se fuerza el apagado de todas las salidas
-  if (forceOFF || !config.P01_on)
+    if (forceOFF || !config.flags.pwmEnabled)
   {
-    digitalWrite(PIN_RL1, LOW);
-    digitalWrite(PIN_RL2, LOW);
-    digitalWrite(PIN_RL3, LOW);
-    digitalWrite(PIN_RL4, LOW);
-    INFOLN("Relays Forced Down");
+    if (digitalRead(PIN_RL1) && !Flags.Relay01Man && !config.relaysFlags.R01Man) { digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n"); }
+    if (digitalRead(PIN_RL2) && !Flags.Relay02Man && !config.relaysFlags.R02Man) { digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n"); }
+    if (digitalRead(PIN_RL3) && !Flags.Relay03Man && !config.relaysFlags.R03Man) { digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n"); }
+    if (digitalRead(PIN_RL4) && !Flags.Relay04Man && !config.relaysFlags.R04Man) { digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n"); }
   }
 }
 
@@ -430,13 +426,14 @@ void down_pwm(boolean softDown)
   }
   else
   {
+    invert_pwm = 0;
     ledcWrite(2, 0); // Hard shutdown
     dac_output_disable(DAC_CHANNEL_2);
-    INFOLN("PWM DEACTIVATED");
+    INFOV("PWM disabled\n");
   }
   if (invert_pwm != last_invert_pwm)
   {
-    DEBUGLN(F("PWM: DEACTIVATING PWM"));
+    if (config.flags.debugOutput) { INFOV(PSTR("PWM: disabling PWM\n")); }
     last_invert_pwm = invert_pwm;
   }
 

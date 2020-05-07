@@ -18,58 +18,17 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-void getShellyData(void)
-{
-  DEBUGLN("\r\nGETSHELLYDATA()");
-
-  if (config.wifi)
-  {
-    if (config.wversion == 10)
-    {
-      for (int sensor = 1; sensor <= 2; sensor++)
-      {
-        shellyCom(sensor); // Shelly EM
-      }
-    }
-  }
-}
-
-// Shelly EM
-void shellyCom(int sensor)
-{
-    HTTPClient clientHttp;
-    WiFiClient clientWifi;
-    clientHttp.setConnectTimeout(3000);
-    httpcode = -1;
-    
-    String url = "http://" + (String)config.sensor_ip + "/emeter/" + (String)(sensor - 1);
-    clientHttp.begin(clientWifi, url);
-    httpcode = clientHttp.GET();
-
-    DEBUGLN("HTTPCODE ERROR: " + (String)httpcode + " Sensor: " + (String)(sensor - 1));
-
-    if (httpcode == HTTP_CODE_OK)
-    {
-      String Resp = clientHttp.getString();
-      parseShellyEM(Resp, sensor);
-      Error.ConexionInversor = false;
-    }
-    clientHttp.end();
-    clientWifi.stop();
-}
-
 // Shelly EM
 void parseShellyEM(String json, int sensor)
 {
-  DEBUGLN("JSON:" + json);
+  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
+  
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {
-    INFO("deserializeJson() failed: ");
-    INFOLN(error.c_str());
+    INFOV("deserializeJson() failed: %s\n", error.c_str());
     httpcode = -1;
   } else {
-    DEBUGLN("deserializeJson() OK");
     switch (sensor)
     {
       case 1: // Medida de Red
