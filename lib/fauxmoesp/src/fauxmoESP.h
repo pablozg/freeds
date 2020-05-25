@@ -46,24 +46,17 @@ THE SOFTWARE.
 #endif
 
 #ifndef DEBUG_FAUXMO_VERBOSE_TCP
-#define DEBUG_FAUXMO_VERBOSE_TCP    false
+  #define DEBUG_FAUXMO_VERBOSE_TCP    false
 #endif
 
 #ifndef DEBUG_FAUXMO_VERBOSE_UDP
-#define DEBUG_FAUXMO_VERBOSE_UDP    false
+  #define DEBUG_FAUXMO_VERBOSE_UDP    false
 #endif
 
 #include <Arduino.h>
 
-#if defined(ESP8266)
-    #include <ESP8266WiFi.h>
-    #include <ESPAsyncTCP.h>
-#elif defined(ESP32)
-    #include <WiFi.h>
-    #include <AsyncTCP.h>
-#else
-	#error Platform not supported
-#endif
+#include <WiFi.h>
+#include <AsyncTCP.h>
 
 #include <WiFiUdp.h>
 #include <functional>
@@ -72,8 +65,12 @@ THE SOFTWARE.
 
 typedef std::function<void(unsigned char, const char *, bool, unsigned char)> TSetStateCallback;
 
+#define ONOFF 0
+#define DIMMABLE 1
+
 typedef struct {
     char * name;
+    uint8_t type;
     bool state;
     unsigned char value;
 } fauxmoesp_device_t;
@@ -84,7 +81,7 @@ class fauxmoESP {
 
         ~fauxmoESP();
 
-        unsigned char addDevice(const char * device_name);
+        unsigned char addDevice(const char * device_name, uint8_t type);
         bool renameDevice(unsigned char id, const char * device_name);
         bool renameDevice(const char * old_device_name, const char * new_device_name);
         bool removeDevice(unsigned char id);
@@ -96,7 +93,6 @@ class fauxmoESP {
         bool setState(const char * device_name, bool state, unsigned char value);
         bool process(AsyncClient *client, bool isGet, String url, String body);
         void enable(bool enable);
-        void createServer(bool internal) { _internal = internal; }
         void setPort(unsigned long tcp_port) { _tcp_port = tcp_port; }
         void handle();
 
@@ -104,12 +100,8 @@ class fauxmoESP {
 
         AsyncServer * _server;
         bool _enabled = false;
-        bool _internal = true;
         unsigned int _tcp_port = FAUXMO_TCP_PORT;
         std::vector<fauxmoesp_device_t> _devices;
-		#ifdef ESP8266
-        WiFiEventHandler _handler;
-		#endif
         WiFiUDP _udp;
         AsyncClient * _tcpClients[FAUXMO_TCP_MAX_CLIENTS];
         TSetStateCallback _setCallback = NULL;
@@ -117,11 +109,8 @@ class fauxmoESP {
         String _deviceJson(unsigned char id);
 
         void _handleUDP();
-        void _onUDPData(const IPAddress remoteIP, unsigned int remotePort, void *data, size_t len);
         void _sendUDPResponse();
 
-        void _onTCPClient(AsyncClient *client);
-        bool _onTCPData(AsyncClient *client, void *data, size_t len);
         bool _onTCPRequest(AsyncClient *client, bool isGet, String url, String body);
         bool _onTCPDescription(AsyncClient *client, String url, String body);
         bool _onTCPList(AsyncClient *client, String url, String body);

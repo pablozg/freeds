@@ -34,12 +34,7 @@ PROGMEM const char FAUXMO_TCP_HEADERS[] =
     "Content-Length: %d\r\n"
     "Connection: close\r\n\r\n";
 
-PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
-    "{\"success\":{\"/lights/%d/state/on\":%s}},"
-    "{\"success\":{\"/lights/%d/state/bri\":%d}}"   // not needed?
-"]";
-
-PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE[] = "{"
+PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE_DIMMABLE[] = "{"
     "\"type\":\"Dimmable light\","
     "\"name\":\"%s\","
     "\"uniqueid\":\"%s-%d\","
@@ -48,6 +43,19 @@ PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE[] = "{"
     "\"productname\":\"E1\","
     "\"state\":{"
         "\"on\":%s,\"bri\":%d,\"alert\":\"none\",\"mode\":\"homeautomation\",\"reachable\": true"
+    "},"
+    "\"swversion\":\"5.105.0.21169\""
+"}";
+
+PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE_ONOFF[] = "{"
+    "\"type\":\"Dimmable light\","
+    "\"name\":\"%s\","
+    "\"uniqueid\":\"%s-%d\","
+    "\"modelid\":\"LWB010\","
+    "\"manufacturername\":\"Philips\","
+    "\"productname\":\"E1\","
+    "\"state\":{"
+        "\"on\":%s,\"alert\":\"none\",\"mode\":\"homeautomation\",\"reachable\": true"
     "},"
     "\"swversion\":\"5.105.0.21169\""
 "}";
