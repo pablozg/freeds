@@ -2,7 +2,7 @@
   pwm.ino - FreeDs pwm functions
   Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
 
-  Based in opends+ (https://github.com/iqas/derivador)
+  Inspired in opends+ (https://github.com/iqas/derivador)
   
   Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
 
@@ -30,23 +30,22 @@ void pwmControl()
 
   // Check pwm_output
 
-  if (inverter.wgrid_control != inverter.wgrid || config.wversion == 13) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
+  if (inverter.wgrid_control != inverter.wgrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
   {
     inverter.wgrid_control = inverter.wgrid;
-    Error.LecturaDatos = false;
-    timers.ErrorLecturaDatos = millis();
+    Error.VariacionDatos = false;
+    timers.ErrorVariacionDatos = millis();
   }
 
-  if (((millis() - timers.ErrorLecturaDatos) > config.maxErrorTime))
+  if (((millis() - timers.ErrorVariacionDatos) > config.maxErrorTime) && !Error.VariacionDatos)
   {
     INFOV(PSTR("PWM: Apagando PWM por superar el tiempo máximo en la recepción de los datos del consumo de Red\n"));
-    Error.LecturaDatos = true;
-    timers.ErrorLecturaDatos = millis();
+    Error.VariacionDatos = true;
     memset(&inverter, 0, sizeof(inverter));
     memset(&meter, 0, sizeof(meter));
   }
 
-  if (!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.LecturaDatos || Error.ConexionInversor)))
+  if (!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.VariacionDatos || Error.RecepcionDatos)))
   {
     down_pwm(true);
   }
@@ -60,6 +59,9 @@ void pwmControl()
 
     if (invert_pwm <= maxPwm)
     {
+      #ifdef PWMCHINOMALO
+        if (invert_pwm < 200) { invert_pwm = 200; } // Solución Fernando
+      #endif
       if (invert_pwm <= slowPwm) // hasta el 20 % subida lenta
         invert_pwm += 20;
       else if (invert_pwm > slowPwm)
@@ -68,7 +70,7 @@ void pwmControl()
       invert_pwm = constrain(invert_pwm, 0, maxPwm);
       if (invert_pwm != last_invert_pwm)
       {
-        if (config.flags.debugOutput) { INFOV(PSTR("PWM MANUAL: SUBIENDO POTENCIA\n")); }
+        if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: SUBIENDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm);
@@ -80,7 +82,7 @@ void pwmControl()
       invert_pwm = constrain(invert_pwm, 0, 1023);
       if (invert_pwm != last_invert_pwm)
       {
-        if (config.flags.debugOutput) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
+        if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm);
@@ -89,31 +91,34 @@ void pwmControl()
   }
 
   // Control automatico del pwm
-  //if (config.flags.pwmEnabled && !config.flags.pwmMan && !Error.LecturaDatos && inverter.wgrid != 0)
-  if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.LecturaDatos && Flags.pwmIsWorking)
+  if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && Flags.pwmIsWorking)
   {
-    if (inverter.wgrid > config.pwmMin)
+    if (inverter.wgrid > config.pwmMin && inverter.batteryWatts >= 0)
     {
       if (inverter.wgrid > config.pwmMax && invert_pwm <= slowPwm)
+      {
+        #ifdef PWMCHINOMALO
+          if (invert_pwm < 200) { invert_pwm = 200; } // Solución Fernando
+        #endif
         invert_pwm += 10;
+      }
       else if (inverter.wgrid > config.pwmMax && invert_pwm > slowPwm)
         invert_pwm += 25;
 
       invert_pwm = constrain(invert_pwm, 0, 1023); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)
       {
-        if (config.flags.debugOutput) { INFOV(PSTR("PWM: SUBIENDO POTENCIA\n")); }
+        if (config.flags.debug) { INFOV(PSTR("PWM: SUBIENDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm); // Write new pwm value
       dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
     }
-
-    else if (inverter.wgrid < config.pwmMax)
+    else if (inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0)
     {
-      if (inverter.wgrid < config.pwmMax && invert_pwm > slowPwm)
+      if ((inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0) && invert_pwm > slowPwm)
         invert_pwm -= 35; // 50
-      else if (inverter.wgrid < config.pwmMax && invert_pwm <= slowPwm)
+      else if ((inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0) && invert_pwm <= slowPwm)
       {
         if (invert_pwm > 20)
           invert_pwm -= 20;
@@ -123,11 +128,15 @@ void pwmControl()
           invert_pwm -= 5;
         else if (invert_pwm >= 1)
           invert_pwm--;
+
+        #ifdef PWMCHINOMALO
+          if (invert_pwm <= 200) { invert_pwm = 0; } // Solución Fernando
+        #endif
       }
       invert_pwm = constrain(invert_pwm, 0, 1023); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)
       {
-        if (config.flags.debugOutput) { INFOV(PSTR("PWM: BAJANDO POTENCIA\n")); }
+        if (config.flags.debug) { INFOV(PSTR("PWM: BAJANDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
       ledcWrite(2, invert_pwm); // Write new pwm value
@@ -141,7 +150,7 @@ void pwmControl()
 
   // Start at defined pwm value
 
-  if (!config.flags.pwmMan)
+  if (!config.flags.pwmMan && config.flags.pwmEnabled)
   {
     if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && (progressbar >= config.R01Min))
     {
@@ -192,7 +201,7 @@ void pwmControl()
 
   if (!Flags.RelayTurnOff)
   {
-    if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (progressbar < config.R04Min) && config.R04Min != 999)
+    if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (progressbar <= ((config.R04Min - 10) < 0 ? 0 : (config.R04Min - 10))) && config.R04Min != 999)
     {
       digitalWrite(PIN_RL4, LOW);
       INFOV("Apagado por %% Salida 4\n");
@@ -203,7 +212,7 @@ void pwmControl()
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (progressbar < config.R03Min) && config.R03Min != 999)
+    if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (progressbar <= ((config.R03Min - 10) < 0 ? 0 : (config.R03Min - 10))) && config.R03Min != 999)
     {
       digitalWrite(PIN_RL3, LOW);
       INFOV("Apagado por %% Salida 3\n");
@@ -214,7 +223,7 @@ void pwmControl()
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (progressbar < config.R02Min) && config.R02Min != 999)
+    if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (progressbar <= ((config.R02Min - 10) < 0 ? 0 : (config.R02Min - 10))) && config.R02Min != 999)
     {
       digitalWrite(PIN_RL2, LOW);
       INFOV("Apagado por %% Salida 2\n");
@@ -225,7 +234,7 @@ void pwmControl()
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (progressbar < config.R01Min) && config.R01Min != 999)
+    if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (progressbar <= ((config.R01Min - 10) < 0 ? 0 : (config.R01Min - 10))) && config.R01Min != 999)
     {
       digitalWrite(PIN_RL1, LOW);
       INFOV("Apagado por %% Salida 1\n");
@@ -364,9 +373,9 @@ void calcPwmProgressBar()
   progressbar = ((invert_pwm * 100) / 1022);
 
   // Print PWM Values
-  if (config.flags.debugOutput) {
-    INFOV("PWM Value: %s%%, %lu\n", tmp, invert_pwm);
-  }
+  // if (config.flags.debug) {
+  //   INFOV("PWM Value: %s%%, %lu\n", tmp, invert_pwm);
+  // }
 }
 
 void relay_control_man(boolean forceOFF)
@@ -414,6 +423,10 @@ void invertPwmDown(void)
     else if (invert_pwm >= 1)
       invert_pwm--;
   }
+  
+  #ifdef PWMCHINOMALO
+    if (invert_pwm <= 200) { invert_pwm = 0; } // Solución Fernando
+  #endif
 }
 
 void down_pwm(boolean softDown)
@@ -423,17 +436,16 @@ void down_pwm(boolean softDown)
     invertPwmDown();
     ledcWrite(2, invert_pwm); // Write new pwm value
     dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
-  }
-  else
-  {
+  } else {
     invert_pwm = 0;
     ledcWrite(2, 0); // Hard shutdown
     dac_output_disable(DAC_CHANNEL_2);
     INFOV("PWM disabled\n");
   }
+
   if (invert_pwm != last_invert_pwm)
   {
-    if (config.flags.debugOutput) { INFOV(PSTR("PWM: disabling PWM\n")); }
+    if (config.flags.debug) { INFOV(PSTR("PWM: disabling PWM\n")); }
     last_invert_pwm = invert_pwm;
   }
 

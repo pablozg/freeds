@@ -2,7 +2,7 @@
   display.ino - Display Support
   Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
 
-  Based in opends+ (https://github.com/iqas/derivador)
+  Inspired in opends+ (https://github.com/iqas/derivador)
   
   Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
 
@@ -65,18 +65,18 @@ void data_display(void)
         display.setTextAlignment(TEXT_ALIGN_CENTER);
         if (Flags.flash)
         {
-          display.drawString(64, 0, (String(Error.ConexionInversor ? "S " : "S ") + String(Error.ConexionWifi ? "W " : "W ") + String(Error.ConexionMqtt ? "M " : "M  ")));
+          display.drawString(64, 0, (String(Error.RecepcionDatos ? "S " : "S ") + String(Error.ConexionWifi ? "W " : "W ") + String(Error.ConexionMqtt ? "M " : "M  ")));
           display.drawString(85, 0, (String(wversion)));
         }
         else
         {
-          display.drawString(64, 0, (String(Error.ConexionInversor ? "_ " : "S ") + String(Error.ConexionWifi ? "_ " : "W ") + String(Error.ConexionMqtt ? "_ " : "M  ")));
+          display.drawString(64, 0, (String(Error.RecepcionDatos ? "_ " : "S ") + String(Error.ConexionWifi ? "_ " : "W ") + String(Error.ConexionMqtt ? "_ " : "M  ")));
           display.drawString(85, 0, "v");
         }
 
         if (Flags.Updating)
           display.drawString(64, 38, _UPDATING_);
-        else if ((!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.LecturaDatos || Error.ConexionInversor))) && invert_pwm <= 1)
+        else if ((!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.VariacionDatos || Error.RecepcionDatos))) && invert_pwm <= 1)
           display.drawString(64, 38, WiFi.localIP().toString());
         else
           display.drawProgressBar(0, 38, 120, 10, progressbar); // draw the progress bar
@@ -100,6 +100,9 @@ void data_display(void)
           case 6:
             display.setFont(ArialMT_Plain_16);
             display.drawString(0, 14, (Flags.flash ? String(meter.voltage) : String(meter.current)));
+            break;
+          case 14:
+            display.drawString(0, 12, (String)(int)inverter.batterySoC + "%");
             break;
           default:
             display.drawString(0, 12, (String)(int)inverter.wsolar);
@@ -174,11 +177,11 @@ void data_display(void)
           display.clear();
           display.setFont(ArialMT_Plain_10);
           display.setTextAlignment(TEXT_ALIGN_CENTER);
-          display.drawString(0, 0,  ("TEMPERATURAS"));
+          display.drawString(64, 0,  ("TEMPERATURAS"));
           display.setTextAlignment(TEXT_ALIGN_LEFT);
-          display.drawString(0, 12, ("TEMP TERMO: " + String(temperaturaTermo) + "ºC"));
-          display.drawString(0, 24, ("TEMP TRIAC: " + String(temperaturaTriac) + "ºC"));
-          display.drawString(0, 24, (String(config.nombreSensor) + ": " + String(temperaturaCustom) + "ºC"));
+          display.drawString(0, 12, ("TEMP. TERMO: " + String(temperaturaTermo) + "ºC"));
+          display.drawString(0, 24, ("TEMP. TRIAC: " + String(temperaturaTriac) + "ºC"));
+          display.drawString(0, 36, (String(config.nombreSensor) + ": " + String(temperaturaCustom) + "ºC"));
           //display.drawString(0, 48, printUptimeOled());
           display.display();
           break;

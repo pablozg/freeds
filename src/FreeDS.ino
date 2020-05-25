@@ -2,7 +2,7 @@
   FreeDS.ino - Main source file
   Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
 
-  Based in opends+ (https://github.com/iqas/derivador)
+  Inspired in opends+ (https://github.com/iqas/derivador)
   
   Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
 
@@ -17,7 +17,7 @@
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
 #define eepromVersion 0x11
@@ -70,9 +70,11 @@ extern "C"
 
 #define DS18B20 2
 
+//#define PWMCHINOMALO
+
 #ifdef OLED
   // PWM Pin
-  #define pin_pwm 25
+  #define pin_pwm 25 // Cambiar a 25
 
   // ESP Serial
   #define pin_rx 17
@@ -88,7 +90,7 @@ extern "C"
   SSD1306 display(0x3c, 4, 15);
 #endif
 
-// PARTIAL UNSUPPORTED, you must define your own pins to use this module.
+// PARTIAL UNSUPPORTED, you must define your own pins to use this module
 #ifndef OLED
   // PWM Pin
   uint8_t pin_pwm = 2;
@@ -121,7 +123,7 @@ bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "Pre_1.0.5Rev7";
+const char version[] PROGMEM = "Pre_1.0.5Rev10";
 
 const char *www_username = "admin";
 
@@ -130,15 +132,10 @@ uint8_t numeroErrorConexionRemoteApi = 0; // Nº de errores de conexión a remot
 uint16_t invert_pwm = 0; // Hasta 1023 con 10 bits resolution
 uint16_t last_invert_pwm = 0;
 
-String esp01_version = "";
-int esp01_status = 0;
-String esp01_payload = "";
-int httpcode;
-
 String pro = "";
 uint8_t progressbar = 0;
 
-uint8_t Message = 0;
+uint8_t webMessageResponse = 0;
 
 uint8_t screen = 0;
 uint8_t workingMode;
@@ -153,8 +150,8 @@ IPAddress modbusIP;
 //// Temporizadores
 struct {
     unsigned long ErrorConexionWifi = 0;
-    unsigned long ErrorLecturaDatos = 0;
-    unsigned long ErrorConexionRed = 0;
+    unsigned long ErrorVariacionDatos = 0;
+    unsigned long ErrorRecepcionDatos = 0;
     unsigned long ErrorLecturaTemperatura = 0;
     unsigned long FlashDisplay = 0;
     unsigned long OledAutoOff = 0;
@@ -194,9 +191,9 @@ union {
   uint16_t data;
   struct {
     uint16_t ConexionWifi : 1;       // Bit 0
-    uint16_t ConexionInversor : 1;   // Bit 1
+    uint16_t RecepcionDatos : 1;   // Bit 1
     uint16_t ConexionMqtt : 1;       // Bit 2
-    uint16_t LecturaDatos : 1;       // Bit 3
+    uint16_t VariacionDatos : 1;       // Bit 3
     uint16_t RemoteApi : 1;          // Bit 4
     uint16_t temperaturaTermo : 1;   // Bit 5
     uint16_t temperaturaTriac : 1;   // Bit 6
@@ -216,17 +213,16 @@ typedef union {
     uint32_t pwmMan : 1;             // Bit 4
     uint32_t oledPower : 1;          // Bit 5
     uint32_t oledAutoOff : 1;        // Bit 6
-
     uint32_t potManPwmActive : 1;    // Bit 7
-    uint32_t serialOutput : 1;       // Bit 8
-    uint32_t debugOutput : 1;        // Bit 9
-    uint32_t weblogOutput : 1;       // Bit 10
+    uint32_t serial : 1;             // Bit 8
+    uint32_t debug : 1;              // Bit 9
+    uint32_t weblog : 1;             // Bit 10
     uint32_t timerEnabled : 1;       // Bit 11
     uint32_t moreDebug : 1;          // Bit 12
     uint32_t sensorTemperatura : 1;  // Bit 13
-    uint32_t alexaDiscover : 1;          // Bit 14
-    uint32_t spare : 17;             // Bit 15 - 31
-    //uint32_t spare : 18;             // Bit 14 - 31
+    uint32_t alexaControl : 1;       // Bit 14
+    uint32_t domoticz : 1;           // Bit 15
+    uint32_t spare : 16;             // Bit 16 - 31
   };
 } SysBitfield;
 
@@ -340,7 +336,10 @@ struct CONFIG
   // BANDERAS SISTEMA
   SysBitfield flags;
   
-  char remote_api[250]; // Por compatibilidad con opends+
+  // Old remote_api
+  // char remote_api[250]; // Por compatibilidad con opends+
+  uint16_t domoticzIdx[3];
+  uint8_t free[238];
 } config;
 
 struct METER
@@ -377,7 +376,9 @@ struct INVERTER
   float wgrid;             // Potencia de red (Negativo: de red - Positivo: a red)
   float wtogrid;           // Potencia enviada a red
   float wgrid_control = 0; // Control del valor de wgrid
-  float temperature;
+  float temperature;       // Temperatura del Inversor
+  float batteryWatts = 0;  // Consumo de las Baterías
+  float batterySoC;
 } inverter;
 
 struct UPTIME
@@ -392,12 +393,11 @@ struct UPTIME
 
 struct tm timeinfo;
 
-struct LOGSTRUCT
-{
-  char timeStamp[9];
-  String Message;
-} Logging[30];
+#define LOGGINGSIZE 30
+char loggingMessage[LOGGINGSIZE][1024];
 int logcount = 0; // -1
+
+char response[768];
 
 //// Definiciones Conexiones
 
@@ -427,7 +427,7 @@ TimerHandle_t relayOffTimer;
 // Setup a oneWire instance to communicate with any OneWire devices
 OneWire oneWire(DS18B20);
 
-// Pass our oneWire reference to Dallas Temperature sensor 
+// Pass our oneWire reference to Dallas Temperature sensor
 DallasTemperature sensors(&oneWire);
 
 uint8_t tempSensorAddress[15][8];
@@ -460,7 +460,7 @@ public:
         EEPROM.commit();
         Serial.print("DATA SAVED!!!!, RESTARTING!!!!");
         request->redirect("/");
-        delay(500); // Only to be able to redirect client, 
+        delay(500); // Only to be able to redirect client
         ESP.restart();
 
     } else {
@@ -530,7 +530,7 @@ void defaultValues()
   strcpy(config.mask, "255.255.255.0");
   strcpy(config.dns1, "8.8.8.8");
   strcpy(config.dns2, "1.1.1.1");
-  strcpy(config.remote_api, "");
+  // strcpy(config.remote_api, "");
   config.pwmMin = -60;
   config.pwmMax = -90;
   config.flags.pwmEnabled = true;
@@ -577,10 +577,10 @@ void defaultValues()
   config.pwmSlaveOn = 0;
   config.potManPwm = 0;
   config.flags.potManPwmActive = false;
-  config.flags.serialOutput = true;
-  config.flags.debugOutput = false;
+  config.flags.serial = true;
+  config.flags.debug = false;
   config.flags.moreDebug = false;
-  config.flags.weblogOutput = false;
+  config.flags.weblog = false;
   config.publishMqtt = 10000;
   config.flags.timerEnabled = false;
   config.timerStart = 500;
@@ -593,6 +593,11 @@ void defaultValues()
   memset(config.triacSensorAddress, 0, sizeof config.triacSensorAddress);
   memset(config.customSensorAddress, 0, sizeof config.customSensorAddress);
   strcpy(config.nombreSensor, "Temperatura Ambiente");
+  config.flags.alexaControl = false;
+  config.flags.domoticz = false;
+  config.domoticzIdx[0] = 0;
+  config.domoticzIdx[1] = 0;
+  config.domoticzIdx[2] = 0;
 
   config.eeinit = eepromVersion;
   config.flags.wifi = false;
@@ -635,7 +640,6 @@ void setup()
 
   // OLED
 #ifdef OLED
-  pinMode(25, OUTPUT);
   pinMode(16, OUTPUT);
   digitalWrite(16, LOW); // set GPIO16 low to reset OLED
   delay(50);
@@ -661,7 +665,7 @@ void setup()
   ledcAttachPin(pin_pwm, 2);
   ledcWrite(2, invert_pwm);
 
-  dac_output_enable(DAC_CHANNEL_2); // Salida Analógica
+  dac_output_enable(DAC_CHANNEL_2); // Salida Analógica /// DAC_CHANNEL_1 -> PIN 25 /// DAC_CHANNEL_2 -> PIN 26
 
   if (config.eeinit != eepromVersion)
   {
@@ -716,8 +720,10 @@ void setup()
       buildWifiArray();
 
       //init and get the ntp time
-      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-      updateLocalTime();
+      if (config.wversion != 0) {
+        configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+        updateLocalTime();
+      }
       Flags.timerSet = false;
       Flags.pwmIsWorking = true;
 
@@ -725,7 +731,7 @@ void setup()
       SerieMeter.begin(config.baudiosMeter, SERIAL_8N1, RX1, TX1); // UART1 para meter
       SerieEsp.begin(115200, SERIAL_8N1, pin_rx, pin_tx); // UART2 para ESP01
       
-      if (config.wversion == 2) { SerieEsp.println("###SSID=" + String(config.ssid_esp01) + "$$$"); }
+      if (config.wversion == 2) { SerieEsp.printf("SSID: %s\n", config.ssid_esp01); }
 
       if (config.wversion == 8 || (config.wversion >= 14 && config.wversion <= 16)) {
         modbusIP.fromString((String)config.sensor_ip);
@@ -749,7 +755,7 @@ void setup()
       //// Configuración de los tickers
       Tickers.add(0,  200, [&](void *) { data_display(); }, nullptr, true);        // OLED loop
       Tickers.add(1,  500, [&](void *) { send_events(); }, nullptr, false);        // Send Events to Webpage
-      Tickers.add(2, 30000, [&](void *) { sendStatusSolaxV2(); }, nullptr, false); // Send status message to ESP01
+      //Tickers.add(2, 30000, [&](void *) { sendStatusSolaxV2(); }, nullptr, false); // Send status message to ESP01
       //Tickers.add(3, 60000, [&](void *) { remote_api(); }, nullptr, false);        // Send Data to Remote API
 
       Tickers.add(4, config.getDataTime, [&](void *) { getSensorData(); }, nullptr, false); // Sensor data adquisition time
@@ -759,8 +765,8 @@ void setup()
       if (!config.flags.sensorTemperatura) { Tickers.disable(7); }
 
       // Inicialización de Temporizadores
-      timers.ErrorLecturaDatos = millis();
-      timers.ErrorConexionRed = millis();
+      timers.ErrorVariacionDatos = millis();
+      timers.ErrorRecepcionDatos = millis();
       timers.OledAutoOff = millis();
       timers.ErrorLecturaTemperatura = millis() - config.maxErrorTime;
       timers.printDebug = millis();
@@ -778,10 +784,13 @@ void setup()
         workingMode = 2;
       } // OFF
 
-      Error.ConexionInversor = true;
+      Error.RecepcionDatos = true;
+      Error.VariacionDatos = true;
+      Error.ConexionMqtt = true;
       Error.temperaturaTermo = true;
       sensors.begin();
       buildSensorArray();
+      setWebConfig();
     }
   }
 
@@ -792,9 +801,8 @@ void setup()
     INFOV("An Error has occurred while mounting SPIFFS\n");
     return;
   }
-  
-  if (!config.flags.wifi) { server.addHandler(new CaptiveRequestHandler).setFilter(ON_AP_FILTER); }
-  setWebConfig();
+
+  if (!config.flags.wifi) { server.addHandler(new CaptiveRequestHandler).setFilter(ON_AP_FILTER); server.begin(); }
 
   if (Flags.firstInit) {
     display.clear();
@@ -804,48 +812,51 @@ void setup()
     display.drawString(64, 40, _CONFIGPAGE_);
     display.display();
   }
-
-  if (config.flags.alexaDiscover) {
-    display.clear();
-    display.setFont(ArialMT_Plain_10);
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.drawString(64, 0,"VINCULACIÓN ALEXA");
-    display.drawString(64, 20, "Busque nuevos dispositivos");
-    display.drawString(64, 40, "y espere 2 minutos");
-    display.display();
-    Serial.printf(PSTR("Proceda a descubir nuevos dispositivos desde Alexa y espere 2 minutos a que reinicie de forma Automática\n"));
-  }
 }
+
+long tme;
 
 void loop()
 {
-  long tme = millis();
-
   //////// Watchdog ////////////
   timerWrite(timer, 0); // reset timer (feed watchdog)
   /////////////////////////////////////
 
   updateUptime();
-  updateLocalTime();
   
   if (Flags.firstInit) { dnsServer.processNextRequest(); }
   else { fauxmo.handle(); }
 
-  if (config.flags.alexaDiscover) {
-    if ((millis() - timers.ErrorConexionRed) > 120000) {
-      config.flags.alexaDiscover = false;
-      restartFunction();
-    }
-  }
-    
-  if (config.flags.wifi && !Flags.firstInit && !config.flags.alexaDiscover)
+  if (config.flags.wifi && !Flags.firstInit)
   {
     Tickers.update(); // Actualiza todos los tareas Temporizadas
     changeScreen();
-    checkTimer();
     checkTemperature();
+    long diffErrorRecepcionDatos = (millis() + 2) - timers.ErrorRecepcionDatos ; // Add 2 to avoid diffErrorRecepcionDatos = -1 error
+
+    if (config.flags.moreDebug) {
+      if (millis() - timers.printDebug > 1000){
+        //INFOV("\nLoop Time: %lu\n", millis() - tme);
+        //tme = millis();
+        INFOV("\nError Recepción Datos: %s, Error Variación Datos: %s, Error Conexión Mqtt: %s\n", Error.RecepcionDatos ? "true" : "false", Error.VariacionDatos ? "true" : "false", Error.ConexionMqtt ? "true" : "false");
+        INFOV("Timer Recepción Datos: %ld, Timer Variación Datos: %ld\n", diffErrorRecepcionDatos, millis() - timers.ErrorVariacionDatos);
+        //INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, invert_pwm: %d\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, invert_pwm);
+        timers.printDebug = millis();
+      }
+    }
+
+    if (diffErrorRecepcionDatos > config.maxErrorTime && !Error.RecepcionDatos)
+    {
+      if (config.flags.debug) { INFOV("DATA ERROR: Error de comunicación, Diff: %ld, Errortime: %ld\n", diffErrorRecepcionDatos, config.maxErrorTime); }
+      memset(&inverter, 0, sizeof(inverter));
+      memset(&meter, 0, sizeof(meter));
+      Error.RecepcionDatos = true;
+    }
     
-    //if (!Flags.pwmIsWorking) { INFOV("Down Pwm !Flags.pwmisworking main loop\n"); down_pwm(false); }
+    if (config.wversion != 0) {
+      checkTimer();
+      updateLocalTime();
+    }
     
     if (Flags.setBrightness) {
       saveEEPROM();
@@ -864,32 +875,15 @@ void loop()
       }
     }
 
-    if ((millis() - timers.ErrorConexionRed) > config.maxErrorTime)
-    {
-      Error.ConexionInversor = true;
-      timers.ErrorConexionRed = millis();
-      if (config.flags.debugOutput) { INFOV("INVERTER ERROR: Error de comunicación\n"); }
-    }
-
     if (config.flags.potManPwmActive) {
       if (inverter.wsolar < config.potManPwm && !Flags.pwmManAuto) {
         Flags.pwmManAuto = true;
-      } 
+      }
       
       if (inverter.wsolar > config.potManPwm && Flags.pwmManAuto) {
         Flags.pwmManAuto = false;
       }
     }
+
   }
-  
-  if (config.flags.moreDebug) { 
-    if (millis() - timers.printDebug > 1000){
-      INFOV("Loop Time: %lu\n", millis() - tme);
-      //INFOV("Error Conexión Inversor: %s, Error Conexión Mqtt: %s\n", Error.ConexionInversor ? "true" : "false", Error.ConexionMqtt ? "true" : "false");
-      //INFOV("Timer Error Conexión Red: %ld, Timer Error Lectura Datos: %ld\n", millis()-timers.ErrorConexionRed, millis()-timers.ErrorLecturaDatos);
-      //INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, invert_pwm: %d\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, invert_pwm);
-      timers.printDebug = millis();
-    }
-  }
-  
 } // End loop

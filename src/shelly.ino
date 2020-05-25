@@ -19,15 +19,14 @@
 */
 
 // Shelly EM
-void parseShellyEM(String json, int sensor)
+void parseShellyEM(char *json, int sensor)
 {
-  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
+  if (config.flags.debug) { INFOV("Shelly Size: %d, Json: %s\n", strlen(json), json); }
   
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {
     INFOV("deserializeJson() failed: %s\n", error.c_str());
-    httpcode = -1;
   } else {
     switch (sensor)
     {
@@ -38,17 +37,17 @@ void parseShellyEM(String json, int sensor)
           meter.reactivePower = roundf((float)root["reactive"] * -1.0);
           meter.importActive = roundf((float)root["total"] / 1000.0);
           meter.exportActive = roundf((float)root["total_returned"] / 1000.0);
-          Error.ConexionInversor = false;
+          Error.RecepcionDatos = false;
         }
         break;
       case 2: // Medida de Inversor
         if (root["is_valid"] == true) {
           inverter.wsolar = roundf((float)root["power"]); // Potencia de red (Negativo: de red - Positivo: a red)
           inverter.gridv = roundf((float)root["voltage"]);
-          Error.ConexionInversor = false;
+          Error.RecepcionDatos = false;
         }
         break;
     }
-    timers.ErrorConexionRed = millis();
+    timers.ErrorRecepcionDatos = millis();
   }
 }

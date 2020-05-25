@@ -18,15 +18,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-void parseMasterFreeDs(String json)
+void parseMasterFreeDs(char *json)
 {
-  if (config.flags.debugOutput) { INFOV("Size: %lu, Json: %s\n", strlen(json.c_str()), json.c_str()); }
+  if (config.flags.debug) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
 
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {
     INFOV("deserializeJson() failed: %s\n", error.c_str());
-    httpcode = -1;
   } else {
     masterMode = (int)root["wversion"];
     inverter.wgrid =  (float)root["wgrid"]; // Potencia de red
@@ -34,12 +33,12 @@ void parseMasterFreeDs(String json)
     if ((int)root["PwmMaster"] >= config.pwmSlaveOn) {
       Flags.pwmIsWorking = true;
     } else {
-      if (!config.flags.pwmMan) {
+      if (!config.flags.pwmMan && invert_pwm > 0) {
         Flags.pwmIsWorking = false;
         down_pwm(false);
       }
     }
-    
+
     switch (masterMode)
     {
       case 3: // Mqtt
@@ -81,6 +80,13 @@ void parseMasterFreeDs(String json)
         inverter.wsolar =    (float)root["wsolar"];
         inverter.gridv =    (float)root["gridv"];
         break;
+      case 14:
+        meter.voltage =      (float)root["mvoltage"];
+        meter.current =      (float)root["mcurrent"];
+        inverter.wsolar =    (float)root["wsolar"];
+        inverter.batteryWatts = (float)root["wbattery"];
+        inverter.batterySoC =    (float)root["invSoC"];
+        break;
       default:
         inverter.wtoday = (float)root["wtoday"];
         inverter.wsolar = (float)root["wsolar"];
@@ -93,7 +99,7 @@ void parseMasterFreeDs(String json)
         inverter.pw2 =    (float)root["pw2"];
         break;
     }
-    Error.ConexionInversor = false;
-    timers.ErrorConexionRed = millis();
+    Error.RecepcionDatos = false;
+    timers.ErrorRecepcionDatos = millis();
   }
 }

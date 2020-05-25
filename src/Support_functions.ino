@@ -2,7 +2,7 @@
   Support_functions.ino - FreeDs support functions
   Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
 
-  Based in opends+ (https://github.com/iqas/derivador)
+  Inspired in opends+ (https://github.com/iqas/derivador)
   
   Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
 
@@ -27,7 +27,7 @@ void getSensorData(void)
     switch (config.wversion)
     {
       case 2: // Solax v2
-        m1_com();
+        readESP01();
         break;
       case 0: // Solax v2 local mode
       case 1: // Solax v1
@@ -50,53 +50,13 @@ void getSensorData(void)
   }
 }
 
-// void getSensorData(void)
-// {
-//   if (config.flags.wifi)
-//   {
-//     switch (config.wversion)
-//     {
-//       case 0: // Solax v2 local mode
-//         v0_com(); 
-//         break;
-//       case 1: // Solax v1
-//         v1_com(); 
-//         break;
-//       case 2: // Solax v2
-//         m1_com(); 
-//         break;
-//       case 4: // DDS2382
-//       case 5: // DDSU666
-//       case 6: // SDM120/220
-//       case 8: // SMA
-//       case 14: // Victron
-//       case 15: // Fronius
-//       case 16: // Huawei
-//         readModbus();
-//         break;
-//       case 9: // Wibee
-//         getWibeeeData();
-//         break;
-//       case 10: // Shelly EM
-//         getShellyData();
-//         break;
-//       case 11: // Fronius
-//         fronius_com(); 
-//         break;
-//       case 12: // Master FreeDS
-//         getMasterFreeDsData();
-//         break;
-//     }
-//   }
-// }
-
-String midString(String str, String start, String finish){
-  int locStart = str.indexOf(start);
+String midString(String *str, String start, String finish){
+  int locStart = str->indexOf(start);
   if (locStart == -1) return "";
   locStart += start.length();
-  int locFinish = str.indexOf(finish, locStart);
+  int locFinish = str->indexOf(finish, locStart);
   if (locFinish == -1) return "";
-  return str.substring(locStart, locFinish);
+  return str->substring(locStart, locFinish);
 }
 
 char *dtostrfd(double number, unsigned char prec, char *s)
@@ -148,6 +108,7 @@ void changeScreen(void)
       lastDebounceTime = millis();
     }
 
+    // Cambio de modo de trabajo
     if (((millis() - lastDebounceTime) > 2000) && ButtonLongPress == false)
     {
       ButtonLongPress = true;
@@ -175,6 +136,13 @@ void changeScreen(void)
       }
       saveEEPROM();
     }
+
+    // // Apagar y encender la pantalla
+    // if (((millis() - lastDebounceTime) > 5000) && ButtonLongPress == false)
+    // {
+    //   ButtonLongPress = true;
+    //   turnOffOled();
+    // }
 
     if ((millis() - lastDebounceTime) > 10000)
     {
@@ -245,49 +213,6 @@ void saveEEPROM(void)
   INFOV("DATA SAVED!!!!\n");
 }
 
-// void remote_api()
-// {
-//   if (config.flags.moreDebug) { INFOV("remote_api()\n"); }
-//   HTTPClient clientHttp;
-//   WiFiClient clientWifi;
-//   clientHttp.setConnectTimeout(4000);
-
-//   if ((String)config.remote_api != "" && config.flags.wifi)
-//   {
-//     String url = "http://" + (String)config.remote_api;
-
-//     url.replace("%pv1c%", String(inverter.pv1c));
-//     url.replace("%pv2c%", String(inverter.pv2c));
-//     url.replace("%pv1v%", String(inverter.pv1v));
-//     url.replace("%pv2v%", String(inverter.pv2v));
-//     url.replace("%gridv%", String(inverter.gridv));
-//     url.replace("%wsolar%", String(inverter.wsolar));
-//     url.replace("%wtoday%", String(inverter.wtoday));
-//     url.replace("%wgrid%", String(inverter.wgrid));
-//     url.replace("%pw1%", String(inverter.pw1));
-//     url.replace("%pw2%", String(inverter.pw2));
-//     url.replace("%wtogrid%", String(inverter.wtogrid));
-
-//     if (config.flags.debugOutput) { INFOV("REMOTE API REQUEST: %s\n", url.c_str()); }
-
-//     clientHttp.begin(clientWifi, url);
-//     httpcode = clientHttp.GET();
-
-//     if (config.flags.moreDebug) { INFOV("HTTPCODE ERROR: %i\n", httpcode); }
-
-//     if (httpcode < 0 || httpcode == 404)
-//       numeroErrorConexionRemoteApi++;
-    
-//     if (httpcode == HTTP_CODE_OK)
-//     {
-//       numeroErrorConexionRemoteApi = 0;
-//       Error.RemoteApi = false;
-//     }
-//     clientHttp.end();
-//     clientWifi.stop();
-//   }
-// }
-
 void updateUptime()
 {
   //************************ Time function from https://hackaday.io/project/7008-fly-wars-a-hackers-solution-to-world-hunger/log/25043-updated-uptime-counter ****************// 
@@ -313,16 +238,16 @@ void updateUptime()
 };
 
 //******************* Prints the uptime to serial window **********************//
-String printUptime()
+const char *printUptime()
 {
-  char tmp[80];
+  //char tmp[80];
  
   if (Flags.ntpTime) {
-    sprintf(tmp, "Fecha: %02d/%02d/%04d Hora: %02d:%02d:%02d<br>Uptime: %li días %02d:%02d:%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+    sprintf(response, "Fecha: %02d/%02d/%04d Hora: %02d:%02d:%02d<br>Uptime: %li días %02d:%02d:%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
   } else {
-    sprintf(tmp, "Uptime: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+    sprintf(response, "Uptime: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
   }
-  return tmp;
+  return response;
 };
 
 String printUptimeOled()
@@ -342,7 +267,7 @@ String printDateOled()
 void updateLocalTime(void)
 {
   if(!getLocalTime(&timeinfo)){
-    if (config.flags.debugOutput) { INFOV("Failed to obtain time\n"); }
+    if (config.flags.debug) { INFOV("Failed to obtain time\n"); }
     Flags.ntpTime = false;
     return;
   }
@@ -457,15 +382,15 @@ void verbose_print_reset_reason(int cpu)
 
 /// BASIC LOGGING
 
-void addLog(String data)
+void addLog(char *data)
 {
-  if (logcount > (sizeOfArray(Logging) - 1)) { logcount = 0; }
+  if (logcount > (LOGGINGSIZE - 1)) { logcount = 0; }
+  
   if (Flags.ntpTime) {
-    sprintf(Logging[logcount].timeStamp, "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    sprintf(loggingMessage[logcount], "%02d:%02d:%02d - %s\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, data);
   } else {
-    sprintf(Logging[logcount].timeStamp, "%02d:%02d:%02d", uptime.Hour, uptime.Minute, uptime.Second);
+    sprintf(loggingMessage[logcount], "%02d:%02d:%02d - %s\n", uptime.Hour, uptime.Minute, uptime.Second, data);
   }
-  Logging[logcount].Message = data;
   logcount++;
 
   if (Flags.weblogConnected) sendWeblogStreamTest();
@@ -473,23 +398,19 @@ void addLog(String data)
 
 void sendWeblogStreamTest(void)
 {
-  char log[1024];
-
   // Print old messages
-  if (Logging[logcount].Message != "" && logcount > 1) {
-    for (int counter = logcount; counter < sizeOfArray(Logging); counter++)
+  if (strcmp(loggingMessage[logcount], "") != 0 && logcount > 1) {
+    for (int counter = logcount; counter < LOGGINGSIZE; counter++)
     {
-      sprintf(log, "%s - %s\n", Logging[counter].timeStamp, Logging[counter].Message.c_str());
-      Logging[counter].Message = "";
-      webLogs.send(log, "weblog");
+      webLogs.send(loggingMessage[counter], "weblog");
+      memset(loggingMessage[counter], 0, 1024);
     }
   }
 
   // Print new messages
   for (int counter = 0; counter < logcount; counter++) {
-    sprintf(log, "%s - %s\n", Logging[counter].timeStamp, Logging[counter].Message.c_str());
-    Logging[counter].Message = "";
-    webLogs.send(log, "weblog");
+    webLogs.send(loggingMessage[counter], "weblog");
+    memset(loggingMessage[counter], 0, 1024);
   }
 
   logcount = 0;
@@ -508,8 +429,8 @@ void sendWeblogStreamTest(void)
 //     rcode = vsprintf(buffer, format, arg);
 //     va_end(arg);
 
-//     if (config.flags.serialOutput) Serial.print(buffer);
-//     if (config.flags.weblogOutput) addLog((String)buffer);
+//     if (config.flags.serial) Serial.print(buffer);
+//     if (config.flags.weblog) addLog((String)buffer);
 
 //     delete[] buffer;
 //   }
@@ -527,8 +448,8 @@ int INFOV(const char * __restrict format, ...)
   rcode = vsprintf(buffer, format, arg);
   va_end(arg);
 
-  if (config.flags.serialOutput) Serial.print(buffer);
-  if (config.flags.weblogOutput) addLog((String)buffer);
+  if (config.flags.serial) Serial.print(buffer);
+  if (config.flags.weblog) addLog(buffer);
 
 	return rcode;
 }

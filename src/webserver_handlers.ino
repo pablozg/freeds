@@ -59,6 +59,7 @@ void handleCnet(AsyncWebServerRequest *request)
 void handleConfigMqtt(AsyncWebServerRequest *request)
 {
   config.flags.mqtt = false;
+  unSuscribeMqtt();
   Error.ConexionMqtt = false;
 
   if (request->arg("mqttactive") == "on")
@@ -83,7 +84,17 @@ void handleConfigMqtt(AsyncWebServerRequest *request)
       strcpy(config.Meter_mqtt, request->urlDecode(request->arg("meter")).c_str());
     }
   }
-   
+
+  config.flags.domoticz = false;
+  if (request->arg("domoticzactive") == "on")
+  {
+
+    config.flags.domoticz = true;
+    config.domoticzIdx[0] = request->arg("idxpwm").toInt();
+    config.domoticzIdx[1] = request->arg("idxman").toInt();
+    config.domoticzIdx[2] = request->arg("idxoled").toInt();
+  }
+
   saveEEPROM();
   mqttClient.disconnect(true);
 
@@ -114,6 +125,7 @@ void handleConfig(AsyncWebServerRequest *request)
     if (config.wversion == 2)
     {
       strcpy(config.ssid_esp01, request->urlDecode(request->arg("wifis")).c_str());
+      SerieEsp.printf("SSID: %s\n", config.ssid_esp01);
     }
     if (config.wversion == 1 || (config.wversion >= 8 && config.wversion <= 12) || (config.wversion >= 14 && config.wversion <= 16))
     {
@@ -128,11 +140,14 @@ void handleConfig(AsyncWebServerRequest *request)
     strcpy(config.password, request->urlDecode(request->arg("newpass")).c_str());
   }
 
-  strcpy(config.remote_api, request->urlDecode(request->arg("remote_api")).c_str());
+  // strcpy(config.remote_api, request->urlDecode(request->arg("remote_api")).c_str());
 
   config.maxErrorTime = constrain(request->arg("maxerrortime").toInt(), 10000, 60000);
   config.getDataTime = constrain(request->arg("getdatatime").toInt(), 250, 60000);
-  switch (config.wversion) {   
+  switch (config.wversion) {
+    case 2:
+      config.getDataTime = 1500;
+      break;
     case 0:
     case 1:
     case 9:
@@ -145,7 +160,7 @@ void handleConfig(AsyncWebServerRequest *request)
     case 14:
     case 15:
     case 16:
-      if (config.getDataTime < 1000) config.getDataTime = 1000;
+      if (config.getDataTime < 500) config.getDataTime = 500;
       break;
   }
   Tickers.updatePeriod(4, config.getDataTime);
@@ -196,6 +211,9 @@ void handleConfig(AsyncWebServerRequest *request)
     config.flags.sensorTemperatura = false;
     Tickers.disable(7);
   }
+  
+  request->arg("alexa") == "on" ? config.flags.alexaControl = true : config.flags.alexaControl = false;
+  fauxmo.enable(config.flags.alexaControl);
    
   saveEEPROM();
 }
@@ -270,36 +288,16 @@ void handleRelay(AsyncWebServerRequest *request)
   saveEEPROM();
 }
 
-String API(void)
-{
-  int8_t status0 = 0;
-  int8_t status1 = 0; //Reserve to future
-  // Return a byte with status
-  // byte RL4|RL3|RL2|RL1|Error.ConexionMqtt|Error.ConexionWifi|Error.ConexionInversor|
-
-  if (Error.ConexionInversor)
-    status0 = status0 + 1;
-  if (Error.ConexionWifi)
-    status0 = status0 + 2;
-  if (Error.ConexionMqtt)
-    status0 = status0 + 4;
-  status0 = (digitalRead(PIN_RL1) ? 1 : 0) * 8;
-  status0 = (digitalRead(PIN_RL2) ? 1 : 0) * 16;
-  status0 = (digitalRead(PIN_RL3) ? 1 : 0) * 32;
-  status0 = (digitalRead(PIN_RL4) ? 1 : 0) * 64;
-
-  return "{\"Data\":[" + String(httpcode) + "," + String(inverter.pv1c) + "," + String(inverter.pv2c) + "," + String(inverter.pv1v) + "," + String(inverter.pv2v) + "," + String(inverter.pw1) + "," + String(inverter.pw2) + "," + String(inverter.gridv) + "," + String(inverter.wsolar) + "," + String(inverter.wtoday) + "," + String(inverter.wgrid) + "," + String(inverter.wtogrid) + "," + String(invert_pwm) + "," + String(status0) + "," + String(status1) + "]}";
-}
-
 void rebootCause(void)
 {
   verbose_print_reset_reason(0);
   verbose_print_reset_reason(1);
 }
 
-String sendJsonWeb(void)
+const char *sendJsonWeb(void)
 {
   DynamicJsonDocument jsonValues(768);
+
   uint16_t error = 0;
   uint8_t wversion = 0;
 
@@ -307,9 +305,9 @@ String sendJsonWeb(void)
     error = 0x01;
   if (Error.ConexionMqtt && config.flags.mqtt)
     error |= 0x02;
-  if (Error.ConexionInversor)
+  if (Error.RecepcionDatos)
     error |= 0x04;
-  if (Error.LecturaDatos)
+  if (Error.VariacionDatos)
     error |= 0x08;
   if (!config.flags.mqtt && config.wversion == 3)
     error |= 0x10;
@@ -330,7 +328,7 @@ String sendJsonWeb(void)
   jsonValues["POn"] = config.flags.pwmEnabled;
   jsonValues["PwmMan"] = config.flags.pwmMan;
   jsonValues["SenTemp"] = config.flags.sensorTemperatura;
-  jsonValues["Msg"] = Message;
+  jsonValues["Msg"] = webMessageResponse;
   jsonValues["pwmfrec"] = config.pwmFrequency;
   jsonValues["pwm"] = pro;
   jsonValues["baudiosMeter"] = config.baudiosMeter;
@@ -396,10 +394,14 @@ String sendJsonWeb(void)
       jsonValues["mcurrent"] = tmpString;
       dtostrfd(inverter.wsolar, 2, tmpString);
       jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.temperature, 2, tmpString);
-      jsonValues["invTemp"] = tmpString;
+      dtostrfd(inverter.batteryWatts, 2, tmpString);
+      jsonValues["wbattery"] = tmpString;
+      dtostrfd(inverter.batterySoC, 2, tmpString);
+      jsonValues["invSoC"] = tmpString;
       break;
     default:
+      dtostrfd(inverter.batteryWatts, 2, tmpString);
+      jsonValues["wbattery"] = tmpString;
       dtostrfd(inverter.wtoday, 2, tmpString);
       jsonValues["wtoday"] = tmpString;
       dtostrfd(inverter.wsolar, 2, tmpString);
@@ -421,13 +423,12 @@ String sendJsonWeb(void)
       break;
   }
 
-  String response;
   serializeJson(jsonValues, response);
 
   return response;
 }
 
-String sendMasterData(void)
+const char *sendMasterData(void)
 {
   DynamicJsonDocument jsonValues(768);
   
@@ -496,10 +497,14 @@ String sendMasterData(void)
       jsonValues["mcurrent"] = tmpString;
       dtostrfd(inverter.wsolar, 2, tmpString);
       jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.temperature, 2, tmpString);
-      jsonValues["invTemp"] = tmpString;
+      dtostrfd(inverter.batteryWatts, 2, tmpString);
+      jsonValues["wbattery"] = tmpString;
+      dtostrfd(inverter.batterySoC, 2, tmpString);
+      jsonValues["invSoC"] = tmpString;
       break;
     default:
+      dtostrfd(inverter.batteryWatts, 2, tmpString);
+      jsonValues["wbattery"] = tmpString;
       dtostrfd(inverter.wtoday, 2, tmpString);
       jsonValues["wtoday"] = tmpString;
       dtostrfd(inverter.wsolar, 2, tmpString);
@@ -521,7 +526,7 @@ String sendMasterData(void)
       break;
   }
 
-  String response;
+  //String response;
   serializeJson(jsonValues, response);
 
   return response;
@@ -538,19 +543,18 @@ void checkAuth(AsyncWebServerRequest *request)
 
 void send_events()
 {
-  events.send(printUptime().c_str(), "uptime");
-  events.send(sendJsonWeb().c_str(), "jsonweb");
+  events.send(printUptime(), "uptime");
+  events.send(sendJsonWeb(), "jsonweb");
 }
 
 void setWebConfig(void)
 {
   //////////// PAGINAS EN LA MEMORIA SPPIFS ////////
   
-  if (!config.flags.alexaDiscover) {
-  
   server.on("/", [](AsyncWebServerRequest *request) {
     checkAuth(request);
-    config.flags.wifi ? request->send(SPIFFS, "/index.html", "text/html", false, processorFreeDS) : request->send(SPIFFS, "/Red.html", "text/html", false, processorRed);
+    // config.flags.wifi ? request->send(SPIFFS, "/index.html", "text/html", false, processorFreeDS) : request->send(SPIFFS, "/Red.html", "text/html", false, processorRed);
+    request->send(SPIFFS, "/index.html", "text/html", false, processorFreeDS);
     if (Flags.reboot)
     {
       restartFunction();
@@ -671,7 +675,7 @@ void setWebConfig(void)
 
   server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     checkAuth(request);
-    Message = 2;
+    webMessageResponse = 2;
     Flags.reboot = true;
     request->redirect("/");
   });
@@ -679,13 +683,15 @@ void setWebConfig(void)
   server.on("/selectversion", HTTP_POST, [](AsyncWebServerRequest *request) {
     //checkAuth(request);
     config.wversion = request->arg("data").toInt();
+
+    if (config.flags.mqtt && config.wversion != 0 && !mqttClient.connected()) { xTimerStart(mqttReconnectTimer, 0); }
+    if (config.flags.mqtt && config.wversion != 0 && mqttClient.connected()) { unSuscribeMqtt(); }
+
     switch (config.wversion) {
       case 13:
       case 3:
-        xTimerStart(mqttReconnectTimer, 0);
         suscribeMqttMeter();
         break;
-      
       case 0:
       case 1:
       case 8:
@@ -706,12 +712,15 @@ void setWebConfig(void)
       modbusIP.fromString((String)config.sensor_ip);
       modbustcp = new esp32ModbusTCP(modbusIP, 502);
       configModbusTcp();
+      froniusRequestSend = false;
     }
     
     saveEEPROM();
-    inverter.wgrid = 0;
-    inverter.wgrid_control = 0;
-    Error.LecturaDatos = true;
+    memset(&inverter, 0, sizeof(inverter));
+    memset(&meter, 0, sizeof(meter));
+    // inverter.wgrid = 0;
+    // inverter.wgrid_control = 0;
+    Error.VariacionDatos = true;
 
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
@@ -732,7 +741,7 @@ void setWebConfig(void)
     //checkAuth(request);
     uint8_t button = request->arg("data").toInt();
 
-    if (config.flags.debugOutput) {
+    if (config.flags.debug) {
       INFOV("Comando recibido Nº %i\n", button);
     }
 
@@ -777,11 +786,11 @@ void setWebConfig(void)
     request->send(response);
   });
 
-  server.on("/getDataApi", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", API());
-    response->addHeader("Connection", "close");
-    request->send(response);
-  });
+  // server.on("/getDataApi", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+  //   AsyncWebServerResponse *response = request->beginResponse(200, "text/html", API());
+  //   response->addHeader("Connection", "close");
+  //   request->send(response);
+  // });
 
   server.on("/masterdata", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     AsyncWebServerResponse *response = request->beginResponse(200, "text/json", sendMasterData());
@@ -794,29 +803,23 @@ void setWebConfig(void)
     String comandoRaw = request->arg("webcmnd");
     String comando = comandoRaw.substring(0, comandoRaw.indexOf(" "));
     uint8_t payload = atoi(comandoRaw.substring(comandoRaw.indexOf(" ") + 1, strlen(comandoRaw.c_str())).c_str());
-    
-    // Serial.print("comando raw: ");
-    // Serial.println(comandoRaw);
-    // Serial.print("comando: ");
-    // Serial.println(comando);
-    // Serial.print("payload: ");
-    // Serial.println(payload);
-    
+        
     if (comando == "rebootcause") { rebootCause(); }
     if (comando == "getfreeheap") { INFOV("Free Heap: %d bytes\n", ESP.getFreeHeap()); }
     if (comando == "serial") {
-      if (payload == 1) { config.flags.serialOutput = true; } else { config.flags.serialOutput = false; }
+      if (payload == 1) { config.flags.serial = true; } else { config.flags.serial = false; }
       saveEEPROM();
     }
+
     if (comando == "debug") {
       switch (payload)
       {
       case 0:
-        config.flags.debugOutput = false;
+        config.flags.debug = false;
         config.flags.moreDebug = false;
         break;
       case 1:
-        config.flags.debugOutput = true; 
+        config.flags.debug = true; 
         break;
       case 2:
         config.flags.moreDebug = true;
@@ -824,8 +827,9 @@ void setWebConfig(void)
       }
       saveEEPROM();
     }
+
     if (comando == "weblog") {
-      if (payload == 1) { config.flags.weblogOutput = true; } else { config.flags.weblogOutput = false; }
+      if (payload == 1) { config.flags.weblog = true; } else { config.flags.weblog = false; }
       saveEEPROM();
     }
     
@@ -839,7 +843,7 @@ void setWebConfig(void)
   server.on("/handleCnet", HTTP_POST, [](AsyncWebServerRequest *request) {
     checkAuth(request);
     handleCnet(request);
-    Message = 1;
+    webMessageResponse = 1;
     request->redirect("/");
     if (!config.flags.wifi)
     {
@@ -851,21 +855,21 @@ void setWebConfig(void)
   server.on("/handleConfigMqtt", HTTP_POST, [](AsyncWebServerRequest *request) {
     //checkAuth(request);
     handleConfigMqtt(request);
-    Message = 1;
+    webMessageResponse = 1;
     request->redirect("/");
   });
 
   server.on("/handleConfig", HTTP_POST, [](AsyncWebServerRequest *request) {
     //checkAuth(request);
     handleConfig(request);
-    Message = 1;
+    webMessageResponse = 1;
     request->redirect("/");
   });
 
   server.on("/handleRelay", HTTP_POST, [](AsyncWebServerRequest *request) {
     //checkAuth(request);
     handleRelay(request);
-    Message = 1;
+    webMessageResponse = 1;
     request->redirect("/");
   });
 
@@ -879,8 +883,8 @@ void setWebConfig(void)
   server.on("/alexa", HTTP_GET, [](AsyncWebServerRequest *request) {
     checkAuth(request);
     request->redirect("/");
-    config.flags.alexaDiscover = true;
-    restartFunction();
+    config.flags.alexaControl = !config.flags.alexaControl;
+    fauxmo.enable(config.flags.alexaControl);
   });
 
   server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -947,8 +951,6 @@ void setWebConfig(void)
   mdnsUrl.toLowerCase();
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", mdnsUrl);
-
-  }
   
   if (config.flags.wifi) alexaConfig();
   server.begin();
@@ -971,25 +973,41 @@ void alexaConfig(void)
 
 void alexaStart(void)
 {
-  fauxmo.createServer(false);
   fauxmo.setPort(80); // This is required for gen3 devices
-  fauxmo.enable(true);
+  fauxmo.enable(config.flags.alexaControl);
 
   byte mac[6];
-  char tmp[14];
+  char tmp[30];
   WiFi.macAddress(mac);
-  sprintf(tmp, "Derivador %02X%02X", mac[4], mac[5]);
-  fauxmo.addDevice(tmp);
-  fauxmo.addDevice("Derivador Manual");
 
+  // PWM ON/OFF
+  sprintf(tmp, "Derivador %02X%02X", mac[4], mac[5]);
+  fauxmo.addDevice(tmp, ONOFF);
+  fauxmo.setState(tmp, config.flags.pwmEnabled, 0);
+
+  // Modo Auto/Manual y valor de modo manual
+  sprintf(tmp, "Derivador Manual %02X%02X", mac[4], mac[5]);
+  fauxmo.addDevice(tmp, DIMMABLE);
+  fauxmo.setState(tmp, config.flags.pwmMan, (uint8_t)((config.manualControlPWM * 254) / 100));
+
+  // Pantalla Derivador
+  sprintf(tmp, "Derivador Pantalla %02X%02X", mac[4], mac[5]);
+  fauxmo.addDevice(tmp, DIMMABLE);
+  fauxmo.setState(tmp, config.flags.oledPower, (uint8_t)((config.oledBrightness * 254) / 100));
+  
   fauxmo.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
              
-        Serial.printf("[MAIN] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
-        if (device_id == 0) {
-          config.flags.pwmEnabled = state;
-        } else if (device_id == 1) {
-          config.flags.pwmMan = state;
-          config.manualControlPWM = (uint8_t)((value * 100) / 254);
-        }
-    });
+    INFOV("[ALEXA] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
+    if (device_id == 0) {
+      config.flags.pwmEnabled = state;
+      config.oledBrightness = (uint8_t)((value * 100) / 254);
+      Flags.setBrightness = true;
+    } else if (device_id == 1) {
+      config.flags.pwmMan = state;
+      config.manualControlPWM = (uint8_t)((value * 100) / 254);
+    } else if (device_id == 2) {
+      config.flags.oledPower = state;
+      config.oledBrightness = (uint8_t)((value * 100) / 254);
+    }
+  });
 }

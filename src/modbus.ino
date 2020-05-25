@@ -112,9 +112,9 @@ void ddsu666(void)
 
       meter.read_state++;
 
-      Error.LecturaDatos = false;
-      Error.ConexionInversor = false;
-      timers.ErrorConexionRed = millis();
+      Error.VariacionDatos = false;
+      Error.RecepcionDatos = false;
+      timers.ErrorRecepcionDatos = millis();
       
       if (meter.read_state == 8) { // 8
         meter.read_state = 0;
@@ -208,9 +208,9 @@ void sdm120(void)
 
       meter.read_state++;
 
-      Error.LecturaDatos = false;
-      Error.ConexionInversor = false;
-      timers.ErrorConexionRed = millis();
+      Error.VariacionDatos = false;
+      Error.RecepcionDatos = false;
+      timers.ErrorRecepcionDatos = millis();
       
       if (meter.read_state == sdm_start_address_count) {
         meter.read_state = 0;
@@ -243,7 +243,7 @@ void dds2382(void)
       INFOV("DDS238-2 error: %i\n", error);
     } else {
 
-      if (config.flags.debugOutput) { 
+      if (config.flags.debug) { 
         char hexarray[200] = {0};
         char hexvalue[5] = {0};
         for (int i = 0; i < 45; i++)
@@ -284,9 +284,9 @@ void dds2382(void)
                meter.importActive = (float)((buffer[23] << 24) + (buffer[24] << 16) + (buffer[25] << 8) + buffer[26]) / 100.0;  // 429496.729 kW
         }
       
-      Error.LecturaDatos = false;
-      Error.ConexionInversor = false;
-      timers.ErrorConexionRed = millis();
+      Error.VariacionDatos = false;
+      Error.RecepcionDatos = false;
+      timers.ErrorRecepcionDatos = millis();
     }
   } // end data ready
 
@@ -303,7 +303,7 @@ void dds2382(void)
 void readModbus(void)
 {
   
-  if (config.flags.debugOutput) { 
+  if (config.flags.debug) { 
     INFOV(PSTR("Baudios: %lu\n"), SerieMeter.baudRate());
   }
 

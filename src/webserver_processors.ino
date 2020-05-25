@@ -63,7 +63,7 @@ String workingModeString(void)
   }
   if (config.wversion == 11)
   {
-    return "Fronius";
+    return "Fronius (API)";
   }
   if (config.wversion == 12)
   {
@@ -75,7 +75,7 @@ String workingModeString(void)
   }
   if (config.wversion == 14)
   {
-    return "Victron Modbus TCP (En desarrollo)";
+    return "Victron Modbus TCP";
   }
   if (config.wversion == 15)
   {
@@ -100,7 +100,7 @@ String processorFreeDS(const String &var)
                                                                               "<option value='0'" +
            String((config.wversion == 0) ? " selected='selected' " : " ") + ">Solax Wifi v2 local</option>"
                                                                               "<option value='11'" +
-           String((config.wversion == 11) ? " selected='selected' " : " ") + ">Fronius</option>" +
+           String((config.wversion == 11) ? " selected='selected' " : " ") + ">Fronius (API)</option>" +
                                                                               "<option value='3'" +
            String((config.wversion == 3) ? " selected='selected' " : " ") + ">Solax MQTT (Tasmota)</option>"
                                                                               "<option value='4'" +
@@ -112,7 +112,7 @@ String processorFreeDS(const String &var)
                                                                               "<option value='8'" +
            String((config.wversion == 8) ? " selected='selected' " : " ") + ">SMA Modbus TCP (En desarrollo)</option>"
                                                                               "<option value='14'" +
-           String((config.wversion == 14) ? " selected='selected' " : " ") + ">Victron Modbus TCP (En desarrollo)</option>" +
+           String((config.wversion == 14) ? " selected='selected' " : " ") + ">Victron Modbus TCP</option>" +
                                                                               "<option value='15'" +
            String((config.wversion == 15) ? " selected='selected' " : " ") + ">Fronius Modbus TCP (En desarrollo)</option>" +
                                                                               "<option value='16'" +
@@ -130,17 +130,17 @@ String processorFreeDS(const String &var)
 
   if (var == "MESSAGE")
   {
-    switch (Message)
+    switch (webMessageResponse)
     {
     case 1:
-      Message = 0;
+      webMessageResponse = 0;
       return "<div id='Info' class='alert alert-bordered alert-success' role='alert'>"
              "<button type='button' class='close' data-dismiss='alert' aria-label='Close'><span aria-hidden='true'>&times;</span></button>"
              "<div class='d-flex align-items-center justify-content-start'><i class='icon ion-ios-checkmark alert-icon tx-32 mg-t-5 mg-xs-t-0'></i>"
              "Configuración guardada correctamente.</div></div>";
       break;
     case 2:
-      Message = 0;
+      webMessageResponse = 0;
       return "<div id='Info' class='alert alert-bordered alert-success' role='alert'>"
              "<button type='button' class='close' data-dismiss='alert' aria-label='Close'><span aria-hidden='true'>&times;</span></button>"
              "<div class='d-flex align-items-center justify-content-start'><i class='icon ion-ios-checkmark alert-icon tx-32 mg-t-5 mg-xs-t-0'></i>"
@@ -294,7 +294,23 @@ String processorMqtt(const String &var)
                                            "<input id='meter' name='meter' type='text' class='form-control' maxlength='50' value='" +
              String(config.Meter_mqtt) + "'></div></div>";
     }
-  }  
+  }
+  if (var == "DOMOTICZ")
+  {
+    return config.flags.domoticz ? "checked" : "";
+  }
+  if (var == "IDXPWM")
+  {
+    return String(config.domoticzIdx[0]);
+  }
+  if (var == "IDXMAN")
+  {
+    return String(config.domoticzIdx[1]);
+  }
+  if (var == "IDXOLED")
+  {
+    return String(config.domoticzIdx[2]);
+  }
   return String();
 }
 
@@ -492,10 +508,15 @@ String processorConfig(const String &var)
     return String(config.maxErrorTime);
   }
 
-  if (var == "REMOTE_API")
+  if (var == "ALEXA")
   {
-    return String(config.remote_api);
+    return config.flags.alexaControl ? "checked" : "";
   }
+
+  // if (var == "REMOTE_API")
+  // {
+  //   return String(config.remote_api);
+  // }
 
   if (var == "GETDATATIME")
   {
