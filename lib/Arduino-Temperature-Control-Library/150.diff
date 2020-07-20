@@ -1,0 +1,417 @@
+diff --git a/DallasTemperature.cpp b/DallasTemperature.cpp
+index e7c3c20..662bb68 100644
+--- a/DallasTemperature.cpp
++++ b/DallasTemperature.cpp
+@@ -15,10 +15,10 @@ extern "C" {
+ 
+ // OneWire commands
+ #define STARTCONVO      0x44  // Tells device to take a temperature reading and put it on the scratchpad
+-#define COPYSCRATCH     0x48  // Copy EEPROM
+-#define READSCRATCH     0xBE  // Read EEPROM
+-#define WRITESCRATCH    0x4E  // Write to EEPROM
+-#define RECALLSCRATCH   0xB8  // Reload from last known
++#define COPYSCRATCH     0x48  // Copy scratchpad to EEPROM
++#define READSCRATCH     0xBE  // Read from scratchpad
++#define WRITESCRATCH    0x4E  // Write to scratchpad
++#define RECALLSCRATCH   0xB8  // Recall from EEPROM to scratchpad
+ #define READPOWERSUPPLY 0xB4  // Determine if device needs parasite power
+ #define ALARMSEARCH     0xEC  // Query bus for devices with an alarm condition
+ 
+@@ -39,22 +39,21 @@ extern "C" {
+ #define TEMP_11_BIT 0x5F // 11 bit
+ #define TEMP_12_BIT 0x7F // 12 bit
+ 
++#define MAX_CONVERSION_TIMEOUT		750
++
++// Alarm handler
+ #define NO_ALARM_HANDLER ((AlarmHandler *)0)
+ 
+-DallasTemperature::DallasTemperature()
+-{
++
++DallasTemperature::DallasTemperature() {
+ #if REQUIRESALARMS
+ 	setAlarmHandler(NO_ALARM_HANDLER);
+ #endif
+     useExternalPullup = false;
+ }
+-DallasTemperature::DallasTemperature(OneWire* _oneWire)
+-{
++
++DallasTemperature::DallasTemperature(OneWire* _oneWire) : DallasTemperature() {
+ 	setOneWire(_oneWire);
+-#if REQUIRESALARMS
+-	setAlarmHandler(NO_ALARM_HANDLER);
+-#endif
+-    useExternalPullup = false;
+ }
+ 
+ bool DallasTemperature::validFamily(const uint8_t* deviceAddress) {
+@@ -74,8 +73,8 @@ bool DallasTemperature::validFamily(const uint8_t* deviceAddress) {
+  * Constructs DallasTemperature with strong pull-up turned on. Strong pull-up is mandated in DS18B20 datasheet for parasitic
+  * power (2 wires) setup. (https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf, p. 7, section 'Powering the DS18B20').
+  */
+-DallasTemperature::DallasTemperature(OneWire* _oneWire, uint8_t _pullupPin) : DallasTemperature(_oneWire){
+-    setPullupPin(_pullupPin);
++DallasTemperature::DallasTemperature(OneWire* _oneWire, uint8_t _pullupPin) : DallasTemperature(_oneWire) {
++  setPullupPin(_pullupPin);
+ }
+ 
+ void DallasTemperature::setPullupPin(uint8_t _pullupPin) {
+@@ -109,19 +108,19 @@ void DallasTemperature::begin(void) {
+ 	while (_wire->search(deviceAddress)) {
+ 
+ 		if (validAddress(deviceAddress)) {
+-
+-			if (!parasite && readPowerSupply(deviceAddress))
+-				parasite = true;
+-
+-			bitResolution = max(bitResolution, getResolution(deviceAddress));
+-
+ 			devices++;
++
+ 			if (validFamily(deviceAddress)) {
+ 				ds18Count++;
++
++				if (!parasite && readPowerSupply(deviceAddress))
++					parasite = true;
++
++				uint8_t b = getResolution(deviceAddress);
++				if (b > bitResolution) bitResolution = b;
+ 			}
+ 		}
+ 	}
+-
+ }
+ 
+ // returns the number of devices found on the bus
+@@ -260,69 +259,86 @@ void DallasTemperature::setResolution(uint8_t newResolution) {
+ 
+ 	bitResolution = constrain(newResolution, 9, 12);
+ 	DeviceAddress deviceAddress;
+-	for (int i = 0; i < devices; i++) {
++	for (uint8_t i = 0; i < devices; i++) {
+ 		getAddress(deviceAddress, i);
+ 		setResolution(deviceAddress, bitResolution, true);
+ 	}
+-
+ }
+ 
++/*  PROPOSAL */
++
+ // set resolution of a device to 9, 10, 11, or 12 bits
+-// if new resolution is out of range, 9 bits is used.
++// if new resolution is out of range, it is constrained.
+ bool DallasTemperature::setResolution(const uint8_t* deviceAddress,
+-		uint8_t newResolution, bool skipGlobalBitResolutionCalculation) {
+-
+-	// ensure same behavior as setResolution(uint8_t newResolution)
+-	newResolution = constrain(newResolution, 9, 12);
+-
+-	// return when stored value == new value
+-	if (getResolution(deviceAddress) == newResolution)
+-		return true;
+-
+-	ScratchPad scratchPad;
+-	if (isConnected(deviceAddress, scratchPad)) {
+-
+-		// DS1820 and DS18S20 have no resolution configuration register
+-		if (deviceAddress[0] != DS18S20MODEL) {
+-
+-			switch (newResolution) {
+-			case 12:
+-				scratchPad[CONFIGURATION] = TEMP_12_BIT;
+-				break;
+-			case 11:
+-				scratchPad[CONFIGURATION] = TEMP_11_BIT;
+-				break;
+-			case 10:
+-				scratchPad[CONFIGURATION] = TEMP_10_BIT;
+-				break;
+-			case 9:
+-			default:
+-				scratchPad[CONFIGURATION] = TEMP_9_BIT;
+-				break;
+-			}
+-			writeScratchPad(deviceAddress, scratchPad);
+-
+-			// without calculation we can always set it to max
+-			bitResolution = max(bitResolution, newResolution);
+-
+-			if (!skipGlobalBitResolutionCalculation
+-					&& (bitResolution > newResolution)) {
+-				bitResolution = newResolution;
+-				DeviceAddress deviceAddr;
+-				for (int i = 0; i < devices; i++) {
+-					getAddress(deviceAddr, i);
+-					bitResolution = max(bitResolution,
+-							getResolution(deviceAddr));
+-				}
+-			}
+-		}
+-		return true;  // new value set
+-	}
+-
+-	return false;
+-
++                                      uint8_t newResolution, bool skipGlobalBitResolutionCalculation) {
++
++  bool success = false;
++
++  // DS1820 and DS18S20 have no resolution configuration register
++  if (deviceAddress[0] == DS18S20MODEL)
++  {
++    success = true;
++  }
++  else
++  {
++
++   // handle the sensors with configuration register
++    newResolution = constrain(newResolution, 9, 12);
++
++    uint8_t newValue = 0;
++    ScratchPad scratchPad;
++
++    // we can only update the sensor if it is connected
++    if (isConnected(deviceAddress, scratchPad))
++    {
++      switch (newResolution) {
++        case 12:
++          newValue = TEMP_12_BIT;
++          break;
++        case 11:
++          newValue = TEMP_11_BIT;
++          break;
++        case 10:
++          newValue = TEMP_10_BIT;
++          break;
++        case 9:
++        default:
++          newValue = TEMP_9_BIT;
++          break;
++      }
++
++      // if it needs to be updated we write the new value
++      if (scratchPad[CONFIGURATION] != newValue)
++      {
++        scratchPad[CONFIGURATION] = newValue;
++        writeScratchPad(deviceAddress, scratchPad);
++      }
++      // done
++      success = true;
++    }
++  }
++
++  // do we need to update the max resolution used?
++  if (skipGlobalBitResolutionCalculation == false)
++  {
++    bitResolution = newResolution;
++    if (devices > 1)
++    {
++      for (uint8_t i = 0; i < devices; i++)
++      {
++        if (bitResolution == 12) break;
++        DeviceAddress deviceAddr;
++        getAddress(deviceAddr, i);
++        uint8_t b = getResolution(deviceAddr);
++        if (b > bitResolution) bitResolution = b;
++      }
++    }
++  }
++
++  return success;
+ }
+ 
++
+ // returns the global resolution
+ uint8_t DallasTemperature::getResolution() {
+ 	return bitResolution;
+@@ -356,6 +372,7 @@ uint8_t DallasTemperature::getResolution(const uint8_t* deviceAddress) {
+ 
+ }
+ 
++
+ // sets the value of the waitForConversion flag
+ // TRUE : function requestTemperature() etc returns when conversion is ready
+ // FALSE: function requestTemperature() etc returns immediately (USE WITH CARE!!)
+@@ -429,16 +446,16 @@ bool DallasTemperature::requestTemperaturesByAddress(
+ // Continue to check if the IC has responded with a temperature
+ void DallasTemperature::blockTillConversionComplete(uint8_t bitResolution) {
+ 
+-	unsigned long delms = millisToWaitForConversion(bitResolution);
+-	if (checkForConversion && !parasite) {
+-		unsigned long start = millis();
+-		while (!isConversionComplete() && (millis() - start < delms))
+-			yield();
+-	} else {
+-        activateExternalPullup();
+-		delay(delms);
+-        deactivateExternalPullup();
+-	}
++  if (checkForConversion && !parasite) {
++    unsigned long start = millis();
++    while (!isConversionComplete() && (millis() - start < MAX_CONVERSION_TIMEOUT ))
++      yield();
++  } else {
++    unsigned long delms = millisToWaitForConversion(bitResolution);
++    activateExternalPullup();
++    delay(delms);
++    deactivateExternalPullup();
++  }
+ 
+ }
+ 
+@@ -485,9 +502,7 @@ float DallasTemperature::getTempCByIndex(uint8_t deviceIndex) {
+ 	if (!getAddress(deviceAddress, deviceIndex)) {
+ 		return DEVICE_DISCONNECTED_C;
+ 	}
+-
+ 	return getTempC((uint8_t*) deviceAddress);
+-
+ }
+ 
+ // Fetch temperature for device index
+diff --git a/examples/Alarm/Alarm.pde b/examples/Alarm/Alarm.ino
+similarity index 99%
+rename from examples/Alarm/Alarm.pde
+rename to examples/Alarm/Alarm.ino
+index d9c6e6c..2aab5f5 100644
+--- a/examples/Alarm/Alarm.pde
++++ b/examples/Alarm/Alarm.ino
+@@ -159,4 +159,4 @@ void loop(void)
+ */
+ 
+ }
+-
++
+diff --git a/examples/AlarmHandler/AlarmHandler.pde b/examples/AlarmHandler/AlarmHandler.ino
+similarity index 99%
+rename from examples/AlarmHandler/AlarmHandler.pde
+rename to examples/AlarmHandler/AlarmHandler.ino
+index e0750d5..fc4655a 100644
+--- a/examples/AlarmHandler/AlarmHandler.pde
++++ b/examples/AlarmHandler/AlarmHandler.ino
+@@ -141,4 +141,4 @@ void loop(void)
+   
+   delay(1000);
+ }
+-
++
+diff --git a/examples/Multiple/Multiple.pde b/examples/Multiple/Multiple.ino
+similarity index 100%
+rename from examples/Multiple/Multiple.pde
+rename to examples/Multiple/Multiple.ino
+diff --git a/examples/Simple/Simple.pde b/examples/Simple/Simple.ino
+similarity index 100%
+rename from examples/Simple/Simple.pde
+rename to examples/Simple/Simple.ino
+diff --git a/examples/Single/Single.pde b/examples/Single/Single.ino
+similarity index 100%
+rename from examples/Single/Single.pde
+rename to examples/Single/Single.ino
+diff --git a/examples/Tester/Tester.pde b/examples/Tester/Tester.ino
+similarity index 100%
+rename from examples/Tester/Tester.pde
+rename to examples/Tester/Tester.ino
+diff --git a/examples/Timing/Timing.ino b/examples/Timing/Timing.ino
+new file mode 100644
+index 0000000..98ced57
+--- /dev/null
++++ b/examples/Timing/Timing.ino
+@@ -0,0 +1,70 @@
++//
++//    FILE: Timing.ino
++//  AUTHOR: Rob Tillaart
++// VERSION: 0.0.2
++// PURPOSE: show performance of DallasTemperature lib 
++//          compared to datasheet times per resolution
++//
++// HISTORY:
++// 0.0.1 = 2017-07-25 initial version
++// 0.0.2 = 2020-02-13 updates to work with current lib version
++
++#include <OneWire.h>
++#include <DallasTemperature.h>
++
++#define ONE_WIRE_BUS 2
++
++OneWire oneWire(ONE_WIRE_BUS);
++DallasTemperature sensor(&oneWire);
++
++uint32_t start, stop;
++
++
++void setup()
++{
++  Serial.begin(9600);
++  Serial.println(__FILE__);
++  Serial.print("DallasTemperature Library version: ");
++  Serial.println(DALLASTEMPLIBVERSION);
++
++  sensor.begin();
++}
++
++void loop()
++{
++  float ti[4] = { 94, 188, 375, 750 };
++
++  Serial.println();
++  Serial.println("Test takes about 30 seconds for 4 resolutions");
++  Serial.println("RES\tTIME\tACTUAL\tGAIN");
++  for (int r = 9; r < 13; r++)
++  {
++    sensor.setResolution(r);
++
++    uint32_t duration = run(20);
++    float avgDuration = duration / 20.0;
++
++    Serial.print(r);
++    Serial.print("\t");
++    Serial.print(ti[r - 9]);
++    Serial.print("\t");
++    Serial.print(avgDuration, 2);
++    Serial.print("\t");
++    Serial.print(avgDuration * 100 / ti[r - 9], 1);
++    Serial.println("%");
++  }
++  delay(1000);
++}
++
++uint32_t run(int runs)
++{
++  float t;
++  start = millis();
++  for (int i = 0; i < runs; i++)
++  {
++    sensor.requestTemperatures();
++    t = sensor.getTempCByIndex(0);
++  }
++  stop = millis();
++  return stop - start;
++}
+diff --git a/examples/WaitForConversion/WaitForConversion.pde b/examples/WaitForConversion/WaitForConversion.ino
+similarity index 99%
+rename from examples/WaitForConversion/WaitForConversion.pde
+rename to examples/WaitForConversion/WaitForConversion.ino
+index 3adda17..52c30be 100644
+--- a/examples/WaitForConversion/WaitForConversion.pde
++++ b/examples/WaitForConversion/WaitForConversion.ino
+@@ -63,4 +63,4 @@ void loop(void)
+   Serial.println("\n\n\n\n");  
+   
+   delay(5000);
+-}
++}
+diff --git a/examples/WaitForConversion2/WaitForConversion2.pde b/examples/WaitForConversion2/WaitForConversion2.ino
+similarity index 99%
+rename from examples/WaitForConversion2/WaitForConversion2.pde
+rename to examples/WaitForConversion2/WaitForConversion2.ino
+index 4322330..f8e7700 100644
+--- a/examples/WaitForConversion2/WaitForConversion2.pde
++++ b/examples/WaitForConversion2/WaitForConversion2.ino
+@@ -77,4 +77,4 @@ void loop(void)
+   // for the demo we just count the idle time in millis
+   delay(1);
+   idle++;
+-}
++}

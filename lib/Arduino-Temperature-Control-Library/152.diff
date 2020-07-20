@@ -1,0 +1,654 @@
+diff --git a/DallasTemperature.cpp b/DallasTemperature.cpp
+index e7c3c20..53dbb33 100644
+--- a/DallasTemperature.cpp
++++ b/DallasTemperature.cpp
+@@ -1,4 +1,4 @@
+-// This library is free software; you can redistribute it and/or
++﻿// This library is free software; you can redistribute it and/or
+ // modify it under the terms of the GNU Lesser General Public
+ // License as published by the Free Software Foundation; either
+ // version 2.1 of the License, or (at your option) any later version.
+@@ -15,10 +15,10 @@ extern "C" {
+ 
+ // OneWire commands
+ #define STARTCONVO      0x44  // Tells device to take a temperature reading and put it on the scratchpad
+-#define COPYSCRATCH     0x48  // Copy EEPROM
+-#define READSCRATCH     0xBE  // Read EEPROM
+-#define WRITESCRATCH    0x4E  // Write to EEPROM
+-#define RECALLSCRATCH   0xB8  // Reload from last known
++#define COPYSCRATCH     0x48  // Copy scratchpad to EEPROM
++#define READSCRATCH     0xBE  // Read from scratchpad
++#define WRITESCRATCH    0x4E  // Write to scratchpad
++#define RECALLSCRATCH   0xB8  // Recall from EEPROM to scratchpad
+ #define READPOWERSUPPLY 0xB4  // Determine if device needs parasite power
+ #define ALARMSEARCH     0xEC  // Query bus for devices with an alarm condition
+ 
+@@ -41,20 +41,15 @@ extern "C" {
+ 
+ #define NO_ALARM_HANDLER ((AlarmHandler *)0)
+ 
+-DallasTemperature::DallasTemperature()
+-{
++DallasTemperature::DallasTemperature() {
+ #if REQUIRESALARMS
+ 	setAlarmHandler(NO_ALARM_HANDLER);
+ #endif
+     useExternalPullup = false;
+ }
+-DallasTemperature::DallasTemperature(OneWire* _oneWire)
+-{
++
++DallasTemperature::DallasTemperature(OneWire* _oneWire) : DallasTemperature() {
+ 	setOneWire(_oneWire);
+-#if REQUIRESALARMS
+-	setAlarmHandler(NO_ALARM_HANDLER);
+-#endif
+-    useExternalPullup = false;
+ }
+ 
+ bool DallasTemperature::validFamily(const uint8_t* deviceAddress) {
+@@ -74,8 +69,8 @@ bool DallasTemperature::validFamily(const uint8_t* deviceAddress) {
+  * Constructs DallasTemperature with strong pull-up turned on. Strong pull-up is mandated in DS18B20 datasheet for parasitic
+  * power (2 wires) setup. (https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf, p. 7, section 'Powering the DS18B20').
+  */
+-DallasTemperature::DallasTemperature(OneWire* _oneWire, uint8_t _pullupPin) : DallasTemperature(_oneWire){
+-    setPullupPin(_pullupPin);
++DallasTemperature::DallasTemperature(OneWire* _oneWire, uint8_t _pullupPin) : DallasTemperature(_oneWire) {
++  setPullupPin(_pullupPin);
+ }
+ 
+ void DallasTemperature::setPullupPin(uint8_t _pullupPin) {
+@@ -94,6 +89,7 @@ void DallasTemperature::setOneWire(OneWire* _oneWire) {
+ 	bitResolution = 9;
+ 	waitForConversion = true;
+ 	checkForConversion = true;
++  autoSaveScratchPad = true;
+ 
+ }
+ 
+@@ -109,19 +105,18 @@ void DallasTemperature::begin(void) {
+ 	while (_wire->search(deviceAddress)) {
+ 
+ 		if (validAddress(deviceAddress)) {
+-
+-			if (!parasite && readPowerSupply(deviceAddress))
+-				parasite = true;
+-
+-			bitResolution = max(bitResolution, getResolution(deviceAddress));
+-
+ 			devices++;
++
+ 			if (validFamily(deviceAddress)) {
+ 				ds18Count++;
++
++				if (!parasite && readPowerSupply(deviceAddress))
++					parasite = true;
++
++				bitResolution = max(bitResolution, getResolution(deviceAddress));
+ 			}
+ 		}
+ 	}
+-
+ }
+ 
+ // returns the number of devices found on the bus
+@@ -217,20 +212,10 @@ void DallasTemperature::writeScratchPad(const uint8_t* deviceAddress,
+ 	if (deviceAddress[0] != DS18S20MODEL)
+ 		_wire->write(scratchPad[CONFIGURATION]);
+ 
+-	_wire->reset();
+-
+-	// save the newly written values to eeprom
+-	_wire->select(deviceAddress);
+-	_wire->write(COPYSCRATCH, parasite);
+-	delay(20); // <--- added 20ms delay to allow 10ms long EEPROM write operation (as specified by datasheet)
+-
+-    if (parasite) {
+-		activateExternalPullup();
+-		delay(10); // 10ms delay
+-		deactivateExternalPullup();
+-	}
++  if (autoSaveScratchPad)
++    saveScratchPad(deviceAddress);
++  else
+     _wire->reset();
+-
+ }
+ 
+ // returns true if parasite mode is used (2 wire)
+@@ -268,7 +253,7 @@ void DallasTemperature::setResolution(uint8_t newResolution) {
+ }
+ 
+ // set resolution of a device to 9, 10, 11, or 12 bits
+-// if new resolution is out of range, 9 bits is used.
++// if new resolution is out of range, it is constrained.
+ bool DallasTemperature::setResolution(const uint8_t* deviceAddress,
+ 		uint8_t newResolution, bool skipGlobalBitResolutionCalculation) {
+ 
+@@ -429,16 +414,16 @@ bool DallasTemperature::requestTemperaturesByAddress(
+ // Continue to check if the IC has responded with a temperature
+ void DallasTemperature::blockTillConversionComplete(uint8_t bitResolution) {
+ 
+-	unsigned long delms = millisToWaitForConversion(bitResolution);
+-	if (checkForConversion && !parasite) {
+-		unsigned long start = millis();
+-		while (!isConversionComplete() && (millis() - start < delms))
+-			yield();
+-	} else {
+-        activateExternalPullup();
+-		delay(delms);
+-        deactivateExternalPullup();
+-	}
++  if (checkForConversion && !parasite) {
++    unsigned long start = millis();
++    while (!isConversionComplete() && (millis() - start < MAX_CONVERSION_TIMEOUT ))
++      yield();
++  } else {
++    unsigned long delms = millisToWaitForConversion(bitResolution);
++    activateExternalPullup();
++    delay(delms);
++    deactivateExternalPullup();
++  }
+ 
+ }
+ 
+@@ -458,6 +443,94 @@ int16_t DallasTemperature::millisToWaitForConversion(uint8_t bitResolution) {
+ 
+ }
+ 
++// Sends command to one device to save values from scratchpad to EEPROM by index
++// Returns true if no errors were encountered, false indicates failure
++bool DallasTemperature::saveScratchPadByIndex(uint8_t deviceIndex) {
++  
++  DeviceAddress deviceAddress;
++  if (!getAddress(deviceAddress, deviceIndex)) return false;
++  
++  return saveScratchPad(deviceAddress);
++  
++}
++
++// Sends command to one or more devices to save values from scratchpad to EEPROM
++// If optional argument deviceAddress is omitted the command is send to all devices
++// Returns true if no errors were encountered, false indicates failure
++bool DallasTemperature::saveScratchPad(const uint8_t* deviceAddress) {
++  
++  if (_wire->reset() == 0)
++    return false;
++  
++  if (deviceAddress == nullptr)
++    _wire->skip();
++  else
++    _wire->select(deviceAddress);
++  
++  _wire->write(COPYSCRATCH,parasite);
++
++  // Specification: NV Write Cycle Time is typically 2ms, max 10ms
++  // Waiting 20ms to allow for sensors that take longer in practice
++  if (!parasite) {
++    delay(20);
++  } else {
++    activateExternalPullup();
++    delay(20);
++    deactivateExternalPullup();
++  }
++  
++  return _wire->reset() == 1;
++  
++}
++
++// Sends command to one device to recall values from EEPROM to scratchpad by index
++// Returns true if no errors were encountered, false indicates failure
++bool DallasTemperature::recallScratchPadByIndex(uint8_t deviceIndex) {
++
++  DeviceAddress deviceAddress;
++  if (!getAddress(deviceAddress, deviceIndex)) return false;
++  
++  return recallScratchPad(deviceAddress);
++
++}
++
++// Sends command to one or more devices to recall values from EEPROM to scratchpad
++// If optional argument deviceAddress is omitted the command is send to all devices
++// Returns true if no errors were encountered, false indicates failure
++bool DallasTemperature::recallScratchPad(const uint8_t* deviceAddress) {
++  
++  if (_wire->reset() == 0)
++    return false;
++  
++  if (deviceAddress == nullptr)
++    _wire->skip();
++  else
++    _wire->select(deviceAddress);
++  
++  _wire->write(RECALLSCRATCH,parasite);
++
++  // Specification: Strong pullup only needed when writing to EEPROM (and temp conversion)
++  unsigned long start = millis();
++  while (_wire->read_bit() == 0) {
++    // Datasheet doesn't specify typical/max duration, testing reveals typically within 1ms
++    if (millis() - start > 20) return false;
++    yield();
++  }
++  
++  return _wire->reset() == 1;
++  
++}
++
++// Sets the autoSaveScratchPad flag
++void DallasTemperature::setAutoSaveScratchPad(bool flag) {
++  autoSaveScratchPad = flag;
++}
++
++// Gets the autoSaveScratchPad flag
++bool DallasTemperature::getAutoSaveScratchPad() {
++  return autoSaveScratchPad;
++}
++
+ void DallasTemperature::activateExternalPullup() {
+ 	if(useExternalPullup)
+ 		digitalWrite(pullupPin, LOW);
+@@ -481,11 +554,10 @@ bool DallasTemperature::requestTemperaturesByIndex(uint8_t deviceIndex) {
+ // Fetch temperature for device index
+ float DallasTemperature::getTempCByIndex(uint8_t deviceIndex) {
+ 
+-	DeviceAddress deviceAddress;
++DeviceAddress deviceAddress;
+ 	if (!getAddress(deviceAddress, deviceIndex)) {
+ 		return DEVICE_DISCONNECTED_C;
+ 	}
+-
+ 	return getTempC((uint8_t*) deviceAddress);
+ 
+ }
+diff --git a/DallasTemperature.h b/DallasTemperature.h
+index 9ce6138..aa2f394 100644
+--- a/DallasTemperature.h
++++ b/DallasTemperature.h
+@@ -27,7 +27,7 @@
+ 
+ // Model IDs
+ #define DS18S20MODEL 0x10  // also DS1820
+-#define DS18B20MODEL 0x28
++#define DS18B20MODEL 0x28  // also MAX31820
+ #define DS1822MODEL  0x22
+ #define DS1825MODEL  0x3B
+ #define DS28EA00MODEL 0x42
+@@ -37,6 +37,9 @@
+ #define DEVICE_DISCONNECTED_F -196.6
+ #define DEVICE_DISCONNECTED_RAW -7040
+ 
++// Other
++#define MAX_CONVERSION_TIMEOUT 750
++
+ // For readPowerSupply on oneWire bus
+ #ifndef nullptr
+ #define nullptr NULL
+@@ -140,7 +143,29 @@ class DallasTemperature {
+ 	// Is a conversion complete on the wire? Only applies to the first sensor on the wire.
+ 	bool isConversionComplete(void);
+ 
+-    int16_t millisToWaitForConversion(uint8_t);
++  int16_t millisToWaitForConversion(uint8_t);
++  
++  // Sends command to one device to save values from scratchpad to EEPROM by index
++  // Returns true if no errors were encountered, false indicates failure
++  bool saveScratchPadByIndex(uint8_t);
++  
++  // Sends command to one or more devices to save values from scratchpad to EEPROM
++  // Returns true if no errors were encountered, false indicates failure
++  bool saveScratchPad(const uint8_t* = nullptr);
++  
++  // Sends command to one device to recall values from EEPROM to scratchpad by index
++  // Returns true if no errors were encountered, false indicates failure
++  bool recallScratchPadByIndex(uint8_t);
++  
++  // Sends command to one or more devices to recall values from EEPROM to scratchpad
++  // Returns true if no errors were encountered, false indicates failure
++  bool recallScratchPad(const uint8_t* = nullptr);
++  
++  // Sets the autoSaveScratchPad flag
++  void setAutoSaveScratchPad(bool);
++  
++  // Gets the autoSaveScratchPad flag
++  bool getAutoSaveScratchPad(void);
+ 
+ #if REQUIRESALARMS
+ 
+@@ -237,6 +262,9 @@ class DallasTemperature {
+ 	// used to requestTemperature to dynamically check if a conversion is complete
+ 	bool checkForConversion;
+ 
++  // used to determine if values will be saved from scratchpad to EEPROM on every scratchpad write
++  bool autoSaveScratchPad;
++
+ 	// count of devices on the bus
+ 	uint8_t devices;
+ 
+diff --git a/examples/Alarm/Alarm.pde b/examples/Alarm/Alarm.ino
+similarity index 99%
+rename from examples/Alarm/Alarm.pde
+rename to examples/Alarm/Alarm.ino
+index d9c6e6c..2aab5f5 100644
+--- a/examples/Alarm/Alarm.pde
++++ b/examples/Alarm/Alarm.ino
+@@ -159,4 +159,4 @@ void loop(void)
+ */
+ 
+ }
+-
++
+diff --git a/examples/AlarmHandler/AlarmHandler.pde b/examples/AlarmHandler/AlarmHandler.ino
+similarity index 99%
+rename from examples/AlarmHandler/AlarmHandler.pde
+rename to examples/AlarmHandler/AlarmHandler.ino
+index e0750d5..fc4655a 100644
+--- a/examples/AlarmHandler/AlarmHandler.pde
++++ b/examples/AlarmHandler/AlarmHandler.ino
+@@ -141,4 +141,4 @@ void loop(void)
+   
+   delay(1000);
+ }
+-
++
+diff --git a/examples/Multiple/Multiple.pde b/examples/Multiple/Multiple.ino
+similarity index 100%
+rename from examples/Multiple/Multiple.pde
+rename to examples/Multiple/Multiple.ino
+diff --git a/examples/SaveRecallScratchPad/SaveRecallScratchPad.ino b/examples/SaveRecallScratchPad/SaveRecallScratchPad.ino
+new file mode 100644
+index 0000000..c07f42a
+--- /dev/null
++++ b/examples/SaveRecallScratchPad/SaveRecallScratchPad.ino
+@@ -0,0 +1,106 @@
++//
++//    FILE: SaveRecallScratchPad.ino
++//  AUTHOR: GitKomodo
++// VERSION: 0.0.1
++// PURPOSE: Show DallasTemperature lib functionality to
++//          save/recall ScratchPad values to/from EEPROM
++//
++// HISTORY:
++// 0.0.1 = 2020-02-18 initial version
++//
++
++#include <OneWire.h>
++#include <DallasTemperature.h>
++
++#define ONE_WIRE_BUS 2
++
++OneWire oneWire(ONE_WIRE_BUS);
++DallasTemperature sensors(&oneWire);
++DeviceAddress deviceAddress;
++
++void setup()
++{
++  Serial.begin(9600);
++  Serial.println(__FILE__);
++  Serial.println("Dallas Temperature Demo");
++  
++  sensors.begin();
++  
++  // Get ID of first sensor (at index 0)
++  sensors.getAddress(deviceAddress,0);
++
++  // By default configuration and alarm/userdata registers are also saved to EEPROM
++  // when they're changed. Sensors recall these values automatically when powered up.
++  
++  // Turn OFF automatic saving of configuration and alarm/userdata registers to EEPROM
++  sensors.setAutoSaveScratchPad(false);
++  
++  // Change configuration and alarm/userdata registers on the scratchpad
++  int8_t resolution = 12;
++  sensors.setResolution(deviceAddress,resolution);
++  int16_t userdata = 24680;
++  sensors.setUserData(deviceAddress,userdata);
++
++  // Save configuration and alarm/userdata registers to EEPROM
++  sensors.saveScratchPad(deviceAddress);
++
++  // saveScratchPad can also be used without a parameter to save the configuration
++  // and alarm/userdata registers of ALL connected sensors to EEPROM:
++  //
++  //   sensors.saveScratchPad();
++  //
++  // Or the configuration and alarm/userdata registers of a sensor can be saved to
++  // EEPROM by index:
++  //
++  //   sensors.saveScratchPadByIndex(0);
++  
++  // Print current values on the scratchpad (resolution = 12, userdata = 24680)
++  printValues();
++  
++}
++
++void loop(){
++  
++  // Change configuration and alarm/userdata registers on the scratchpad
++  int8_t resolution = 10;
++  sensors.setResolution(deviceAddress,resolution);
++  int16_t userdata = 12345;
++  sensors.setUserData(deviceAddress,userdata);
++  
++  // Print current values on the scratchpad (resolution = 10, userdata = 12345)
++  printValues();
++  
++  delay(2000);
++  
++  // Recall configuration and alarm/userdata registers from EEPROM
++  sensors.recallScratchPad(deviceAddress);
++  
++  // recallScratchPad can also be used without a parameter to recall the configuration
++  // and alarm/userdata registers of ALL connected sensors from EEPROM:
++  //
++  //   sensors.recallScratchPad();
++  //
++  // Or the configuration and alarm/userdata registers of a sensor can be recalled
++  // from EEPROM by index:
++  //
++  //   sensors.recallScratchPadByIndex(0);
++  
++  // Print current values on the scratchpad (resolution = 12, userdata = 24680)
++  printValues();
++  
++  delay(2000);
++  
++}
++
++void printValues() {
++  
++  Serial.println();
++  Serial.println("Current values on the scratchpad:");
++  
++  Serial.print("Resolution:\t");
++  Serial.println(sensors.getResolution(deviceAddress));
++  
++  Serial.print("User data:\t");
++  Serial.println(sensors.getUserData(deviceAddress));
++  
++}
+diff --git a/examples/Simple/Simple.pde b/examples/Simple/Simple.ino
+similarity index 100%
+rename from examples/Simple/Simple.pde
+rename to examples/Simple/Simple.ino
+diff --git a/examples/Single/Single.pde b/examples/Single/Single.ino
+similarity index 100%
+rename from examples/Single/Single.pde
+rename to examples/Single/Single.ino
+diff --git a/examples/Tester/Tester.pde b/examples/Tester/Tester.ino
+similarity index 100%
+rename from examples/Tester/Tester.pde
+rename to examples/Tester/Tester.ino
+diff --git a/examples/Timing/Timing.ino b/examples/Timing/Timing.ino
+new file mode 100644
+index 0000000..98ced57
+--- /dev/null
++++ b/examples/Timing/Timing.ino
+@@ -0,0 +1,70 @@
++//
++//    FILE: Timing.ino
++//  AUTHOR: Rob Tillaart
++// VERSION: 0.0.2
++// PURPOSE: show performance of DallasTemperature lib 
++//          compared to datasheet times per resolution
++//
++// HISTORY:
++// 0.0.1 = 2017-07-25 initial version
++// 0.0.2 = 2020-02-13 updates to work with current lib version
++
++#include <OneWire.h>
++#include <DallasTemperature.h>
++
++#define ONE_WIRE_BUS 2
++
++OneWire oneWire(ONE_WIRE_BUS);
++DallasTemperature sensor(&oneWire);
++
++uint32_t start, stop;
++
++
++void setup()
++{
++  Serial.begin(9600);
++  Serial.println(__FILE__);
++  Serial.print("DallasTemperature Library version: ");
++  Serial.println(DALLASTEMPLIBVERSION);
++
++  sensor.begin();
++}
++
++void loop()
++{
++  float ti[4] = { 94, 188, 375, 750 };
++
++  Serial.println();
++  Serial.println("Test takes about 30 seconds for 4 resolutions");
++  Serial.println("RES\tTIME\tACTUAL\tGAIN");
++  for (int r = 9; r < 13; r++)
++  {
++    sensor.setResolution(r);
++
++    uint32_t duration = run(20);
++    float avgDuration = duration / 20.0;
++
++    Serial.print(r);
++    Serial.print("\t");
++    Serial.print(ti[r - 9]);
++    Serial.print("\t");
++    Serial.print(avgDuration, 2);
++    Serial.print("\t");
++    Serial.print(avgDuration * 100 / ti[r - 9], 1);
++    Serial.println("%");
++  }
++  delay(1000);
++}
++
++uint32_t run(int runs)
++{
++  float t;
++  start = millis();
++  for (int i = 0; i < runs; i++)
++  {
++    sensor.requestTemperatures();
++    t = sensor.getTempCByIndex(0);
++  }
++  stop = millis();
++  return stop - start;
++}
+diff --git a/examples/WaitForConversion/WaitForConversion.pde b/examples/WaitForConversion/WaitForConversion.ino
+similarity index 99%
+rename from examples/WaitForConversion/WaitForConversion.pde
+rename to examples/WaitForConversion/WaitForConversion.ino
+index 3adda17..52c30be 100644
+--- a/examples/WaitForConversion/WaitForConversion.pde
++++ b/examples/WaitForConversion/WaitForConversion.ino
+@@ -63,4 +63,4 @@ void loop(void)
+   Serial.println("\n\n\n\n");  
+   
+   delay(5000);
+-}
++}
+diff --git a/examples/WaitForConversion2/WaitForConversion2.pde b/examples/WaitForConversion2/WaitForConversion2.ino
+similarity index 99%
+rename from examples/WaitForConversion2/WaitForConversion2.pde
+rename to examples/WaitForConversion2/WaitForConversion2.ino
+index 4322330..f8e7700 100644
+--- a/examples/WaitForConversion2/WaitForConversion2.pde
++++ b/examples/WaitForConversion2/WaitForConversion2.ino
+@@ -77,4 +77,4 @@ void loop(void)
+   // for the demo we just count the idle time in millis
+   delay(1);
+   idle++;
+-}
++}
+diff --git a/keywords.txt b/keywords.txt
+index 8e87d60..2d17db8 100644
+--- a/keywords.txt
++++ b/keywords.txt
+@@ -14,27 +14,44 @@ DeviceAddress	KEYWORD1
+ # Methods and Functions (KEYWORD2)
+ #######################################
+ 
++setOneWire	KEYWORD2
++setPullupPin	KEYWORD2
+ setResolution	KEYWORD2
+ getResolution	KEYWORD2
++getTemp	KEYWORD2
+ getTempC	KEYWORD2
+ toFahrenheit	KEYWORD2
+ getTempF	KEYWORD2
+ getTempCByIndex	KEYWORD2
+ getTempFByIndex	KEYWORD2
++rawToCelsius	KEYWORD2
++rawToFahrenheit	KEYWORD2
+ setWaitForConversion	KEYWORD2
+ getWaitForConversion	KEYWORD2
+ requestTemperatures	KEYWORD2
+ requestTemperaturesByAddress	KEYWORD2
+ requestTemperaturesByIndex	KEYWORD2
++setCheckForConversion	KEYWORD2
++getCheckForConversion	KEYWORD2
++isConversionComplete	KEYWORD2
++millisToWaitForConversion	KEYWORD2
+ isParasitePowerMode	KEYWORD2
+ begin	KEYWORD2
+ getDeviceCount	KEYWORD2
++getDS18Count	KEYWORD2
+ getAddress	KEYWORD2
+ validAddress	KEYWORD2
++validFamily	KEYWORD2
+ isConnected	KEYWORD2
+ readScratchPad	KEYWORD2
+ writeScratchPad	KEYWORD2
+ readPowerSupply	KEYWORD2
++saveScratchPadByIndex	KEYWORD2
++saveScratchPad	KEYWORD2
++recallScratchPadByIndex	KEYWORD2
++recallScratchPad	KEYWORD2
++setAutoSaveScratchPad	KEYWORD2
++getAutoSaveScratchPad	KEYWORD2
+ setHighAlarmTemp	KEYWORD2
+ setLowAlarmTemp	KEYWORD2
+ getHighAlarmTemp	KEYWORD2
+@@ -43,12 +60,19 @@ resetAlarmSearch	KEYWORD2
+ alarmSearch	KEYWORD2
+ hasAlarm	KEYWORD2
+ toCelsius	KEYWORD2
+-processAlarmss	KEYWORD2
+-setAlarmHandlers	KEYWORD2
+-defaultAlarmHandler	KEYWORD2
++processAlarms	KEYWORD2
++setAlarmHandler	KEYWORD2
++hasAlarmHandler	KEYWORD2
++setUserData	KEYWORD2
++setUserDataByIndex	KEYWORD2
++getUserData	KEYWORD2
++getUserDataByIndex	KEYWORD2
+ calculateTemperature	KEYWORD2
+ 
+ #######################################
+ # Constants (LITERAL1)
+ #######################################
+ 
++DEVICE_DISCONNECTED_C	LITERAL1
++DEVICE_DISCONNECTED_F	LITERAL1
++DEVICE_DISCONNECTED_RAW	LITERAL1
