@@ -21,12 +21,21 @@
 */
 
 
-#define slowPwm 204 // 20%
+#define changePwm 210 // 20%
+#define slowPwm 10 // 1 %
+#define fastPwm 20 // 2 %
+#define downFactor 1.5 // (1.5% en lento, 4% en rápido)
+#define maxPwmLowCost 1073 // 1023 + 59
+
+uint16_t maxPwm;
+uint16_t targetPwm;
 
 void pwmControl()
-{
-
+{ 
   if (config.flags.moreDebug) { INFOV("PWMCONTROL()\n"); }
+
+  if (config.flags.dimmerLowCost) { maxPwm = maxPwmLowCost; } 
+  else { maxPwm = 1023;}
 
   // Check pwm_output
 
@@ -50,109 +59,131 @@ void pwmControl()
     down_pwm(true);
   }
 
-  // Control manual del pwm
+  //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
   {
-    uint16_t maxPwm = (1023 * config.manualControlPWM) / 100;
+    if (config.flags.dimmerLowCost) { targetPwm = ((((maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210); }
+    else { targetPwm = (1023 * config.manualControlPWM) / 100; }
 
     relay_control_man(false);
 
-    if (invert_pwm <= maxPwm)
+    if (invert_pwm < targetPwm)
     {
-      #ifdef PWMCHINOMALO
-        if (invert_pwm < 200) { invert_pwm = 200; } // Solución Fernando
-      #endif
-      if (invert_pwm <= slowPwm) // hasta el 20 % subida lenta
-        invert_pwm += 20;
-      else if (invert_pwm > slowPwm)
-        invert_pwm += 50;
+      if (invert_pwm <= changePwm) // hasta el 20 % subida lenta
+        invert_pwm += slowPwm;
+      else if (invert_pwm > changePwm)
+        invert_pwm += fastPwm;
 
+      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 210; } // Solución Fernando
+      
       invert_pwm = constrain(invert_pwm, 0, maxPwm);
       if (invert_pwm != last_invert_pwm)
       {
         if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: SUBIENDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
-      ledcWrite(2, invert_pwm);
-      dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
+      
+      writePwmValue(invert_pwm);
     }
-    else if (invert_pwm > maxPwm)
+    else if (invert_pwm > targetPwm)
     {
-      invertPwmDown();
-      invert_pwm = constrain(invert_pwm, 0, 1023);
+      if ((invert_pwm - targetPwm) > (fastPwm * downFactor)) {
+        invert_pwm -= (fastPwm * downFactor);
+      } else if ((invert_pwm - targetPwm) > (slowPwm * downFactor)) {
+        invert_pwm -= (slowPwm * downFactor);
+      } else if ((invert_pwm - targetPwm) >= 10) {
+        invert_pwm -= 10;
+      } else if ((invert_pwm - targetPwm) >= 5) {
+        invert_pwm -= 5;
+      } else if (invert_pwm >= 1) {
+        invert_pwm--;
+      }
+  
+      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 0; } // Solución Fernando
+
+      invert_pwm = constrain(invert_pwm, 0, maxPwm);
       if (invert_pwm != last_invert_pwm)
       {
         if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
-      ledcWrite(2, invert_pwm);
-      dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
+      
+     writePwmValue(invert_pwm);
     }
   }
 
-  // Control automatico del pwm
+  //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
   if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && Flags.pwmIsWorking)
   {
-    if (inverter.wgrid > config.pwmMin && inverter.batteryWatts >= 0)
+    // if (inverter.wgrid > config.pwmMin && inverter.batteryWatts >= 0)
+    if (config.flags.debug4) { INFOV("Dentro de Auto\n"); }
+    if ((config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= 0)
     {
-      if (inverter.wgrid > config.pwmMax && invert_pwm <= slowPwm)
-      {
-        #ifdef PWMCHINOMALO
-          if (invert_pwm < 200) { invert_pwm = 200; } // Solución Fernando
-        #endif
-        invert_pwm += 10;
-      }
-      else if (inverter.wgrid > config.pwmMax && invert_pwm > slowPwm)
-        invert_pwm += 25;
+      // if (inverter.wgrid > config.pwmMax && invert_pwm <= changePwm)
+      // {
+      //   invert_pwm += slowPwm;
+      // }
+      // else if (inverter.wgrid > config.pwmMax && invert_pwm > changePwm)
+      //   invert_pwm += fastPwm;
+      if (config.flags.debug4) { INFOV("Dentro de pwmmin\n"); }
 
-      invert_pwm = constrain(invert_pwm, 0, 1023); // Limitamos el valor
+      if (config.flags.changeGridSign ? inverter.wgrid < config.pwmMax : inverter.wgrid > config.pwmMax) {
+        if (config.flags.debug4) { INFOV("Dentro de pwmmax\n"); }
+
+        if (invert_pwm <= changePwm)
+        {
+          invert_pwm += slowPwm;
+        } else {
+          invert_pwm += fastPwm;
+        }
+      }
+
+      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 210; } // Solución Fernando
+      
+      invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)
       {
         if (config.flags.debug) { INFOV(PSTR("PWM: SUBIENDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
-      ledcWrite(2, invert_pwm); // Write new pwm value
-      dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
+      writePwmValue(invert_pwm);
     }
-    else if (inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0)
+    // else if (inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0)
+    else if ((config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < 0)
     {
-      if ((inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0) && invert_pwm > slowPwm)
-        invert_pwm -= 35; // 50
-      else if ((inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0) && invert_pwm <= slowPwm)
-      {
-        if (invert_pwm > 20)
-          invert_pwm -= 20;
-        else if (invert_pwm > 15)
-          invert_pwm -= 15;
-        else if (invert_pwm > 5)
-          invert_pwm -= 5;
-        else if (invert_pwm >= 1)
-          invert_pwm--;
-
-        #ifdef PWMCHINOMALO
-          if (invert_pwm <= 200) { invert_pwm = 0; } // Solución Fernando
-        #endif
+      if (invert_pwm > (fastPwm * downFactor)) {
+        invert_pwm -= (fastPwm * downFactor);
+      } else if (invert_pwm > (slowPwm * downFactor)) {
+        invert_pwm -= (slowPwm * downFactor);
+      } else if (invert_pwm >= 10) {
+        invert_pwm -= 10;
+      } else if (invert_pwm >= 5) {
+        invert_pwm -= 5;
+      } else if (invert_pwm >= 1) {
+        invert_pwm--;
       }
-      invert_pwm = constrain(invert_pwm, 0, 1023); // Limitamos el valor
+      
+      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 0; } // Solución Fernando
+            
+      invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)
       {
         if (config.flags.debug) { INFOV(PSTR("PWM: BAJANDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
-      ledcWrite(2, invert_pwm); // Write new pwm value
-      dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
+      writePwmValue(invert_pwm);
     }
   }
 
   calcPwmProgressBar();
 
-  ///////////////////// SALIDAS POR PORCENTAJE /////////////////////////
+  /////////////////////////////////////////////////////////////// SALIDAS POR PORCENTAJE ////////////////////////////////////////////////////////////////////////////////
 
   // Start at defined pwm value
 
   if (!config.flags.pwmMan && config.flags.pwmEnabled)
   {
-    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && (progressbar >= config.R01Min))
+    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && (pwmValue >= config.R01Min))
     {
       // Start relay1
       digitalWrite(PIN_RL1, HIGH);
@@ -163,7 +194,7 @@ void pwmControl()
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && (progressbar >= config.R02Min))
+    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && (pwmValue >= config.R02Min))
     {
       // Start relay2
       digitalWrite(PIN_RL2, HIGH);
@@ -174,7 +205,7 @@ void pwmControl()
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && (progressbar >= config.R03Min))
+    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && (pwmValue >= config.R03Min))
     {
       // Start relay3
       digitalWrite(PIN_RL3, HIGH);
@@ -185,7 +216,7 @@ void pwmControl()
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && (progressbar >= config.R04Min))
+    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && (pwmValue >= config.R04Min))
     {
       // Start relay4
       digitalWrite(PIN_RL4, HIGH);
@@ -201,7 +232,7 @@ void pwmControl()
 
   if (!Flags.RelayTurnOff)
   {
-    if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (progressbar <= ((config.R04Min - 10) < 0 ? 0 : (config.R04Min - 10))) && config.R04Min != 999)
+    if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (pwmValue <= ((config.R04Min - 10) < 0 ? 0 : (config.R04Min - 10))) && config.R04Min != 999)
     {
       digitalWrite(PIN_RL4, LOW);
       INFOV("Apagado por %% Salida 4\n");
@@ -212,7 +243,7 @@ void pwmControl()
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (progressbar <= ((config.R03Min - 10) < 0 ? 0 : (config.R03Min - 10))) && config.R03Min != 999)
+    if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (pwmValue <= ((config.R03Min - 10) < 0 ? 0 : (config.R03Min - 10))) && config.R03Min != 999)
     {
       digitalWrite(PIN_RL3, LOW);
       INFOV("Apagado por %% Salida 3\n");
@@ -223,7 +254,7 @@ void pwmControl()
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (progressbar <= ((config.R02Min - 10) < 0 ? 0 : (config.R02Min - 10))) && config.R02Min != 999)
+    if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (pwmValue <= ((config.R02Min - 10) < 0 ? 0 : (config.R02Min - 10))) && config.R02Min != 999)
     {
       digitalWrite(PIN_RL2, LOW);
       INFOV("Apagado por %% Salida 2\n");
@@ -234,7 +265,7 @@ void pwmControl()
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (progressbar <= ((config.R01Min - 10) < 0 ? 0 : (config.R01Min - 10))) && config.R01Min != 999)
+    if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (pwmValue <= ((config.R01Min - 10) < 0 ? 0 : (config.R01Min - 10))) && config.R01Min != 999)
     {
       digitalWrite(PIN_RL1, LOW);
       INFOV("Apagado por %% Salida 1\n");
@@ -247,13 +278,14 @@ void pwmControl()
     }
   }
 
-  ///////////////////// SALIDAS POR POTENCIA /////////////////////////
+  //////////////////////////////////////////////////////////////////////// SALIDAS POR POTENCIA ////////////////////////////////////////////////////////////////////////////////////
 
   // Start at defined power on
 
-  if (!config.flags.pwmMan && config.flags.pwmEnabled && (progressbar >= config.autoControlPWM))
+  if (!config.flags.pwmMan && config.flags.pwmEnabled && (pwmValue >= config.autoControlPWM))
   {
-    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (inverter.wgrid > config.R01PotOn))
+    //if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (inverter.wgrid > config.R01PotOn))
+    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R01PotOn : inverter.wgrid > config.R01PotOn))
     {
       // Start relay1
       digitalWrite(PIN_RL1, HIGH);
@@ -263,7 +295,7 @@ void pwmControl()
       if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     }
-    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && config.R02Min == 999 && (inverter.wgrid > config.R02PotOn))
+    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && config.R02Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R02PotOn : inverter.wgrid > config.R02PotOn))
     {
       // Start relay2
       digitalWrite(PIN_RL2, HIGH);
@@ -273,7 +305,7 @@ void pwmControl()
       if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     }
-    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && config.R03Min == 999 && (inverter.wgrid > config.R03PotOn))
+    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && config.R03Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R03PotOn : inverter.wgrid > config.R03PotOn))
     {
       // Start relay3
       digitalWrite(PIN_RL3, HIGH);
@@ -283,7 +315,7 @@ void pwmControl()
       if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
     }
-    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && config.R04Min == 999 && (inverter.wgrid > config.R04PotOn))
+    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && config.R04Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R04PotOn : inverter.wgrid > config.R04PotOn))
     {
       // Start relay4
       digitalWrite(PIN_RL4, HIGH);
@@ -297,7 +329,8 @@ void pwmControl()
 
   // Stop at defined power off
 
-  if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && config.R04Min == 999 && (inverter.wgrid < config.R04PotOff))
+  // if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && config.R04Min == 999 && (inverter.wgrid < config.R04PotOff))
+  if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && config.R04Min == 999 && (config.flags.changeGridSign ? inverter.wgrid > config.R04PotOff : inverter.wgrid < config.R04PotOff))
   {
     // Start relay4
     digitalWrite(PIN_RL4, LOW);
@@ -308,7 +341,7 @@ void pwmControl()
       publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
   }
 
-  if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && config.R03Min == 999 && (inverter.wgrid < config.R03PotOff))
+  if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && config.R03Min == 999 && (config.flags.changeGridSign ? inverter.wgrid > config.R03PotOff : inverter.wgrid < config.R03PotOff))
   {
     // Start relay3
     digitalWrite(PIN_RL3, LOW);
@@ -319,7 +352,7 @@ void pwmControl()
       publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
   }
 
-  if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && config.R02Min == 999 && (inverter.wgrid < config.R02PotOff))
+  if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && config.R02Min == 999 && (config.flags.changeGridSign ? inverter.wgrid > config.R02PotOff : inverter.wgrid < config.R02PotOff))
   {
     // Start relay2
     digitalWrite(PIN_RL2, LOW);
@@ -330,7 +363,7 @@ void pwmControl()
       publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
   }
 
-  if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && config.R01Min == 999 && (inverter.wgrid < config.R01PotOff))
+  if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && config.R01Min == 999 && (config.flags.changeGridSign ? inverter.wgrid > config.R01PotOff : inverter.wgrid < config.R01PotOff))
   {
     // Start relay1
     digitalWrite(PIN_RL1, LOW);
@@ -352,6 +385,14 @@ void pwmControl()
   } 
 }
 
+void writePwmValue(uint16_t value)
+{
+  if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
+  
+  ledcWrite(2, value);
+  dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
+}
+
 void enableRelay(void)
 {
   Flags.RelayTurnOn = true;
@@ -366,15 +407,18 @@ void disableRelay(void)
 
 void calcPwmProgressBar()
 {
-  char tmp[7];
+  // Arreglos necesarios para mostrar el % correcto en caso de usar el dimmer low cost afectado por el fallo del 20%
 
-  dtostrfd(((invert_pwm * 100) / 1022), 0, tmp);
-  pro = String(tmp);
-  progressbar = ((invert_pwm * 100) / 1022);
+  if (config.flags.dimmerLowCost) {
+    if (invert_pwm > 0) { pwmValue = round(((invert_pwm - 210) * 100.0) / (maxPwmLowCost - 210.0)); }
+    else pwmValue = 0;
+  } else {  
+    pwmValue = round((invert_pwm * 100.0) / 1023.0);
+  }
 
   // Print PWM Values
   // if (config.flags.debug) {
-  //   INFOV("PWM Value: %s%%, %lu\n", tmp, invert_pwm);
+  // INFOV("PWM Value: %d%%, PWM Value decimals: %lf, invert_pwm: %d\n", pwmValue, ((invert_pwm * 100.0) / 1023.0), invert_pwm);
   // }
 }
 
@@ -408,36 +452,27 @@ void relay_control_man(boolean forceOFF)
   }
 }
 
-void invertPwmDown(void)
-{
-  if (invert_pwm > slowPwm)
-    invert_pwm -= 35; // 50
-  else if (invert_pwm <= slowPwm)
-  {
-    if (invert_pwm > 20)
-      invert_pwm -= 20;
-    else if (invert_pwm > 15)
-      invert_pwm -= 15;
-    else if (invert_pwm > 5)
-      invert_pwm -= 5;
-    else if (invert_pwm >= 1)
-      invert_pwm--;
-  }
-  
-  #ifdef PWMCHINOMALO
-    if (invert_pwm <= 200) { invert_pwm = 0; } // Solución Fernando
-  #endif
-}
-
 void down_pwm(boolean softDown)
 {
   if (softDown == true)
   {
-    invertPwmDown();
-    ledcWrite(2, invert_pwm); // Write new pwm value
-    dac_output_voltage(DAC_CHANNEL_2, constrain((invert_pwm / 4), 0, 255));
+    if (invert_pwm > (fastPwm * downFactor)) {
+      invert_pwm -= (fastPwm * downFactor);
+    } else if (invert_pwm > (slowPwm * downFactor)) {
+      invert_pwm -= (slowPwm * downFactor);
+    } else if (invert_pwm >= 10) {
+      invert_pwm -= 10;
+    } else if (invert_pwm >= 5) {
+      invert_pwm -= 5;
+    } else if (invert_pwm >= 1) {
+      invert_pwm--;
+    }
+
+    if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; } // Solución Fernando
+    writePwmValue(invert_pwm);
   } else {
     invert_pwm = 0;
+    pwmValue = 0;
     ledcWrite(2, 0); // Hard shutdown
     dac_output_disable(DAC_CHANNEL_2);
     INFOV("PWM disabled\n");

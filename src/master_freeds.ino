@@ -20,7 +20,7 @@
 
 void parseMasterFreeDs(char *json)
 {
-  if (config.flags.debug) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
+  if (config.flags.messageDebug) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
 
   DeserializationError error = deserializeJson(root, json);
   
@@ -51,6 +51,7 @@ void parseMasterFreeDs(char *json)
         inverter.gridv =  (float)root["gridv"];   // Tension de red
         inverter.wtoday = (float)root["wtoday"];    // Potencia solar diaria
         inverter.wsolar = (float)root["wsolar"];    // Potencia solar actual
+        inverter.temperature =  (float)root["invTemp"];
         break;
       case 4:
       case 5:
@@ -71,21 +72,50 @@ void parseMasterFreeDs(char *json)
         break;
       case 9:
       case 10:
-        meter.voltage =      (float)root["mvoltage"];
-        meter.powerFactor =  (float)root["mpowerFactor"];
-        meter.importActive = (float)root["mimportActive"];
-        meter.exportActive = (float)root["mexportActive"];
-        meter.activePower =  (float)root["mactivePower"];
-        meter.reactivePower =  (float)root["mreactivePower"];
-        inverter.wsolar =    (float)root["wsolar"];
-        inverter.gridv =    (float)root["gridv"];
+        meter.voltage =       (float)root["mvoltage"];
+        meter.powerFactor =   (float)root["mpowerFactor"];
+        meter.importActive =  (float)root["mimportActive"];
+        meter.exportActive =  (float)root["mexportActive"];
+        meter.activePower =   (float)root["mactivePower"];
+        meter.reactivePower = (float)root["mreactivePower"];
+        inverter.wsolar =     (float)root["wsolar"];
+        inverter.gridv =      (float)root["gridv"];
+        break;
+      case 13:
+        meter.voltage =         (float)root["mvoltage"];
+        meter.current =         (float)root["mcurrent"];
+        inverter.pv1c =         (float)root["pv1c"]; // Corriente string 1
+        inverter.pv2c =         (float)root["pv2c"]; // Corriente string 2
+        inverter.pv1v =         (float)root["pv1v"]; // Tension string 1
+        inverter.pv2v =         (float)root["pv2v"]; // Tension string 2
+        inverter.pw1 =          (float)root["pw1"];    // Potencia string 1
+        inverter.pw2 =          (float)root["pw2"];    // Potencia string 2
+        inverter.gridv =        (float)root["gridv"];   // Tension de red
+        inverter.wtoday =       (float)root["wtoday"];    // Potencia solar diaria
+        inverter.wsolar =       (float)root["wsolar"];    // Potencia solar actual
+        inverter.batteryWatts = (float)root["wbattery"];
+        inverter.loadWatts =    (float)root["wload"];
+        inverter.temperature =  (float)root["invTemp"];
         break;
       case 14:
-        meter.voltage =      (float)root["mvoltage"];
-        meter.current =      (float)root["mcurrent"];
-        inverter.wsolar =    (float)root["wsolar"];
+        meter.voltage =         (float)root["mvoltage"];
+        meter.current =         (float)root["mcurrent"];
+        inverter.wsolar =       (float)root["wsolar"];
         inverter.batteryWatts = (float)root["wbattery"];
-        inverter.batterySoC =    (float)root["invSoC"];
+        inverter.batterySoC =   (float)root["invSoC"];
+        inverter.temperature =  (float)root["invTemp"];
+        break;
+      case 15:
+        meter.voltage =   (float)root["mvoltage"];
+        meter.current =   (float)root["mcurrent"];
+        inverter.pv1c =   (float)root["pv1c"]; // Corriente string 1
+        inverter.pv2c =   (float)root["pv2c"]; // Corriente string 2
+        inverter.pv1v =   (float)root["pv1v"]; // Tension string 1
+        inverter.pv2v =   (float)root["pv2v"]; // Tension string 2
+        inverter.pw1 =    (float)root["pw1"];    // Potencia string 1
+        inverter.pw2 =    (float)root["pw2"];    // Potencia string 2
+        inverter.wtoday = (float)root["wtoday"];    // Potencia solar diaria
+        inverter.wsolar = (float)root["wsolar"];    // Potencia solar actual
         break;
       default:
         inverter.wtoday = (float)root["wtoday"];
@@ -97,6 +127,7 @@ void parseMasterFreeDs(char *json)
         inverter.pv2c =   (float)root["pv2c"];
         inverter.pv2v =   (float)root["pv2v"];
         inverter.pw2 =    (float)root["pw2"];
+        inverter.temperature =  (float)root["invTemp"];
         break;
     }
     Error.RecepcionDatos = false;

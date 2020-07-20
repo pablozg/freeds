@@ -85,6 +85,12 @@
                         <span>Actualizar</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="weblog.html">
+                        <i class="fas fa-desktop"></i>
+                        <span>Consola</span>
+                    </a>
+                </li>
                 <div class="sidebar-heading">Monitor</div>
                 <li class="nav-item">
                     <a class="nav-link">
@@ -137,7 +143,7 @@
                                                     <div id="wsolar" class="align-self-center tx-gray-700"></div>
                                                 </div>
                                             </div>
-                                            <div class="row" style="min-height: 3rem">
+                                            <div id="battery-after-me" class="row" style="min-height: 3rem">
                                                 <div id="wgridText" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Potencia de red:</div>
                                                 <div class="col-7 col-sm-8 align-self-center">
                                                     <div id="wgrid" class="align-self-center tx-gray-700"></div>
@@ -155,10 +161,16 @@
                                                     <div id="string1" class="align-self-center tx-gray-700"></div>
                                                 </div>
                                             </div>
-                                            <div class="row" style="min-height: 3rem">
+                                            <div id="temperature-after-me" class="row" style="min-height: 3rem">
                                                 <div id="string2Text" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Potencia string 2:</div>
                                                 <div class="col-7 col-sm-8 align-self-center">
                                                     <div id="string2" class="align-self-center tx-gray-700"></div>
+                                                </div>
+                                            </div>
+                                            <div id ='temperatureId' class="row" style="min-height: 3rem">
+                                                <div id="invTempText" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Temperatura Inversor:</div>
+                                                <div class="col-7 col-sm-8 align-self-center">
+                                                    <div id="invTemp" class="align-self-center tx-gray-700"></div>
                                                 </div>
                                             </div>
                                             <div class="row" style="min-height: 3rem">
@@ -208,7 +220,7 @@
                 </div>
                 <footer class="sticky-footer bg-white">
                     <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
-                    <div>Basado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
+                    <div>Inspirado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
                     <small>
                         <div>Fecha compilación: %FECHA_COMPILACION%</div>
                         <div id='uptime_small'></div>

@@ -22,10 +22,9 @@
 
 void parseWibeee(char *xml) {
   
-  //if (config.flags.debug) { Serial.printf("Wibee Size: %d, Json: %s\n", strlen(xml.c_str()), xml.c_str()); } // No usar INFOV produce stak error
+  if (config.flags.messageDebug) { Serial.printf("Wibee Size: %d, Json: %s\n", strlen(xml), xml); } // No usar INFOV produce stack error
   String response = xml;
-  if (config.flags.debug) { Serial.printf("Wibee Size: %d\n", strlen(response.c_str())); }
-
+  
   // Pinza 1 como lector de Red
   meter.activePower = inverter.wgrid = midString(&response, "<fase1_p_activa>", "</fase1_p_activa>").toFloat();
   meter.voltage = midString(&response, "<fase1_vrms>", "</fase1_vrms>").toFloat();
@@ -34,7 +33,15 @@ void parseWibeee(char *xml) {
 
   float value;
   value = midString(&response, "<fase1_factor_potencia>", "</fase1_factor_potencia>").toFloat();
-  if (value > 0) { meter.powerFactor = value; meter.activePower *= -1; inverter.wgrid *= -1; meter.reactivePower *= -1; }
+  meter.powerFactor = value;
+  // Si powerFactor es negativo está volcando, positivo consumiendo.
+  if (value > 0) {
+    if (!config.flags.changeGridSign) { meter.activePower *= -1; inverter.wgrid *= -1; meter.reactivePower *= -1; }
+  } else {
+    meter.powerFactor *= -1;
+    if (config.flags.changeGridSign) { meter.activePower *= -1; inverter.wgrid *= -1; meter.reactivePower *= -1; }
+  }
+ 
   meter.importActive =  midString(&response, "<fase1_energia_activa>", "</fase1_energia_activa>").toFloat() / 1000;
   
   // Pinza 2 como lector del Inversor

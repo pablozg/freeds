@@ -79,11 +79,11 @@ String workingModeString(void)
   }
   if (config.wversion == 15)
   {
-    return "Fronius Modbus TCP (En desarrollo)";
+    return "Fronius Modbus TCP";
   }
   if (config.wversion == 16)
   {
-    return "Huawei Modbus TCP (En desarrollo)";
+    return "Huawei Modbus TCP";
   }
   return String();
 }
@@ -114,9 +114,9 @@ String processorFreeDS(const String &var)
                                                                               "<option value='14'" +
            String((config.wversion == 14) ? " selected='selected' " : " ") + ">Victron Modbus TCP</option>" +
                                                                               "<option value='15'" +
-           String((config.wversion == 15) ? " selected='selected' " : " ") + ">Fronius Modbus TCP (En desarrollo)</option>" +
+           String((config.wversion == 15) ? " selected='selected' " : " ") + ">Fronius Modbus TCP</option>" +
                                                                               "<option value='16'" +
-           String((config.wversion == 16) ? " selected='selected' " : " ") + ">Huawei Modbus TCP (En desarrollo)</option>" +
+           String((config.wversion == 16) ? " selected='selected' " : " ") + ">Huawei Modbus TCP</option>" +
                                                                               "<option value='9'" +
            String((config.wversion == 9) ? " selected='selected' " : " ") + ">Wibee</option>" +
                                                                               "<option value='10'" +                                                                   
@@ -311,6 +311,14 @@ String processorMqtt(const String &var)
   {
     return String(config.domoticzIdx[2]);
   }
+  if (var == "VERSION_CODE")
+  {
+    return String(FPSTR(version));
+  }
+  if (var == "FECHA_COMPILACION")
+  {
+    return String(FPSTR(compile_date));
+  }
   return String();
 }
 
@@ -415,6 +423,11 @@ String processorConfig(const String &var)
     }
   }
 
+  if (var == "CHANGEGRIDSIGN")
+  {
+    return config.flags.changeGridSign ? "checked" : "";
+  }
+
   if (var == "IDMETER")
   {
     return String(config.idMeter);
@@ -456,45 +469,51 @@ String processorConfig(const String &var)
   }
   if (var == "TERMOADDRS")
   {
+    char tmp[33];
     String addrs = "<select id='termoaddrs' name='termoaddrs' class='form-control select2'><option value='0' selected>Seleccione un sensor</option>";
-                  for (int i = 0; i < 15; ++i) {
-                    if (tempSensorAddress[i][0] == 0) {break;}
-                    if (memcmp(tempSensorAddress[i], config.termoSensorAddress, 8) == 0) {
-                      addrs +="<option value='" + String(i + 1) + "' selected>" + "Sensor Id " + String(i + 1) + "</option>";
-                    } else {
-                      addrs +="<option value='" + String(i + 1) + "'>" + "Sensor Id " + String(i + 1) + "</option>";
-                    }
-                  }
-           addrs += "</select>";
+    for (int i = 0; i < 15; ++i) {
+      if (tempSensorAddress[i][0] == 0) {break;}
+      sprintf(tmp,"0x%.2X 0x%.2X 0x%.2X 0x%.2X", tempSensorAddress[i][4], tempSensorAddress[i][5], tempSensorAddress[i][6], tempSensorAddress[i][7]);
+      if (memcmp(tempSensorAddress[i], config.termoSensorAddress, 8) == 0) {
+        addrs +="<option value='" + String(i + 1) + "' selected>" + "Sensor Id " + String(i + 1) + " (" + String(tmp) + ")</option>";
+      } else {
+        addrs +="<option value='" + String(i + 1) + "'>" + "Sensor Id " + String(i + 1) + " (" + String(tmp) + ")</option>";
+      }
+    }
+    addrs += "</select>";
     return addrs;
   }
   if (var == "TRIACADDRS")
   {
+    char tmp[33];
     String addrs = "<select id='triacaddrs' name='triacaddrs' class='form-control select2'><option value='0' selected>Seleccione un sensor</option>";
-                  for (int i = 0; i < 15; ++i) {
-                    if (tempSensorAddress[i][0] == 0) {break;}
-                    if (memcmp(tempSensorAddress[i], config.triacSensorAddress, 8) == 0) {
-                      addrs +="<option value='" + String(i + 1) + "' selected>" + "Sensor Id " + String(i + 1) + "</option>";
-                    } else {
-                      addrs +="<option value='" + String(i + 1) + "'>" + "Sensor Id " + String(i + 1) + "</option>";
-                    }
-                  }
-           addrs += "</select>";
+    for (int i = 0; i < 15; ++i) {
+      if (tempSensorAddress[i][0] == 0) {break;}
+      sprintf(tmp,"0x%.2X 0x%.2X 0x%.2X 0x%.2X", tempSensorAddress[i][4], tempSensorAddress[i][5], tempSensorAddress[i][6], tempSensorAddress[i][7]);
+      if (memcmp(tempSensorAddress[i], config.triacSensorAddress, 8) == 0) {
+        addrs +="<option value='" + String(i + 1) + "' selected>" + "Sensor Id " + String(i + 1) + " (" + String(tmp) + ")</option>";
+      } else {
+        addrs +="<option value='" + String(i + 1) + "'>" + "Sensor Id " + String(i + 1) + " (" + String(tmp) + ")</option>";
+      }
+    }
+    addrs += "</select>";
     return addrs;
   }
 
   if (var == "CUSTOMADDRS")
   {
+    char tmp[33];
     String addrs = "<select id='customaddrs' name='customaddrs' class='form-control select2'><option value='0' selected>Seleccione un sensor</option>";
-                  for (int i = 0; i < 15; ++i) {
-                    if (tempSensorAddress[i][0] == 0) {break;}
-                    if (memcmp(tempSensorAddress[i], config.customSensorAddress, 8) == 0) {
-                      addrs +="<option value='" + String(i + 1) + "' selected>" + "Sensor Id " + String(i + 1) + "</option>";
-                    } else {
-                      addrs +="<option value='" + String(i + 1) + "'>" + "Sensor Id " + String(i + 1) + "</option>";
-                    }
-                  }
-           addrs += "</select>";
+    for (int i = 0; i < 15; ++i) {
+      if (tempSensorAddress[i][0] == 0) {break;}
+      sprintf(tmp,"0x%.2X 0x%.2X 0x%.2X 0x%.2X", tempSensorAddress[i][4], tempSensorAddress[i][5], tempSensorAddress[i][6], tempSensorAddress[i][7]);
+      if (memcmp(tempSensorAddress[i], config.customSensorAddress, 8) == 0) {
+        addrs +="<option value='" + String(i + 1) + "' selected>" + "Sensor Id " + String(i + 1) + " (" + String(tmp) + ")</option>";
+      } else {
+        addrs +="<option value='" + String(i + 1) + "'>" + "Sensor Id " + String(i + 1) + " (" + String(tmp) + ")</option>";
+      }
+    }
+    addrs += "</select>";
     return addrs;
   }
   
@@ -546,6 +565,10 @@ String processorSalidas(const String &var)
   {
     return config.flags.pwmEnabled ? "checked" : "";
   }
+  if (var == "LOADWATTS")
+  {
+    return String(config.attachedLoadWatts);
+  }
   if (var == "PWMMIN")
   {
     return String(config.pwmMin);
@@ -558,6 +581,10 @@ String processorSalidas(const String &var)
   {
     return String(config.pwmControlTime);
   }
+  if (var == "LOWCOSTACTIVE")
+  {
+    return config.flags.dimmerLowCost ? "checked" : "";
+  }
   if (var == "MANPWM")
   {
     return String(config.manualControlPWM);
@@ -566,7 +593,7 @@ String processorSalidas(const String &var)
   {
     return String(config.pwmSlaveOn);
   }
-  if (var == "potManPwm")
+  if (var == "POTMANPWM")
   {
     return String(config.potManPwm);
   }

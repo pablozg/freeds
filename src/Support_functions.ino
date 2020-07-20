@@ -1,8 +1,6 @@
 /*
   Support_functions.ino - FreeDs support functions
   Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
-
-  Inspired in opends+ (https://github.com/iqas/derivador)
   
   Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
 
@@ -50,6 +48,32 @@ void getSensorData(void)
   }
 }
 
+void setGetDataTime(void)
+{
+  switch (config.wversion) {
+    case 2:
+      config.getDataTime = 250;
+      break;
+    case 0:
+    case 1:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+      if (config.getDataTime < 1500) config.getDataTime = 1500;
+      break;
+    case 15:
+      config.getDataTime = 250;
+      break;
+    case 8:
+    case 14:
+    case 16:
+      if (config.getDataTime < 1500) config.getDataTime = 1500;
+      break;
+  }
+  Tickers.updatePeriod(4, config.getDataTime);
+}
+
 String midString(String *str, String start, String finish){
   int locStart = str->indexOf(start);
   if (locStart == -1) return "";
@@ -95,6 +119,12 @@ void buildWifiArray(void)
     rssiNetworks[i] = (int8_t)WiFi.RSSI(i);
     INFOV("SSID %i - %s (%d%%, %d dBm)\n", i, scanNetworks[i].c_str(), WifiGetRssiAsQuality(rssiNetworks[i]), rssiNetworks[i]);
   }
+}
+
+const char *get_filename_ext(const char *filename) {
+  const char *dot = strrchr(filename, '.');
+  if(!dot || dot == filename) return "";
+  return dot + 1;
 }
 
 void changeScreen(void)
@@ -454,6 +484,12 @@ int INFOV(const char * __restrict format, ...)
 	return rcode;
 }
 
+float getFragmentation() {
+  //return 100 - getLargestAvailableBlock() * 100.0 / getTotalAvailableMemory();
+  return 100 - ESP.getMaxAllocHeap() * 100.0 / ESP.getFreeHeap();
+
+}
+
 void checkEEPROM(void){
   
   // Paso de versión 0x0A - 0x10 a 0x11
@@ -461,6 +497,19 @@ void checkEEPROM(void){
   {
     defaultValues();
     config.eeinit = 0x11;
+  }
+
+  if(config.eeinit == 0x11)
+  {
+    config.attachedLoadWatts = 2000;
+    config.eeinit = 0x12;
+  }
+
+  if(config.eeinit == 0x12)
+  {
+    config.flags.changeGridSign = false;
+    config.flags.messageDebug = false;
+    config.eeinit = 0x13;
     saveEEPROM();
   }
 }

@@ -190,11 +190,11 @@ void esp32ModbusTCP::_tryToSend() {
 void esp32ModbusTCP::_clearQueue(esp32Modbus::Error error) {
   if (xSemaphoreTake(_semaphore, 1000) == pdTRUE) {
     while(!_toSend.empty()) {
-      _tryError(_toSend.front().request->getId(), error, _toSend.front().arg);
+      //_tryError(_toSend.front().request->getId(), error, _toSend.front().arg);
       _toSend.pop_front();
     }
     while(!_toReceive.empty()) {
-      _tryError(_toSend.front().request->getId(), error, _toReceive.front().arg);
+      //_tryError(_toSend.front().request->getId(), error, _toReceive.front().arg);
       _toReceive.pop_front();
     }
     xSemaphoreGive(_semaphore);

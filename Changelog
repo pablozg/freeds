@@ -1,4 +1,36 @@
 Versión 1.0.5
+- Revisión 13
+	- Solucionado problema de recepción de datos con el solax X1-Hybrid-G3
+	- Reducido el pwm máximo en caso del derivador low-cost.
+
+- Revisión 12
+	- Añadido calculo estimado de potencia entregada (Necesita especificar potencia de la carga conectada) - Gracias Lolo -
+	- Añadida opción para invertir el signo en los valores de red
+	- Ampliado el margen de funcionamiento en el dimmer low cost afectado por el 20%, llegando ahora casi al 100% de la potencia nominal.
+	- Reescritura del cáculo de pwm
+	- Modificación de la rutina encargada de solicitar los datos mediante http.
+	- Añadida frecuencia de 10 hz para el dimmer ultra low cost.
+
+- Revisión 11
+	- Solucionado fallo por el que no se mostraba la potencia solar para el paso a modo manual
+	- Añadida la opción de pasar de 0 a 20% para dimmers low cost con hardware defectuoso. (fallo consistente en entregar el 100% de la potencia cuando el valor de pwm está por debajo del 20%)
+	- Añadida la temperatura del inversor en los modos Solax.
+	- Añadidas mejoras en la rutina de adquisición de datos.
+
+- Revisión 10
+	- Progresión de subida del pwm más suave (requiere de más tiempo para llegar al 100%) y bajada de pwm más rápida para adaptarse a las cargas que entren en un momento dado. La velocidad se puede aumentar o disminuir
+		usando el parametro "velocidad de cálculo de pwm".
+	- Solucionado el funcionamiento incorrecto con Alexa.
+	- Mejora del cliente http asíncrono.
+	- Añadida más información en pantalla principal con ICC Solar
+	- Funcionamiento correcto con Fronius Modbus TCP
+
+- Revisión 9 
+
+	- Solucionado un problema en la nueva rutina de obtención de datos (Soluciona problema con Wibeee, se necesitan más pruebas)
+	- Versión propia del firmware para el ESP01 (Para su uso con el modo Solax V2)
+
+
 Añadida publicación del estado del pwm por mqtt (AUTO, MAN, OFF), Topic: freeds/stat/pwm
 Solucionado bug en el que no se mostraba correctamente el estado del PWM en la Pantalla Oled
 Frecuencia publicación Mqtt Configurable
@@ -13,9 +45,12 @@ Solucionado error por el que el pwm no pasaba de 19% en ciertas circunstancias.
 Cambio de los topics por defecto para permitir la publicación de datos por mqtt a varios freeds, ahora usa como nombre principal el nombre de host configurado. (IMPORTANTE PARA LOS QUE LO USEN PARA AUTOMATIZACIONES)
 Ejemplo: de freeds/wgrid a freeds_XXXX/wgrid o nombre asignado como host.
 Sustitución cliente HTTP sincrono por peticiones Asíncronas.
-Añadido control mediante Alexa (en desarrollo)
+Añadido control mediante Alexa (control de encendido/apagado del pwm, control de auto/manual y porcentaje del pwm, control del encendido/apagado pantalla y porcentaje de brillo)
 Añadido control de Temperatura del Termo (Control de encendido y apagado por temperatura), Temperatura del Triac (en desarrollo) y una tercera sonda personalizable.
 Solucionado malfuncionamiento del derivador esclavo en ciertas circustancias.
+Añadida histéresis del 10% en el apagado de los relés sobre el valor de encendido. (Se apaga a un 10% por debajo del valor del encendido)
+Mejorado el script de programación por linea de comandos.
+Añadido compatibilidad con Domoticz (PWM, AUTO/MAN, OLED)
 
 Versión 1.0.4
 Refactorización del código

@@ -11,7 +11,7 @@
         <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
         <link href="sb-admin-2.min.css" rel="stylesheet">
     </head>
-    <body onload='checkPowerOffOled();checkSensorTemp();'>
+    <body onload='checkPowerOffOled();checkSensorTemp();checkAlexa();checkChangeGridSign();'>
         <div id="wrapper">
             <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
                 <a class="sidebar-brand d-flex align-items-center justify-content-center"  href='http://freeds.es/'>
@@ -85,6 +85,12 @@
                         <span>Actualizar</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="weblog.html">
+                        <i class="fas fa-desktop"></i>
+                        <span>Consola</span>
+                    </a>
+                </li>
                 <div class="sidebar-heading">Monitor</div>
                 <li class="nav-item">
                     <a class="nav-link">
@@ -149,8 +155,10 @@
                                                     </div>
                                                     <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Origen de los Datos</h6>
                                                     <div id='modo' class="row mg-t-2">%WIFIS%</div>
-
-
+                                                    <label class="custom-control custom-checkbox pb-3">
+                                                        <input type="checkbox" class="custom-control-input" id="changeGridSign" name="changeGridSign" onchange='checkChangeGridSign();' %CHANGEGRIDSIGN%>
+                                                        <span class="custom-control-indicator"></span><span id='changeGridSignText'></span>
+                                                    </label>
                                                     <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Meter</h6>
                                                     <div class="row mg-t-2">
                                                         <label class="col-sm-4 form-control-label">Baud rate:</label>
@@ -253,13 +261,11 @@
                                                             %CUSTOMADDRS%
                                                         </div>
                                                     </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">API remota</h6>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Web Api:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='remote_api' name="remote_api" type="text" maxlength="250" class="form-control" value="%REMOTE_API%">
-                                                        </div>
-                                                    </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Alexa</h6>
+                                                    <label class="custom-control custom-checkbox pb-3">
+                                                        <input type="checkbox" class="custom-control-input" id="alexa" name="alexa" onchange='checkAlexa();' %ALEXA%>
+                                                        <span class="custom-control-indicator"></span><span id='alexaText'></span>
+                                                    </label>
                                                     <div class="form-layout-footer pt-4 pb-4">
                                                         <button type="button" class="btn btn-info" onclick='evaluaPassword()'>Guardar</button> <a href="" class="btn btn-danger" data-toggle="modal" data-target="#factoryDefaults">Reinicializar</a>
                                                     </div>
@@ -274,7 +280,7 @@
                 </div>
                 <footer class="sticky-footer bg-white">
                     <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
-                    <div>Basado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
+                    <div>Inspirado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
                     <small>
                         <div>Fecha compilación: %FECHA_COMPILACION%</div>
                         <div id='uptime_small'></div>

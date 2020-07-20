@@ -86,11 +86,13 @@ void ddsu666(void)
           break;
 
         case 2:
-          inverter.wgrid = meter.activePower = value * -1000; // -196.3 W
+          inverter.wgrid = meter.activePower = value * 1000; // -196.3 W
+          if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; meter.activePower *= -1.0; }
           break;
 
         case 3:
-          meter.reactivePower = value * -1000;   // 92.2
+          meter.reactivePower = value * 1000;   // 92.2
+          if (!config.flags.changeGridSign) { meter.reactivePower *= -1.0; }
           break;
 
         case 4:
@@ -162,15 +164,18 @@ void sdm120(void)
           break;
 
         case 2:
-          inverter.wgrid = meter.activePower = -value; // -196.3 W
+          inverter.wgrid = meter.activePower = value; // -196.3 W
+          if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; meter.activePower *= -1.0; }
           break;
 
         case 3:
-          meter.aparentPower = -value; // -196.3 W
+          meter.aparentPower = value; // -196.3 W
+          if (!config.flags.changeGridSign) { meter.aparentPower *= -1.0; }
           break;
 
         case 4:
-          meter.reactivePower = -value;   // 92.2
+          meter.reactivePower = value;   // 92.2
+          if (!config.flags.changeGridSign) { meter.reactivePower *= -1.0; }
           break;
 
         case 5:
@@ -243,7 +248,7 @@ void dds2382(void)
       INFOV("DDS238-2 error: %i\n", error);
     } else {
 
-      if (config.flags.debug) { 
+      if (config.flags.messageDebug) { 
         char hexarray[200] = {0};
         char hexvalue[5] = {0};
         for (int i = 0; i < 45; i++)
@@ -268,7 +273,8 @@ void dds2382(void)
       meter.energyTotal = (float)((buffer[3] << 24) + (buffer[4] << 16) + (buffer[5] << 8) + buffer[6]) / 100.0;  // 429496.729 kW
       meter.voltage = (float)((buffer[27] << 8) + buffer[28]) / 10;
       meter.current = (float)((buffer[29] << 8) + buffer[30]) / 100.0;
-      meter.activePower = inverter.wgrid = -(float)((int16_t)((buffer[31] << 8) + buffer[32])); 
+      meter.activePower = inverter.wgrid = (float)((int16_t)((buffer[31] << 8) + buffer[32]));
+      if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; meter.activePower *= -1.0; }
       meter.reactivePower = -((int16_t)((buffer[33] << 8) + buffer[34]));
       meter.powerFactor = (float)((buffer[35] << 8) + buffer[36]) / 1000.0;            // 1.00
       meter.frequency = (float)((buffer[37] << 8) + buffer[38]) / 100.0;               // 50.0 Hz

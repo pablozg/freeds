@@ -21,7 +21,7 @@
 // Shelly EM
 void parseShellyEM(char *json, int sensor)
 {
-  if (config.flags.debug) { INFOV("Shelly Size: %d, Json: %s\n", strlen(json), json); }
+  if (config.flags.messageDebug) { INFOV("Shelly Size: %d, Json: %s\n", strlen(json), json); }
   
   DeserializationError error = deserializeJson(root, json);
   
@@ -32,12 +32,13 @@ void parseShellyEM(char *json, int sensor)
     {
       case 1: // Medida de Red
         if (root["is_valid"] == true) {
-          meter.activePower = inverter.wgrid = roundf((float)root["power"] * -1.0); // Potencia de red (Negativo: de red - Positivo: a red)
+          meter.activePower = inverter.wgrid = roundf((float)root["power"]);
           meter.voltage = roundf((float)root["voltage"]);
-          meter.reactivePower = roundf((float)root["reactive"] * -1.0);
+          meter.reactivePower = roundf((float)root["reactive"]);
           meter.importActive = roundf((float)root["total"] / 1000.0);
           meter.exportActive = roundf((float)root["total_returned"] / 1000.0);
           Error.RecepcionDatos = false;
+          if (!config.flags.changeGridSign) { meter.activePower *= -1.0; inverter.wgrid *= -1.0; meter.reactivePower *= -1.0;}
         }
         break;
       case 2: // Medida de Inversor

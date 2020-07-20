@@ -21,8 +21,8 @@ TickerScheduler::~TickerScheduler()
 
 void TickerScheduler::handleTickerFlag(volatile bool * flag)
 {
-	if (!*flag)
-		*flag = true;
+  if (!*flag)
+    *flag = true;
 }
 
 void TickerScheduler::handleTicker(tscallback_t f, void * arg, volatile bool * flag)
@@ -59,6 +59,7 @@ bool TickerScheduler::updatePeriod(uint8_t i, uint32_t period)
     if (i >= this->size || !this->items[i].is_used)
         return false;
 
+    disable(i);
     this->items[i].period = period;
     enable(i);
 
@@ -81,7 +82,7 @@ bool TickerScheduler::remove(uint8_t i)
 
 bool TickerScheduler::disable(uint8_t i)
 {
-    if (i >= this->size || !this->items[i].is_used)
+    if (i >= this->size || !this->items[i].is_used || !this->items[i].is_running)
         return false;
 
     this->items[i].t.detach();
@@ -92,19 +93,19 @@ bool TickerScheduler::disable(uint8_t i)
 
 bool TickerScheduler::enable(uint8_t i)
 {
-    if (i >= this->size || !this->items[i].is_used)
+    if (i >= this->size || !this->items[i].is_used || this->items[i].is_running)
         return false;
 
-		volatile bool * flag = &this->items[i].flag;
-		this->items[i].t.attach_ms(this->items[i].period, TickerScheduler::handleTickerFlag, flag);
-		this->items[i].is_running = true;
+    volatile bool * flag = &this->items[i].flag;
+    this->items[i].t.attach_ms(this->items[i].period, TickerScheduler::handleTickerFlag, flag);
+    this->items[i].is_running = true;
 
     return true;
 }
 
 bool TickerScheduler::isRunning(uint8_t i)
 {
-	return this->items[i].is_running;
+  return this->items[i].is_running;
 }
 
 void TickerScheduler::disableAll()
@@ -123,14 +124,14 @@ void TickerScheduler::update()
 {
     for (uint8_t i = 0; i < this->size; i++)
     {
-		if (this->items[i].is_used)
-		{
-			#ifdef ARDUINO_ARCH_AVR
-			this->items[i].t.Tick();
-			#endif
+    if (this->items[i].is_used)
+    {
+      #ifdef ARDUINO_ARCH_AVR
+      this->items[i].t.Tick();
+      #endif
 
-			handleTicker(this->items[i].cb, this->items[i].cb_arg, &this->items[i].flag);
-		}
+      handleTicker(this->items[i].cb, this->items[i].cb_arg, &this->items[i].flag);
+    }
         yield();
     }
 }

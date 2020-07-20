@@ -1,9 +1,33 @@
+/*
+  tempsensor.ino - FreeDs temperature functions
+  Derivador de excedentes para ESP32 DEV Kit // Wifi Kit 32
+  
+  Copyright (C) 2020 Pablo Zerón (https://github.com/pablozg/freeds)
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 void calcDallasTemperature(void)
 {
+    // unsigned long start = millis();
+    sensors.setWaitForConversion(true);
     sensors.requestTemperatures();
+    delay(30); // To ensure a completed conversion
 
     if (config.termoSensorAddress[0] != 0x0) {
         temperaturaTermo = sensors.getTempC(config.termoSensorAddress);
+        // Serial.printf("Time used: %lu\n", millis() - start);
         if (temperaturaTermo == -127.0) { Error.temperaturaTermo = true; INFOV("Failed to read termo temperature from DS18B20 sensor\n"); } else { Error.temperaturaTermo = false; }
     } else { temperaturaTermo = -127.0; Error.temperaturaTermo = false;}
 
