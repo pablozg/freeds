@@ -20,32 +20,67 @@
 
 void calcDallasTemperature(void)
 {
-    // unsigned long start = millis();
     sensors.setWaitForConversion(true);
     sensors.requestTemperatures();
+
+    float temperatura;
+
     delay(30); // To ensure a completed conversion
 
     if (config.termoSensorAddress[0] != 0x0) {
-        temperaturaTermo = sensors.getTempC(config.termoSensorAddress);
-        // Serial.printf("Time used: %lu\n", millis() - start);
-        if (temperaturaTermo == -127.0) { Error.temperaturaTermo = true; INFOV("Failed to read termo temperature from DS18B20 sensor\n"); } else { Error.temperaturaTermo = false; }
-    } else { temperaturaTermo = -127.0; Error.temperaturaTermo = false;}
+        temperatura = sensors.getTempC(config.termoSensorAddress);
+
+        if (temperatura != -127.0) {
+            temperaturaTermo = temperatura; 
+            timers.ErrorLecturaTemperatura[0] = millis();
+            Error.temperaturaTermo = false;
+        }
+
+        if ((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) {
+            Error.temperaturaTermo = true;
+            temperaturaTermo = -127;
+            INFOV("Failed to read termo temperature from DS18B20 sensor\n");
+        }
+    } else { temperaturaTermo = -127; Error.temperaturaTermo = false;}
 
     if (config.triacSensorAddress[0] != 0x0) {
-        temperaturaTriac = sensors.getTempC(config.triacSensorAddress);
-        if (temperaturaTriac == -127.0) { Error.temperaturaTriac = true; INFOV("Failed to read triac temperature from DS18B20 sensor\n"); } else { Error.temperaturaTriac = false; }
-    } else { temperaturaTriac = -127.0; Error.temperaturaTriac = false; }
+        temperatura = sensors.getTempC(config.triacSensorAddress);
+        
+        if (temperatura != -127.0) {
+            temperaturaTriac = temperatura; 
+            timers.ErrorLecturaTemperatura[1] = millis();
+            Error.temperaturaTriac = false;
+        }
+
+        if ((millis() - timers.ErrorLecturaTemperatura[1]) > config.maxErrorTime) {
+            Error.temperaturaTriac = true;
+            temperaturaTriac = -127;
+            INFOV("Failed to read triac temperature from DS18B20 sensor\n");
+        }
+    } else { temperaturaTriac = -127; Error.temperaturaTriac = false; }
 
     if (config.customSensorAddress[0] != 0x0) {
-        temperaturaCustom = sensors.getTempC(config.customSensorAddress);
-        if (temperaturaCustom == -127.0) { Error.temperaturaCustom = true; INFOV("Failed to read temperature from DS18B20 custom sensor\n"); } else { Error.temperaturaCustom = false; }
-    } else { temperaturaCustom = -127.0; Error.temperaturaCustom = false; }
+        temperatura = sensors.getTempC(config.customSensorAddress);
+
+        if (temperatura != -127.0) {
+            temperaturaCustom = temperatura; 
+            timers.ErrorLecturaTemperatura[2] = millis();
+            Error.temperaturaCustom = false;
+        }
+
+        if ((millis() - timers.ErrorLecturaTemperatura[2]) > config.maxErrorTime) {
+            Error.temperaturaCustom = true;
+            temperaturaCustom = -127;
+            INFOV("Failed to read termo temperature from DS18B20 sensor\n");
+        }
+    } else { temperaturaCustom = -127; Error.temperaturaCustom = false; }
 }
 
 void checkTemperature(void)
 {
-    if (config.flags.sensorTemperatura && temperaturaTermo != -127.00 && !Error.temperaturaTermo) {
-        timers.ErrorLecturaTemperatura = millis();
+    //if (config.flags.sensorTemperatura && temperaturaTermo != -127.00 && !Error.temperaturaTermo) {
+    if (config.flags.sensorTemperatura && !Error.temperaturaTermo) {
+        //timers.ErrorLecturaTemperatura[0] = millis();
         switch(config.modoTemperatura) {
             case 1:
                 if (!config.flags.pwmMan && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
@@ -62,7 +97,7 @@ void checkTemperature(void)
         }
     }
 
-    if (((millis() - timers.ErrorLecturaTemperatura) > config.maxErrorTime) && config.modoTemperatura > 0)
+    if (((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) && config.modoTemperatura > 0)
     {
         if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); }
     }

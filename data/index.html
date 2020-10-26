@@ -94,20 +94,20 @@
                 <div class="sidebar-heading">Monitor</div>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='wsolar2Text'>Potencia Solar:</span>
-                        <h6 class='pt-1' id='wsolar2'></h6>
+                        <span id='barText1'>Potencia Solar:</span>
+                        <h6 class='pt-1' id='barValue1'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span>Potencia de red:</span>
-                        <h6 class='pt-1' id='wgrid2'></h6>
+                        <span id='barText2'>Potencia de red:</span>
+                        <h6 class='pt-1' id='barValue2'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='pwm2Text'>PWM:</span>
-                        <h6 class='pt-1' id='pwm2'></h6>
+                        <span id='barText3'>PWM:</span>
+                        <h6 class='pt-1' id='barValue3'></h6>
                     </a>
                 </li>
                 <hr class="sidebar-divider d-none d-md-block">
@@ -136,44 +136,11 @@
                             <div class="col">
                                 <div class="card shadow mb-4 card-size">
                                     <div id='Monitor' class="card-body">
-                                        <div class="container">
-                                            <div class="row" style="min-height: 3rem">
-                                                <div id="wsolarText" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Potencia solar:</div>
-                                                <div class="col-7 col-sm-8 align-self-center">
-                                                    <div id="wsolar" class="align-self-center tx-gray-700"></div>
-                                                </div>
-                                            </div>
-                                            <div id="battery-after-me" class="row" style="min-height: 3rem">
-                                                <div id="wgridText" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Potencia de red:</div>
-                                                <div class="col-7 col-sm-8 align-self-center">
-                                                    <div id="wgrid" class="align-self-center tx-gray-700"></div>
-                                                </div>
-                                            </div>
-                                            <div class="row" style="min-height: 3rem">
-                                                <div id="wtodayText" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Energía diaria solar:</div>
-                                                <div class="col-7 col-sm-8 align-self-center">
-                                                    <div id="wtoday" class="align-self-center tx-gray-700"></div>
-                                                </div>
-                                            </div>
-                                            <div class="row" style="min-height: 3rem">
-                                                <div id="string1Text" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Potencia string 1:</div>
-                                                <div class="col-7 col-sm-8 align-self-center">
-                                                    <div id="string1" class="align-self-center tx-gray-700"></div>
-                                                </div>
-                                            </div>
-                                            <div id="temperature-after-me" class="row" style="min-height: 3rem">
-                                                <div id="string2Text" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Potencia string 2:</div>
-                                                <div class="col-7 col-sm-8 align-self-center">
-                                                    <div id="string2" class="align-self-center tx-gray-700"></div>
-                                                </div>
-                                            </div>
-                                            <div id ='temperatureId' class="row" style="min-height: 3rem">
-                                                <div id="invTempText" class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">Temperatura Inversor:</div>
-                                                <div class="col-7 col-sm-8 align-self-center">
-                                                    <div id="invTemp" class="align-self-center tx-gray-700"></div>
-                                                </div>
-                                            </div>
-                                            <div class="row" style="min-height: 3rem">
+                                        <div class="container" id="containerRow">
+                                            <div id="solarRow"></div>
+                                            <div id="gridRow"></div>
+                                            <div id="initRow"></div>
+                                            <div id="pwmRow" class="row pt-3" style="min-height: 1.8rem">
                                                 <div id='pwmtext' class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">PWM:</div>
                                                 <div class="col-7 col-sm-8 align-self-center">
                                                     <div id="pwm" class="align-self-center tx-gray-700"></div>

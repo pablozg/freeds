@@ -78,7 +78,7 @@ void handleConfigMqtt(AsyncWebServerRequest *request)
     strcpy(config.R03_mqtt, request->urlDecode(request->arg("mqttr3")).c_str());
     strcpy(config.R04_mqtt, request->urlDecode(request->arg("mqttr4")).c_str());
 
-    if (config.wversion == 3)
+    if (config.wversion == MQTT_BROKER)
     {
       strcpy(config.Solax_mqtt, request->urlDecode(request->arg("solax")).c_str());
       strcpy(config.Meter_mqtt, request->urlDecode(request->arg("meter")).c_str());
@@ -109,6 +109,13 @@ void handleConfigMqtt(AsyncWebServerRequest *request)
 
 void handleConfig(AsyncWebServerRequest *request)
 {
+  if (request->arg("offGrid") == "on") {
+    config.flags.offGrid = true;
+    config.soc = constrain(request->arg("soc").toInt(), 0, 100);
+  } else { config.flags.offGrid = false; }
+
+  config.battWatts = constrain(request->arg("battWatts").toInt(), -9999, 9999);
+
   if (request->arg("changeGridSign") == "on") {
     config.flags.changeGridSign = true;
   } else {
@@ -126,12 +133,12 @@ void handleConfig(AsyncWebServerRequest *request)
   
   if (request->hasArg("wifis"))
   {
-    if (config.wversion == 2)
+    if (config.wversion == SOLAX_V2)
     {
       strcpy(config.ssid_esp01, request->urlDecode(request->arg("wifis")).c_str());
       SerieEsp.printf("SSID: %s\n", config.ssid_esp01);
     }
-    if (config.wversion == 1 || (config.wversion >= 8 && config.wversion <= 12) || (config.wversion >= 14 && config.wversion <= 16))
+    if (config.wversion == SOLAX_V1 || (config.wversion >= SMA_BOY && config.wversion <= SLAVE_MODE) || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND))
     {
       strcpy(config.sensor_ip, request->urlDecode(request->arg("wifis")).c_str());
       modbustcp = NULL;
@@ -252,6 +259,10 @@ void handleRelay(AsyncWebServerRequest *request)
   } else {
     config.flags.dimmerLowCost = false;
   }
+
+  if (request->hasArg("maxpwmlowcost")) {
+    config.maxPwmLowCost = constrain(request->arg("maxpwmlowcost").toInt(), 1024, 1232);
+  }
   
   Flags.timerSet = false;
   if (request->arg("timeractive") == "on") {
@@ -291,12 +302,221 @@ void rebootCause(void)
   verbose_print_reset_reason(1);
 }
 
+// const char *sendJsonWeb(void)
+// {
+//   DynamicJsonDocument jsonValues(1024);
+
+//   uint16_t error = 0;
+//   uint8_t wversion = 0;
+//   char tmpString[33];
+
+//   if (Error.ConexionWifi)
+//     error = 0x01;
+//   if (Error.ConexionMqtt && config.flags.mqtt)
+//     error |= 0x02;
+//   if (Error.RecepcionDatos)
+//     error |= 0x04;
+//   if (Error.VariacionDatos)
+//     error |= 0x08;
+//   if (!config.flags.mqtt && config.wversion == MQTT_BROKER)
+//     error |= 0x10;
+//   if (config.flags.sensorTemperatura && Error.temperaturaTermo)
+//     error |= 0x20;
+//   if (config.flags.sensorTemperatura && Error.temperaturaTriac)
+//     error |= 0x40;
+//   if (config.flags.sensorTemperatura && Error.temperaturaCustom)
+//     error |= 0x80;
+
+//   jsonValues["error"] = error;
+//   jsonValues["R01"] = digitalRead(PIN_RL1);
+//   jsonValues["R02"] = digitalRead(PIN_RL2);
+//   jsonValues["R03"] = digitalRead(PIN_RL3);
+//   jsonValues["R04"] = digitalRead(PIN_RL4);
+//   jsonValues["Oled"] = config.flags.oledPower;
+//   jsonValues["oledBrightness"] = config.oledBrightness;
+//   jsonValues["POn"] = config.flags.pwmEnabled;
+//   jsonValues["PwmMan"] = config.flags.pwmMan;
+//   jsonValues["SenTemp"] = config.flags.sensorTemperatura;
+//   jsonValues["Msg"] = webMessageResponse;
+//   jsonValues["pwmfrec"] = config.pwmFrequency;
+//   jsonValues["pwm"] = pwmValue;
+   
+//   dtostrfd(inverter.currentCalcWatts, 0, tmpString);
+//   jsonValues["loadCalcWatts"] = tmpString;
+
+//   jsonValues["baudiosMeter"] = config.baudiosMeter;
+//   jsonValues["configwVersion"] = config.wversion;
+
+//   if (config.wversion == SLAVE_MODE) {
+//     jsonValues["wversion"] = masterMode;
+//     wversion = masterMode;
+//   } else {
+//     jsonValues["wversion"] = config.wversion;
+//     wversion = config.wversion;
+//   }
+
+//   dtostrfd(inverter.wgrid, 2, tmpString);
+//   jsonValues["wgrid"] = tmpString;
+  
+//   dtostrfd(inverter.temperature, 2, tmpString);
+//   jsonValues["invTemp"] = tmpString;
+
+//   dtostrfd(temperaturaTermo, 1, tmpString);
+//   jsonValues["tempTermo"] = tmpString;
+  
+//   dtostrfd(temperaturaTriac, 1, tmpString);
+//   jsonValues["tempTriac"] = tmpString;
+
+//   dtostrfd(temperaturaCustom, 1, tmpString);
+//   jsonValues["tempCustom"] = tmpString;
+
+//   jsonValues["customSensor"] = config.nombreSensor;
+
+//   // Energy Import
+//   dtostrfd(config.KwToday, 3, tmpString);
+//   jsonValues["KwToday"] = tmpString;
+//   dtostrfd(config.KwYesterday, 3, tmpString);
+//   jsonValues["KwYesterday"] = tmpString;
+//   dtostrfd(config.KwTotal, 3, tmpString);
+//   jsonValues["KwTotal"] = tmpString;
+
+//   // Energy export
+//   dtostrfd(config.KwExportToday, 3, tmpString);
+//   jsonValues["KwExportToday"] = tmpString;
+//   dtostrfd(config.KwExportYesterday, 3, tmpString);
+//   jsonValues["KwExportYesterday"] = tmpString;
+//   dtostrfd(config.KwExportTotal, 3, tmpString);
+//   jsonValues["KwExportTotal"] = tmpString;
+ 
+//   switch(wversion)
+//   {
+//     case 4:
+//     case 5:
+//     case 6:
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(meter.powerFactor, 2, tmpString);
+//       jsonValues["mpowerFactor"] = tmpString;
+//       dtostrfd(meter.frequency, 2, tmpString);
+//       jsonValues["mfrequency"] = tmpString;
+//       dtostrfd(meter.importActive, 2, tmpString);
+//       jsonValues["mimportActive"] = tmpString;
+//       dtostrfd(meter.exportActive, 2, tmpString);
+//       jsonValues["mexportActive"] = tmpString;
+//       break;
+//     case 9:
+//     case 10:
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(meter.powerFactor, 2, tmpString);
+//       jsonValues["mpowerFactor"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(meter.importActive, 2, tmpString);
+//       jsonValues["mimportActive"] = tmpString;
+//       dtostrfd(meter.exportActive, 2, tmpString);
+//       jsonValues["mexportActive"] = tmpString;
+//       break;
+//     case 13:
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(inverter.batteryWatts, 2, tmpString);
+//       jsonValues["wbattery"] = tmpString;
+//       dtostrfd(inverter.loadWatts, 2, tmpString);
+//       jsonValues["wload"] = tmpString;;
+//       dtostrfd(inverter.wtoday, 2, tmpString);
+//       jsonValues["wtoday"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.gridv, 2, tmpString);
+//       jsonValues["gridv"] = tmpString;
+//       dtostrfd(inverter.pv1c, 2, tmpString);
+//       jsonValues["pv1c"] = tmpString;
+//       dtostrfd(inverter.pv1v, 2, tmpString);
+//       jsonValues["pv1v"] = tmpString;
+//       dtostrfd(inverter.pw1, 2, tmpString);
+//       jsonValues["pw1"] = tmpString;
+//       dtostrfd(inverter.pv2c, 2, tmpString);
+//       jsonValues["pv2c"] = tmpString;
+//       dtostrfd(inverter.pv2v, 2, tmpString);
+//       jsonValues["pv2v"] = tmpString;
+//       dtostrfd(inverter.pw2, 2, tmpString);
+//       jsonValues["pw2"] = tmpString;
+//       break;
+//     case 14:
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.batteryWatts, 2, tmpString);
+//       jsonValues["wbattery"] = tmpString;
+//       dtostrfd(inverter.batterySoC, 2, tmpString);
+//       jsonValues["invSoC"] = tmpString;
+//       break;
+//     case 15:
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(inverter.wtoday, 2, tmpString);
+//       jsonValues["wtoday"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.pv1c, 2, tmpString);
+//       jsonValues["pv1c"] = tmpString;
+//       dtostrfd(inverter.pv1v, 2, tmpString);
+//       jsonValues["pv1v"] = tmpString;
+//       dtostrfd(inverter.pw1, 2, tmpString);
+//       jsonValues["pw1"] = tmpString;
+//       dtostrfd(inverter.pv2c, 2, tmpString);
+//       jsonValues["pv2c"] = tmpString;
+//       dtostrfd(inverter.pv2v, 2, tmpString);
+//       jsonValues["pv2v"] = tmpString;
+//       dtostrfd(inverter.pw2, 2, tmpString);
+//       jsonValues["pw2"] = tmpString;
+//       break;
+//     default:
+//       dtostrfd(inverter.wtoday, 2, tmpString);
+//       jsonValues["wtoday"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.gridv, 2, tmpString);
+//       jsonValues["gridv"] = tmpString;
+//       dtostrfd(inverter.pv1c, 2, tmpString);
+//       jsonValues["pv1c"] = tmpString;
+//       dtostrfd(inverter.pv1v, 2, tmpString);
+//       jsonValues["pv1v"] = tmpString;
+//       dtostrfd(inverter.pw1, 2, tmpString);
+//       jsonValues["pw1"] = tmpString;
+//       dtostrfd(inverter.pv2c, 2, tmpString);
+//       jsonValues["pv2c"] = tmpString;
+//       dtostrfd(inverter.pv2v, 2, tmpString);
+//       jsonValues["pv2v"] = tmpString;
+//       dtostrfd(inverter.pw2, 2, tmpString);
+//       jsonValues["pw2"] = tmpString;
+//       // dtostrfd(inverter.batteryWatts, 2, tmpString);
+//       // jsonValues["wbattery"] = tmpString;
+//       // dtostrfd(inverter.batterySoC, 2, tmpString);
+//       // jsonValues["invSoC"] = tmpString;
+//       break;
+//   }
+
+//   serializeJson(jsonValues, response);
+
+//   return response;
+// }
+
 const char *sendJsonWeb(void)
 {
-  DynamicJsonDocument jsonValues(768);
+  DynamicJsonDocument jsonValues(1024);
 
   uint16_t error = 0;
-  uint8_t wversion = 0;
   char tmpString[33];
 
   if (Error.ConexionWifi)
@@ -307,7 +527,7 @@ const char *sendJsonWeb(void)
     error |= 0x04;
   if (Error.VariacionDatos)
     error |= 0x08;
-  if (!config.flags.mqtt && config.wversion == 3)
+  if (!config.flags.mqtt && config.wversion == MQTT_BROKER)
     error |= 0x10;
   if (config.flags.sensorTemperatura && Error.temperaturaTermo)
     error |= 0x20;
@@ -329,30 +549,114 @@ const char *sendJsonWeb(void)
   jsonValues["Msg"] = webMessageResponse;
   jsonValues["pwmfrec"] = config.pwmFrequency;
   jsonValues["pwm"] = pwmValue;
-  
-  
-  //jsonValues["loadCalcWatts"] = (pwmValue * config.attachedLoadWatts) / 100;
-  float valueWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;
-  dtostrfd(valueWatts, 0, tmpString);
+   
+  dtostrfd(inverter.currentCalcWatts, 0, tmpString);
   jsonValues["loadCalcWatts"] = tmpString;
 
   jsonValues["baudiosMeter"] = config.baudiosMeter;
   jsonValues["configwVersion"] = config.wversion;
 
-  if (config.wversion == 12) {
-    jsonValues["wversion"] = masterMode;
-    wversion = masterMode;
-  } else {
-    jsonValues["wversion"] = config.wversion;
-    wversion = config.wversion;
+  // Inverter data
+  if (inverter.wsolar > 0) {
+    dtostrfd(inverter.wsolar, 2, tmpString);
+    jsonValues["wsolar"] = tmpString;
+  }
+  if (inverter.wgrid < 0 || inverter.wgrid > 0) {
+    dtostrfd(inverter.wgrid, 2, tmpString);
+    jsonValues["wgrid"] = tmpString;
+  }
+  if (inverter.temperature > 0) {
+    dtostrfd(inverter.temperature, 2, tmpString);
+    jsonValues["invTemp"] = tmpString;
+  }
+  if (inverter.batteryWatts < 0 || inverter.batteryWatts > 0) {
+    dtostrfd(inverter.batteryWatts, 2, tmpString);
+    jsonValues["wbattery"] = tmpString;
+  }
+  if (inverter.batterySoC > 0) {
+    dtostrfd(inverter.batterySoC, 2, tmpString);
+    jsonValues["invSoC"] = tmpString;
+  }
+  if (inverter.loadWatts < 0 || inverter.loadWatts > 0) {
+    dtostrfd(inverter.loadWatts, 2, tmpString);
+    jsonValues["wload"] = tmpString;
+  }
+  if (inverter.wtoday > 0) {
+    dtostrfd(inverter.wtoday, 2, tmpString);
+    jsonValues["wtoday"] = tmpString;
+  }
+  if (inverter.gridv > 0) {
+    dtostrfd(inverter.gridv, 2, tmpString);
+    jsonValues["gridv"] = tmpString;
+  }
+  if (inverter.pv1c > 0) {
+    dtostrfd(inverter.pv1c, 2, tmpString);
+    jsonValues["pv1c"] = tmpString;
+  }
+  if (inverter.pv1v > 0) {
+    dtostrfd(inverter.pv1v, 2, tmpString);
+    jsonValues["pv1v"] = tmpString;
+  }
+  if (inverter.pw1 > 0) {
+    dtostrfd(inverter.pw1, 2, tmpString);
+    jsonValues["pw1"] = tmpString;
+  }
+  if (inverter.pv2c > 0) {
+    dtostrfd(inverter.pv2c, 2, tmpString);
+    jsonValues["pv2c"] = tmpString;
+  }
+  if (inverter.pv2v > 0) {
+    dtostrfd(inverter.pv2v, 2, tmpString);
+    jsonValues["pv2v"] = tmpString;
+  }
+  if (inverter.pw2 > 0) {
+    dtostrfd(inverter.pw2, 2, tmpString);
+    jsonValues["pw2"] = tmpString;
   }
 
-  dtostrfd(inverter.wgrid, 2, tmpString);
-  jsonValues["wgrid"] = tmpString;
-  
-  dtostrfd(inverter.temperature, 2, tmpString);
-  jsonValues["invTemp"] = tmpString;
+  // Meter data
+  if (meter.voltage > 0) {
+    dtostrfd(meter.voltage, 2, tmpString);
+    jsonValues["mvoltage"] = tmpString;
+  }
+  if (meter.current > 0) {
+    dtostrfd(meter.current, 2, tmpString);
+    jsonValues["mcurrent"] = tmpString;
+  }
+  if (meter.powerFactor < 0 || meter.powerFactor > 0) {
+    dtostrfd(meter.powerFactor, 2, tmpString);
+    jsonValues["mpowerFactor"] = tmpString;
+  }
+  if (meter.frequency > 0) {
+    dtostrfd(meter.frequency, 2, tmpString);
+    jsonValues["mfrequency"] = tmpString;
+  }
+  if (meter.importActive > 0) {
+    dtostrfd(meter.importActive, 2, tmpString);
+    jsonValues["mimportActive"] = tmpString;
+  }
+  if (meter.exportActive > 0) {
+    dtostrfd(meter.exportActive, 2, tmpString);
+    jsonValues["mexportActive"] = tmpString;
+  }
 
+  // Energy Import
+  dtostrfd(config.KwToday, 3, tmpString);
+  jsonValues["KwToday"] = tmpString;
+  dtostrfd(config.KwYesterday, 3, tmpString);
+  jsonValues["KwYesterday"] = tmpString;
+  dtostrfd(config.KwTotal, 3, tmpString);
+  jsonValues["KwTotal"] = tmpString;
+
+  // Energy export
+  dtostrfd(config.KwExportToday, 3, tmpString);
+  jsonValues["KwExportToday"] = tmpString;
+  dtostrfd(config.KwExportYesterday, 3, tmpString);
+  jsonValues["KwExportYesterday"] = tmpString;
+  dtostrfd(config.KwExportTotal, 3, tmpString);
+  jsonValues["KwExportTotal"] = tmpString;
+
+  // Temperatures
   dtostrfd(temperaturaTermo, 1, tmpString);
   jsonValues["tempTermo"] = tmpString;
   
@@ -363,128 +667,167 @@ const char *sendJsonWeb(void)
   jsonValues["tempCustom"] = tmpString;
 
   jsonValues["customSensor"] = config.nombreSensor;
- 
-  switch(wversion)
-  {
-    case 4:
-    case 5:
-    case 6:
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(meter.powerFactor, 2, tmpString);
-      jsonValues["mpowerFactor"] = tmpString;
-      dtostrfd(meter.frequency, 2, tmpString);
-      jsonValues["mfrequency"] = tmpString;
-      dtostrfd(meter.importActive, 2, tmpString);
-      jsonValues["mimportActive"] = tmpString;
-      dtostrfd(meter.exportActive, 2, tmpString);
-      jsonValues["mexportActive"] = tmpString;
-      break;
-    case 9:
-    case 10:
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(meter.powerFactor, 2, tmpString);
-      jsonValues["mpowerFactor"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(meter.importActive, 2, tmpString);
-      jsonValues["mimportActive"] = tmpString;
-      dtostrfd(meter.exportActive, 2, tmpString);
-      jsonValues["mexportActive"] = tmpString;
-      break;
-    case 13:
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(inverter.batteryWatts, 2, tmpString);
-      jsonValues["wbattery"] = tmpString;
-      dtostrfd(inverter.loadWatts, 2, tmpString);
-      jsonValues["wload"] = tmpString;;
-      dtostrfd(inverter.wtoday, 2, tmpString);
-      jsonValues["wtoday"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.gridv, 2, tmpString);
-      jsonValues["gridv"] = tmpString;
-      dtostrfd(inverter.pv1c, 2, tmpString);
-      jsonValues["pv1c"] = tmpString;
-      dtostrfd(inverter.pv1v, 2, tmpString);
-      jsonValues["pv1v"] = tmpString;
-      dtostrfd(inverter.pw1, 2, tmpString);
-      jsonValues["pw1"] = tmpString;
-      dtostrfd(inverter.pv2c, 2, tmpString);
-      jsonValues["pv2c"] = tmpString;
-      dtostrfd(inverter.pv2v, 2, tmpString);
-      jsonValues["pv2v"] = tmpString;
-      dtostrfd(inverter.pw2, 2, tmpString);
-      jsonValues["pw2"] = tmpString;
-      break;
-    case 14:
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.batteryWatts, 2, tmpString);
-      jsonValues["wbattery"] = tmpString;
-      dtostrfd(inverter.batterySoC, 2, tmpString);
-      jsonValues["invSoC"] = tmpString;
-      break;
-    case 15:
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(inverter.wtoday, 2, tmpString);
-      jsonValues["wtoday"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.pv1c, 2, tmpString);
-      jsonValues["pv1c"] = tmpString;
-      dtostrfd(inverter.pv1v, 2, tmpString);
-      jsonValues["pv1v"] = tmpString;
-      dtostrfd(inverter.pw1, 2, tmpString);
-      jsonValues["pw1"] = tmpString;
-      dtostrfd(inverter.pv2c, 2, tmpString);
-      jsonValues["pv2c"] = tmpString;
-      dtostrfd(inverter.pv2v, 2, tmpString);
-      jsonValues["pv2v"] = tmpString;
-      dtostrfd(inverter.pw2, 2, tmpString);
-      jsonValues["pw2"] = tmpString;
-      break;
-    default:
-      dtostrfd(inverter.wtoday, 2, tmpString);
-      jsonValues["wtoday"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.gridv, 2, tmpString);
-      jsonValues["gridv"] = tmpString;
-      dtostrfd(inverter.pv1c, 2, tmpString);
-      jsonValues["pv1c"] = tmpString;
-      dtostrfd(inverter.pv1v, 2, tmpString);
-      jsonValues["pv1v"] = tmpString;
-      dtostrfd(inverter.pw1, 2, tmpString);
-      jsonValues["pw1"] = tmpString;
-      dtostrfd(inverter.pv2c, 2, tmpString);
-      jsonValues["pv2c"] = tmpString;
-      dtostrfd(inverter.pv2v, 2, tmpString);
-      jsonValues["pv2v"] = tmpString;
-      dtostrfd(inverter.pw2, 2, tmpString);
-      jsonValues["pw2"] = tmpString;
-      dtostrfd(inverter.batteryWatts, 2, tmpString);
-      jsonValues["wbattery"] = tmpString;
-      break;
-  }
 
   serializeJson(jsonValues, response);
 
   return response;
 }
+
+// const char *sendMasterData(void)
+// {
+//   DynamicJsonDocument jsonValues(768);
+  
+//   jsonValues["wversion"] = config.wversion;
+//   jsonValues["PwmMaster"] = pwmValue;
+  
+//   char tmpString[33];
+//   dtostrfd(inverter.wgrid, 2, tmpString);
+//   jsonValues["wgrid"] = tmpString;
+//   dtostrfd(inverter.temperature, 2, tmpString);
+//   jsonValues["invTemp"] = tmpString;
+  
+//   switch(config.wversion)
+//   {
+//     case 4:
+//     case 5:
+//     case 6:
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(meter.powerFactor, 2, tmpString);
+//       jsonValues["mpowerFactor"] = tmpString;
+//       dtostrfd(meter.frequency, 2, tmpString);
+//       jsonValues["mfrequency"] = tmpString;
+//       dtostrfd(meter.importActive, 2, tmpString);
+//       jsonValues["mimportActive"] = tmpString;
+//       dtostrfd(meter.exportActive, 2, tmpString);
+//       jsonValues["mexportActive"] = tmpString;
+//       dtostrfd(meter.energyTotal, 2, tmpString);
+//       jsonValues["menergyTotal"] = tmpString;
+//       dtostrfd(meter.activePower, 2, tmpString);
+//       jsonValues["mactivePower"] = tmpString;
+//       dtostrfd(meter.aparentPower, 2, tmpString);
+//       jsonValues["maparentPower"] = tmpString;
+//       dtostrfd(meter.reactivePower, 2, tmpString);
+//       jsonValues["mreactivePower"] = tmpString;
+//       dtostrfd(meter.importReactive, 2, tmpString);
+//       jsonValues["mimportReactive"] = tmpString;
+//       dtostrfd(meter.exportReactive, 2, tmpString);
+//       jsonValues["mexportReactive"] = tmpString;
+//       dtostrfd(meter.phaseAngle, 2, tmpString);
+//       jsonValues["mphaseAngle"] = tmpString;
+//       break;
+//     case 9:
+//     case 10:
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(meter.powerFactor, 2, tmpString);
+//       jsonValues["mpowerFactor"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(meter.importActive, 2, tmpString);
+//       jsonValues["mimportActive"] = tmpString;
+//       dtostrfd(meter.exportActive, 2, tmpString);
+//       jsonValues["mexportActive"] = tmpString;
+//       dtostrfd(meter.activePower, 2, tmpString);
+//       jsonValues["mactivePower"] = tmpString;
+//       dtostrfd(meter.reactivePower, 2, tmpString);
+//       jsonValues["mreactivePower"] = tmpString;
+//       dtostrfd(inverter.gridv, 2, tmpString);
+//       jsonValues["gridv"] = tmpString;
+//       break;
+//     case 13:
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(inverter.batteryWatts, 2, tmpString);
+//       jsonValues["wbattery"] = tmpString;
+//       dtostrfd(inverter.loadWatts, 2, tmpString);
+//       jsonValues["wload"] = tmpString;
+//       dtostrfd(inverter.wtoday, 2, tmpString);
+//       jsonValues["wtoday"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.gridv, 2, tmpString);
+//       jsonValues["gridv"] = tmpString;
+//       dtostrfd(inverter.pv1c, 2, tmpString);
+//       jsonValues["pv1c"] = tmpString;
+//       dtostrfd(inverter.pv1v, 2, tmpString);
+//       jsonValues["pv1v"] = tmpString;
+//       dtostrfd(inverter.pw1, 2, tmpString);
+//       jsonValues["pw1"] = tmpString;
+//       dtostrfd(inverter.pv2c, 2, tmpString);
+//       jsonValues["pv2c"] = tmpString;
+//       dtostrfd(inverter.pv2v, 2, tmpString);
+//       jsonValues["pv2v"] = tmpString;
+//       dtostrfd(inverter.pw2, 2, tmpString);
+//       jsonValues["pw2"] = tmpString;
+//       break;
+//     case 14:
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.batteryWatts, 2, tmpString);
+//       jsonValues["wbattery"] = tmpString;
+//       dtostrfd(inverter.batterySoC, 2, tmpString);
+//       jsonValues["invSoC"] = tmpString;
+//       break;
+//     case 15:
+//       dtostrfd(meter.current, 2, tmpString);
+//       jsonValues["mcurrent"] = tmpString;
+//       dtostrfd(meter.voltage, 2, tmpString);
+//       jsonValues["mvoltage"] = tmpString;
+//       dtostrfd(inverter.wtoday, 2, tmpString);
+//       jsonValues["wtoday"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.pv1c, 2, tmpString);
+//       jsonValues["pv1c"] = tmpString;
+//       dtostrfd(inverter.pv1v, 2, tmpString);
+//       jsonValues["pv1v"] = tmpString;
+//       dtostrfd(inverter.pw1, 2, tmpString);
+//       jsonValues["pw1"] = tmpString;
+//       dtostrfd(inverter.pv2c, 2, tmpString);
+//       jsonValues["pv2c"] = tmpString;
+//       dtostrfd(inverter.pv2v, 2, tmpString);
+//       jsonValues["pv2v"] = tmpString;
+//       dtostrfd(inverter.pw2, 2, tmpString);
+//       jsonValues["pw2"] = tmpString;
+//       break;
+//     default:
+//       dtostrfd(inverter.batteryWatts, 2, tmpString);
+//       jsonValues["wbattery"] = tmpString;
+//       dtostrfd(inverter.wtoday, 2, tmpString);
+//       jsonValues["wtoday"] = tmpString;
+//       dtostrfd(inverter.wsolar, 2, tmpString);
+//       jsonValues["wsolar"] = tmpString;
+//       dtostrfd(inverter.gridv, 2, tmpString);
+//       jsonValues["gridv"] = tmpString;
+//       dtostrfd(inverter.pv1c, 2, tmpString);
+//       jsonValues["pv1c"] = tmpString;
+//       dtostrfd(inverter.pv1v, 2, tmpString);
+//       jsonValues["pv1v"] = tmpString;
+//       dtostrfd(inverter.pw1, 2, tmpString);
+//       jsonValues["pw1"] = tmpString;
+//       dtostrfd(inverter.pv2c, 2, tmpString);
+//       jsonValues["pv2c"] = tmpString;
+//       dtostrfd(inverter.pv2v, 2, tmpString);
+//       jsonValues["pv2v"] = tmpString;
+//       dtostrfd(inverter.pw2, 2, tmpString);
+//       jsonValues["pw2"] = tmpString;
+//       break;
+//   }
+
+//   //String response;
+//   serializeJson(jsonValues, response);
+
+//   return response;
+// }
 
 const char *sendMasterData(void)
 {
@@ -494,146 +837,89 @@ const char *sendMasterData(void)
   jsonValues["PwmMaster"] = pwmValue;
   
   char tmpString[33];
-  dtostrfd(inverter.wgrid, 2, tmpString);
-  jsonValues["wgrid"] = tmpString;
-  dtostrfd(inverter.temperature, 2, tmpString);
-  jsonValues["invTemp"] = tmpString;
-  
-  switch(config.wversion)
-  {
-    case 4:
-    case 5:
-    case 6:
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(meter.powerFactor, 2, tmpString);
-      jsonValues["mpowerFactor"] = tmpString;
-      dtostrfd(meter.frequency, 2, tmpString);
-      jsonValues["mfrequency"] = tmpString;
-      dtostrfd(meter.importActive, 2, tmpString);
-      jsonValues["mimportActive"] = tmpString;
-      dtostrfd(meter.exportActive, 2, tmpString);
-      jsonValues["mexportActive"] = tmpString;
-      dtostrfd(meter.energyTotal, 2, tmpString);
-      jsonValues["menergyTotal"] = tmpString;
-      dtostrfd(meter.activePower, 2, tmpString);
-      jsonValues["mactivePower"] = tmpString;
-      dtostrfd(meter.aparentPower, 2, tmpString);
-      jsonValues["maparentPower"] = tmpString;
-      dtostrfd(meter.reactivePower, 2, tmpString);
-      jsonValues["mreactivePower"] = tmpString;
-      dtostrfd(meter.importReactive, 2, tmpString);
-      jsonValues["mimportReactive"] = tmpString;
-      dtostrfd(meter.exportReactive, 2, tmpString);
-      jsonValues["mexportReactive"] = tmpString;
-      dtostrfd(meter.phaseAngle, 2, tmpString);
-      jsonValues["mphaseAngle"] = tmpString;
-      break;
-    case 9:
-    case 10:
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(meter.powerFactor, 2, tmpString);
-      jsonValues["mpowerFactor"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(meter.importActive, 2, tmpString);
-      jsonValues["mimportActive"] = tmpString;
-      dtostrfd(meter.exportActive, 2, tmpString);
-      jsonValues["mexportActive"] = tmpString;
-      dtostrfd(meter.activePower, 2, tmpString);
-      jsonValues["mactivePower"] = tmpString;
-      dtostrfd(meter.reactivePower, 2, tmpString);
-      jsonValues["mreactivePower"] = tmpString;
-      dtostrfd(inverter.gridv, 2, tmpString);
-      jsonValues["gridv"] = tmpString;
-      break;
-    case 13:
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(inverter.batteryWatts, 2, tmpString);
-      jsonValues["wbattery"] = tmpString;
-      dtostrfd(inverter.loadWatts, 2, tmpString);
-      jsonValues["wload"] = tmpString;
-      dtostrfd(inverter.wtoday, 2, tmpString);
-      jsonValues["wtoday"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.gridv, 2, tmpString);
-      jsonValues["gridv"] = tmpString;
-      dtostrfd(inverter.pv1c, 2, tmpString);
-      jsonValues["pv1c"] = tmpString;
-      dtostrfd(inverter.pv1v, 2, tmpString);
-      jsonValues["pv1v"] = tmpString;
-      dtostrfd(inverter.pw1, 2, tmpString);
-      jsonValues["pw1"] = tmpString;
-      dtostrfd(inverter.pv2c, 2, tmpString);
-      jsonValues["pv2c"] = tmpString;
-      dtostrfd(inverter.pv2v, 2, tmpString);
-      jsonValues["pv2v"] = tmpString;
-      dtostrfd(inverter.pw2, 2, tmpString);
-      jsonValues["pw2"] = tmpString;
-      break;
-    case 14:
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.batteryWatts, 2, tmpString);
-      jsonValues["wbattery"] = tmpString;
-      dtostrfd(inverter.batterySoC, 2, tmpString);
-      jsonValues["invSoC"] = tmpString;
-      break;
-    case 15:
-      dtostrfd(meter.current, 2, tmpString);
-      jsonValues["mcurrent"] = tmpString;
-      dtostrfd(meter.voltage, 2, tmpString);
-      jsonValues["mvoltage"] = tmpString;
-      dtostrfd(inverter.wtoday, 2, tmpString);
-      jsonValues["wtoday"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.pv1c, 2, tmpString);
-      jsonValues["pv1c"] = tmpString;
-      dtostrfd(inverter.pv1v, 2, tmpString);
-      jsonValues["pv1v"] = tmpString;
-      dtostrfd(inverter.pw1, 2, tmpString);
-      jsonValues["pw1"] = tmpString;
-      dtostrfd(inverter.pv2c, 2, tmpString);
-      jsonValues["pv2c"] = tmpString;
-      dtostrfd(inverter.pv2v, 2, tmpString);
-      jsonValues["pv2v"] = tmpString;
-      dtostrfd(inverter.pw2, 2, tmpString);
-      jsonValues["pw2"] = tmpString;
-      break;
-    default:
-      dtostrfd(inverter.batteryWatts, 2, tmpString);
-      jsonValues["wbattery"] = tmpString;
-      dtostrfd(inverter.wtoday, 2, tmpString);
-      jsonValues["wtoday"] = tmpString;
-      dtostrfd(inverter.wsolar, 2, tmpString);
-      jsonValues["wsolar"] = tmpString;
-      dtostrfd(inverter.gridv, 2, tmpString);
-      jsonValues["gridv"] = tmpString;
-      dtostrfd(inverter.pv1c, 2, tmpString);
-      jsonValues["pv1c"] = tmpString;
-      dtostrfd(inverter.pv1v, 2, tmpString);
-      jsonValues["pv1v"] = tmpString;
-      dtostrfd(inverter.pw1, 2, tmpString);
-      jsonValues["pw1"] = tmpString;
-      dtostrfd(inverter.pv2c, 2, tmpString);
-      jsonValues["pv2c"] = tmpString;
-      dtostrfd(inverter.pv2v, 2, tmpString);
-      jsonValues["pv2v"] = tmpString;
-      dtostrfd(inverter.pw2, 2, tmpString);
-      jsonValues["pw2"] = tmpString;
-      break;
+   
+  // Inverter data
+  if (inverter.wsolar > 0) {
+    dtostrfd(inverter.wsolar, 2, tmpString);
+    jsonValues["wsolar"] = tmpString;
+  }
+  if (inverter.wgrid < 0 || inverter.wgrid > 0) {
+    dtostrfd(inverter.wgrid, 2, tmpString);
+    jsonValues["wgrid"] = tmpString;
+  }
+  if (inverter.temperature > 0) {
+    dtostrfd(inverter.temperature, 2, tmpString);
+    jsonValues["invTemp"] = tmpString;
+  }
+  if (inverter.batteryWatts < 0 || inverter.batteryWatts > 0) {
+    dtostrfd(inverter.batteryWatts, 2, tmpString);
+    jsonValues["wbattery"] = tmpString;
+  }
+  if (inverter.batterySoC > 0) {
+    dtostrfd(inverter.batterySoC, 2, tmpString);
+    jsonValues["invSoC"] = tmpString;
+  }
+  if (inverter.loadWatts < 0 || inverter.loadWatts > 0) {
+    dtostrfd(inverter.loadWatts, 2, tmpString);
+    jsonValues["wload"] = tmpString;
+  }
+  if (inverter.wtoday > 0) {
+    dtostrfd(inverter.wtoday, 2, tmpString);
+    jsonValues["wtoday"] = tmpString;
+  }
+  if (inverter.gridv > 0) {
+    dtostrfd(inverter.gridv, 2, tmpString);
+    jsonValues["gridv"] = tmpString;
+  }
+  if (inverter.pv1c > 0) {
+    dtostrfd(inverter.pv1c, 2, tmpString);
+    jsonValues["pv1c"] = tmpString;
+  }
+  if (inverter.pv1v > 0) {
+    dtostrfd(inverter.pv1v, 2, tmpString);
+    jsonValues["pv1v"] = tmpString;
+  }
+  if (inverter.pw1 > 0) {
+    dtostrfd(inverter.pw1, 2, tmpString);
+    jsonValues["pw1"] = tmpString;
+  }
+  if (inverter.pv2c > 0) {
+    dtostrfd(inverter.pv2c, 2, tmpString);
+    jsonValues["pv2c"] = tmpString;
+  }
+  if (inverter.pv2v > 0) {
+    dtostrfd(inverter.pv2v, 2, tmpString);
+    jsonValues["pv2v"] = tmpString;
+  }
+  if (inverter.pw2 > 0) {
+    dtostrfd(inverter.pw2, 2, tmpString);
+    jsonValues["pw2"] = tmpString;
+  }
+
+  // Meter data
+  if (meter.voltage > 0) {
+    dtostrfd(meter.voltage, 2, tmpString);
+    jsonValues["mvoltage"] = tmpString;
+  }
+  if (meter.current > 0) {
+    dtostrfd(meter.current, 2, tmpString);
+    jsonValues["mcurrent"] = tmpString;
+  }
+  if (meter.powerFactor < 0 || meter.powerFactor > 0) {
+    dtostrfd(meter.powerFactor, 2, tmpString);
+    jsonValues["mpowerFactor"] = tmpString;
+  }
+  if (meter.frequency > 0) {
+    dtostrfd(meter.frequency, 2, tmpString);
+    jsonValues["mfrequency"] = tmpString;
+  }
+  if (meter.importActive > 0) {
+    dtostrfd(meter.importActive, 2, tmpString);
+    jsonValues["mimportActive"] = tmpString;
+  }
+  if (meter.exportActive > 0) {
+    dtostrfd(meter.exportActive, 2, tmpString);
+    jsonValues["mexportActive"] = tmpString;
   }
 
   //String response;
@@ -785,6 +1071,7 @@ void setWebConfig(void)
 
   server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     checkAuth(request);
+    saveEEPROM();
     webMessageResponse = 2;
     Flags.reboot = true;
     request->redirect("/");
@@ -795,17 +1082,17 @@ void setWebConfig(void)
     config.wversion = request->arg("data").toInt();
     processData = false;
 
-    if (config.flags.mqtt && config.wversion != 0 && !mqttClient.connected()) { Tickers.enable(2); }
+    if (config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !mqttClient.connected()) { Tickers.enable(2); }
     if (config.flags.mqtt && mqttClient.connected()) {
-       if (config.wversion != 0) { unSuscribeMqtt(); }
-       if (config.wversion == 3) { suscribeMqttMeter(); }
+       if (config.wversion != SOLAX_V2_LOCAL) { unSuscribeMqtt(); }
+       if (config.wversion == MQTT_BROKER) { suscribeMqttMeter(); }
     }
     
     setGetDataTime();
 
     modbustcp = NULL;
 
-    if (config.wversion == 8 || (config.wversion >= 14 && config.wversion <= 16)) {
+    if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
       modbusIP.fromString((String)config.sensor_ip);
       modbustcp = new esp32ModbusTCP(modbusIP, 502);
       configModbusTcp();
@@ -891,7 +1178,7 @@ void setWebConfig(void)
     
     String comandoRaw = request->arg("webcmnd");
     String comando = comandoRaw.substring(0, comandoRaw.indexOf(" "));
-    uint8_t payload = atoi(comandoRaw.substring(comandoRaw.indexOf(" ") + 1, strlen(comandoRaw.c_str())).c_str());
+    uint32_t payload = atoi(comandoRaw.substring(comandoRaw.indexOf(" ") + 1, strlen(comandoRaw.c_str())).c_str());
         
     if (comando == "rebootcause") { rebootCause(); }
     if (comando == "getfreeheap") { INFOV("Free Heap: %d bytes\n", ESP.getFreeHeap()); }
@@ -927,6 +1214,29 @@ void setWebConfig(void)
 
     if (comando == "weblog") {
       if (payload == 1) { config.flags.weblog = true; } else { config.flags.weblog = false; }
+      saveEEPROM();
+    }
+
+    if (comando == "KwToday") {
+      if (payload >= 1) { config.KwToday = payload / 1000.0; }
+    }
+
+    if (comando == "KwTotal") {
+      if (payload >= 1) { config.KwTotal = payload / 1000.0; }
+    }
+
+     if (comando == "KwExportToday") {
+      if (payload >= 1) { config.KwExportToday = payload / 1000.0; }
+    }
+
+    if (comando == "KwExportTotal") {
+      if (payload >= 1) { config.KwExportTotal = payload / 1000.0; }
+    }
+
+    if (comando == "flipScreen") {
+      config.flags.flipScreen = !config.flags.flipScreen;
+      if(config.flags.flipScreen) { display.flipScreenVertically(); }
+      else { display.resetOrientation(); }
       saveEEPROM();
     }
     
@@ -1014,6 +1324,8 @@ void setWebConfig(void)
     if (final) {
       if(Update.end(true)){
         request->send(200);
+        config.flags.pwmEnabled = true;
+        saveEEPROM();
         INFOV("Update Success: %uB\n", index+len);
         delay(500);
         ESP.restart();

@@ -20,18 +20,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/*
-
-TODO:
-  - Añadir temperatura a fronius modbus si es posible
-  - Borrar líneas de debug usadas para detectar el fallo por el que no sube de pwm existiendo excedentes.
-
-*/
-
-#define eepromVersion 0x13
+#define eepromVersion 0x15
 
 #define sizeOfArray(x)  (sizeof(x) / sizeof((x)[0]))
 
+#include <workingmode.h>
 #include <Update.h>
 #include <Wire.h>
 #include <WiFi.h>
@@ -116,12 +109,11 @@ extern "C"
 #define RX1 19
 #define TX1 23
 
-//// NTP Config
+// NTP Config, use https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv to get the correct tz config.
 const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 3600;
-const int   daylightOffset_sec = 3600;
+const char* tzConfig = "CET-1CEST,M3.5.0,M10.5.0/3";
 
-///// Debounce control
+// Debounce control
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 100;
 bool ButtonState = false;
@@ -129,7 +121,7 @@ bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "Pre_1.0.5Rev14";
+const char version[] PROGMEM = "Pre_1.0.5Rev15";
 
 const char *www_username = "admin";
 
@@ -151,15 +143,16 @@ size_t outputLength; // For base64
 
 IPAddress modbusIP;
 
-//// Temporizadores
+// Temporizadores
 struct {
     unsigned long ErrorConexionWifi = 0;
     unsigned long ErrorVariacionDatos = 0;
     unsigned long ErrorRecepcionDatos = 0;
-    unsigned long ErrorLecturaTemperatura = 0;
+    unsigned long ErrorLecturaTemperatura[3] = {0};
     unsigned long FlashDisplay = 0;
     unsigned long OledAutoOff = 0;
     unsigned long printDebug = 0;
+    unsigned long KwToday = 0;
 } timers;
 
 // Flags
@@ -190,7 +183,7 @@ union {
   };
 } Flags;
 
-//// Flags Errores
+// Flags Errores
 union {
   uint16_t data;
   struct {
@@ -230,7 +223,9 @@ typedef union {
     uint32_t changeGridSign : 1;     // Bit 17
     uint32_t messageDebug : 1;       // Bit 18
     uint32_t debug4 : 1;             // Bit 19
-    uint32_t spare : 12;             // Bit 20 - 31
+    uint32_t flipScreen : 1;         // Bit 20
+    uint32_t offGrid : 1;            // Bit 21
+    uint32_t spare : 10;             // Bit 22 - 31
   };
 } SysBitfield;
 
@@ -276,7 +271,7 @@ struct CONFIG
   uint16_t R04Min;
   int16_t R04PotOn;
   int16_t R04PotOff;
-  RelayFlags relaysFlags;
+  RelayFlags relaysFlags; // Guarda el estado de los relés
   
   // DATOS SOLAX V2
   char ssid_esp01[30];
@@ -346,7 +341,22 @@ struct CONFIG
   
   uint16_t domoticzIdx[3];
   uint16_t attachedLoadWatts;
-  uint8_t free[236];
+  uint16_t maxPwmLowCost;
+
+  // CONTROL DE CONSUMO Y VERTIDO
+  float KwToday;
+  float KwExportToday;
+  float KwYesterday;
+  float KwExportYesterday;
+  float KwTotal;
+  float KwExportTotal;
+
+  // OFFGRID
+  uint8_t soc;
+  int16_t battWatts;
+  
+  // FREE MEMORY
+  uint8_t free[207];
 } config;
 
 struct METER
@@ -387,6 +397,7 @@ struct INVERTER
   float batteryWatts = 0;  // Consumo de las Baterías 
   float batterySoC;
   float loadWatts = 0;
+  float currentCalcWatts = 0;
 } inverter;
 
 struct UPTIME
@@ -407,8 +418,11 @@ int logcount = 0;
 
 char response[768];
 
-//// Definiciones Conexiones
+// Variables Globales calculo PWM
+uint16_t maxPwm;
+uint16_t targetPwm;
 
+// Definiciones Conexiones
 WiFiMulti wifiMulti;
 
 fauxmoESP fauxmo;
@@ -423,7 +437,7 @@ HardwareSerial SerieEsp(2);   // RX, TX para esp-01
 HardwareSerial SerieMeter(1); // RX, TX para los Meter rs485/modbus
 DynamicJsonDocument root(3072); // 2048
 
-TickerScheduler Tickers(8);
+TickerScheduler Tickers(9);
 
 DNSServer dnsServer;
 
@@ -496,7 +510,7 @@ public:
   }
 };
 
-////////// WATCHDOG FUNCTIONS //////
+////////// WATCHDOG FUNCTIONS //////////
 
 const int loopTimeCtl = 0;
 hw_timer_t *timer = NULL;
@@ -507,8 +521,7 @@ void IRAM_ATTR resetModule()
   ESP.restart();
 }
 
-/////////////////////////////////////
-
+////////// DEFAULT CONFIG //////////
 void defaultValues()
 {
   static char tmpTopic[33];
@@ -517,7 +530,7 @@ void defaultValues()
   WiFi.macAddress(mac);
   sprintf(config.hostServer, "freeds_%02x%02x", mac[4], mac[5]);
   
-  config.wversion = 2;
+  config.wversion = SOLAX_V2;
   config.flags.mqtt = false;
   strcpy(config.MQTT_broker, "192.168.0.2");
   strcpy(config.MQTT_user, "MQTT_user");
@@ -605,6 +618,15 @@ void defaultValues()
   config.domoticzIdx[0] = 0;
   config.domoticzIdx[1] = 0;
   config.domoticzIdx[2] = 0;
+  config.maxPwmLowCost = 1073; // Max 1232
+  config.attachedLoadWatts = 2000;
+
+  config.KwToday = 0;
+  config.KwExportToday = 0;
+  config.KwYesterday = 0;
+  config.KwExportYesterday = 0;
+  config.KwTotal = 0;
+  config.KwExportTotal = 0;
 
   config.eeinit = eepromVersion;
   config.flags.wifi = false;
@@ -620,6 +642,7 @@ void configureTickers(void)
   Tickers.add(5, config.pwmControlTime, [&](void *) { pwmControl(); }, nullptr, false); // Pwm Control loop
   Tickers.add(6, config.publishMqtt, [&](void *) { publishMqtt(); }, nullptr, false);   // Publish Mqtt messages
   Tickers.add(7, 1500, [&](void *) { calcDallasTemperature(); }, nullptr, false);       // Read temp sensors
+  Tickers.add(8, 1000, [&](void *) { calcWattsToday(); }, nullptr, false);       // Calc Watts used today
   Tickers.disableAll();
 }
 
@@ -667,6 +690,7 @@ void setup()
 
   display.init();
   display.setBrightness(config.oledBrightness);
+  if (config.flags.flipScreen) { display.flipScreenVertically(); }
   showLogo(_START_, true);
 #endif
 
@@ -710,8 +734,7 @@ void setup()
   }
   else
   {
-
-    //// Relay Timers
+    // Relay Timers
     relayOnTimer = xTimerCreate("relayOnTimer", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(enableRelay));
     relayOffTimer = xTimerCreate("relayOffTimer", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(disableRelay));
 
@@ -725,7 +748,7 @@ void setup()
     mqttClient.setCredentials(config.MQTT_user, config.MQTT_password);
     mqttClient.setServer(config.MQTT_broker, config.MQTT_port);
 
-    //// Configuración de los tickers
+    // Configuración de los tickers
     configureTickers();
     
     connectToWifi();
@@ -740,9 +763,9 @@ void setup()
       
       buildWifiArray();
 
-      // init and get the ntp time
-      if (config.wversion != 0) {
-        configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      // Init, Configure and get the ntp time
+      if (config.wversion != SOLAX_V2_LOCAL) {
+        configTzTime(tzConfig, ntpServer);
         updateLocalTime();
       }
       Flags.timerSet = false;
@@ -752,9 +775,9 @@ void setup()
       SerieMeter.begin(config.baudiosMeter, SERIAL_8N1, RX1, TX1); // UART1 para meter
       SerieEsp.begin(115200, SERIAL_8N1, pin_rx, pin_tx); // UART2 para ESP01
       
-      if (config.wversion == 2) { SerieEsp.printf("SSID: %s\n", config.ssid_esp01); }
+      if (config.wversion == SOLAX_V2) { SerieEsp.printf("SSID: %s\n", config.ssid_esp01); }
 
-      if (config.wversion == 8 || (config.wversion >= 14 && config.wversion <= 16)) {
+      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
         modbusIP.fromString((String)config.sensor_ip);
         modbustcp = new esp32ModbusTCP(modbusIP, 502);
         configModbusTcp();
@@ -777,8 +800,11 @@ void setup()
       timers.ErrorVariacionDatos = millis();
       timers.ErrorRecepcionDatos = millis();
       timers.OledAutoOff = millis();
-      timers.ErrorLecturaTemperatura = millis() - config.maxErrorTime;
+      timers.ErrorLecturaTemperatura[0] = millis() - config.maxErrorTime;
+      timers.ErrorLecturaTemperatura[1] = millis() - config.maxErrorTime;
+      timers.ErrorLecturaTemperatura[2] = millis() - config.maxErrorTime;
       timers.printDebug = millis();
+      timers.KwToday = millis();
 
       if (config.flags.pwmEnabled && !config.flags.pwmMan)
       {
@@ -804,7 +830,7 @@ void setup()
     }
   }
 
-  // http server
+  // HTTP server
   // Initialize SPIFFS
   if (!SPIFFS.begin(true))
   {
@@ -852,7 +878,9 @@ void loop()
         // tme = millis();
         INFOV("\nError Recepción Datos: %s, Error Variación Datos: %s, Error Conexión Mqtt: %s\n", Error.RecepcionDatos ? "true" : "false", Error.VariacionDatos ? "true" : "false", Error.ConexionMqtt ? "true" : "false");
         INFOV("Timer Recepción Datos: %ld, Timer Variación Datos: %ld\n", millis() - timers.ErrorRecepcionDatos, millis() - timers.ErrorVariacionDatos);
-        INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, invert_pwm: %d, battery: %.02f\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, invert_pwm, inverter.batteryWatts);
+        INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, invert_pwm: %d, targetPwm: %d, battery: %.02f\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, invert_pwm, targetPwm, inverter.batteryWatts);
+        INFOV("Rele 1: %s, Rele 2: %s, Rele 3: %s, Rele 4:%s\n", digitalRead(PIN_RL1) ? "ON" : "OFF", digitalRead(PIN_RL2) ? "ON" : "OFF", digitalRead(PIN_RL3) ? "ON" : "OFF", digitalRead(PIN_RL4) ? "ON" : "OFF");
+        //INFOV("Error Temp 1: %ld, Error Temp 2: %ld, Error Temp 3: %ld", millis() - timers.ErrorLecturaTemperatura[0], millis() - timers.ErrorLecturaTemperatura[1], millis() - timers.ErrorLecturaTemperatura[2]);
         timers.printDebug = millis();
       }
     }
@@ -867,7 +895,7 @@ void loop()
 
     if (processData) { processingData(); }
     
-    if (config.wversion != 0) {
+    if (config.wversion != SOLAX_V2_LOCAL) {
       checkTimer();
       updateLocalTime();
     }

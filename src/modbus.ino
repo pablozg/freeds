@@ -325,7 +325,7 @@ void readModbus(void)
       sdm120();
       break;
     case 8:
-      sma();
+      smaBoy();
       break;
     case 14:
       victron();
@@ -335,6 +335,9 @@ void readModbus(void)
       break;
     case 16:
       huawei();
+      break;
+    case 17:
+      smaIsland();
       break;
     }
 }

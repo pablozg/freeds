@@ -1,0 +1,17 @@
+#define SOLAX_V2_LOCAL 0
+#define SOLAX_V1 1
+#define SOLAX_V2 2
+#define MQTT_BROKER 3
+#define DDS238_METER 4
+#define DDSU666_METER 5  
+#define SDM_METER 6
+#define SMA_BOY 8
+#define WIBEEE 9
+#define SHELLY_EM 10
+#define FRONIUS_API 11
+#define SLAVE_MODE 12
+#define ICC_SOLAR 13
+#define VICTRON 14
+#define FRONIUS_MODBUS 15
+#define HUAWEI_MODBUS 16
+#define SMA_ISLAND 17

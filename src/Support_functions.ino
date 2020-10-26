@@ -24,24 +24,25 @@ void getSensorData(void)
   {
     switch (config.wversion)
     {
-      case 2: // Solax v2
+      case SOLAX_V2: // Solax v2
         readESP01();
         break;
-      case 0: // Solax v2 local mode
-      case 1: // Solax v1
-      case 9: // Wibee
-      case 10: // Shelly EM
-      case 11: // Fronius
-      case 12: // Master FreeDS
+      case SOLAX_V2_LOCAL: // Solax v2 local mode
+      case SOLAX_V1: // Solax v1
+      case WIBEEE: // Wibee
+      case SHELLY_EM: // Shelly EM
+      case FRONIUS_API: // Fronius API
+      case SLAVE_MODE: // Master FreeDS
         runAsyncClient();
         break;
-      case 4: // DDS2382
-      case 5: // DDSU666
-      case 6: // SDM120/220
-      case 8: // SMA
-      case 14: // Victron
-      case 15: // Fronius
-      case 16: // Huawei
+      case DDS238_METER: // DDS2382
+      case DDSU666_METER: // DDSU666
+      case SDM_METER: // SDM120/220
+      case SMA_BOY: // SMA
+      case SMA_ISLAND: // SMA
+      case VICTRON: // Victron
+      case FRONIUS_MODBUS: // Fronius Modbus
+      case HUAWEI_MODBUS: // Huawei
         readModbus();
         break;
     }
@@ -51,24 +52,28 @@ void getSensorData(void)
 void setGetDataTime(void)
 {
   switch (config.wversion) {
-    case 2:
+    case SOLAX_V2:
       config.getDataTime = 250;
       break;
-    case 0:
-    case 1:
-    case 9:
-    case 10:
-    case 11:
-    case 12:
+    case SOLAX_V2_LOCAL:
+    case SOLAX_V1:
+    case WIBEEE:
+    case SHELLY_EM:
+    case FRONIUS_API:
       if (config.getDataTime < 1500) config.getDataTime = 1500;
       break;
-    case 15:
-      config.getDataTime = 250;
+    case SLAVE_MODE:
+      if (config.getDataTime < 500) config.getDataTime = 500;
       break;
-    case 8:
-    case 14:
-    case 16:
-      if (config.getDataTime < 1500) config.getDataTime = 1500;
+    case FRONIUS_MODBUS:
+      // config.getDataTime = 250;
+      // break;
+    case SMA_BOY:
+    case SMA_ISLAND:
+    case VICTRON:
+    case HUAWEI_MODBUS:
+      // if (config.getDataTime < 1500) config.getDataTime = 1500;
+      if (config.getDataTime < 250) config.getDataTime = 250;
       break;
   }
   Tickers.updatePeriod(4, config.getDataTime);
@@ -89,9 +94,7 @@ char *dtostrfd(double number, unsigned char prec, char *s)
   { // Fix for JSON output (https://stackoverflow.com/questions/1423081/json-left-out-infinity-and-nan-json-status-in-ecmascript)
     strcpy(s, "null");
     return s;
-  }
-  else
-  {
+  } else {
     return dtostrf(number, 1, prec, s);
   }
 }
@@ -352,6 +355,37 @@ void checkTimer(void)
   }
 }
 
+void calcWattsToday()
+{
+  // float timeCalcWattsToday = (float(millis() - timers.KwToday)/1000.0);
+  float timeCalcWattsToday = 1.0;
+  float KwIncrement;
+    
+  // KwToday = KwToday + (inverter.currentCalcWatts * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
+  if (inverter.wgrid < 0) {
+    KwIncrement = (-inverter.wgrid * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
+    config.KwToday += KwIncrement;
+    config.KwTotal += KwIncrement;
+  } else {
+    KwIncrement = (inverter.wgrid * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
+    config.KwExportToday += KwIncrement;
+    config.KwExportTotal += KwIncrement;
+  }
+
+  if (timeinfo.tm_hour == 0 && timeinfo.tm_min == 0 && timeinfo.tm_sec == 0) // If midnight
+  {
+    config.KwYesterday = config.KwToday;
+    config.KwExportYesterday = config.KwExportToday;
+    config.KwToday = 0;
+    config.KwExportToday = 0;
+  }
+  
+  // INFOV("Millis: %lu, time float: %.03f\n", millis() - timers.KwToday, timeCalcWattsToday);
+  // INFOV("Consumo -> Kw Today: %.03f, Kw Yesterday: %.03f, Kw Total: %.03f\n", config.KwToday, config.KwYesterday, config.KwTotal);
+  // INFOV("Vertido -> Kw Today: %.03f, Kw Yesterday: %.03f, Kw Total: %.03f\n", config.KwExportToday, config.KwExportYesterday, config.KwExportTotal);
+  timers.KwToday = millis();
+}
+
 void verbose_print_reset_reason(int cpu)
 {
   const char * reason;
@@ -510,6 +544,27 @@ void checkEEPROM(void){
     config.flags.changeGridSign = false;
     config.flags.messageDebug = false;
     config.eeinit = 0x13;
+  }
+
+  if(config.eeinit == 0x13)
+  {
+    config.maxPwmLowCost = 1073; // Max 1232
+    config.eeinit = 0x14;
+  }
+
+  if(config.eeinit == 0x14)
+  {
+    config.KwToday = 0;
+    config.KwExportToday = 0;
+    config.KwYesterday = 0;
+    config.KwExportYesterday = 0;
+    config.KwTotal = 0;
+    config.KwExportTotal = 0;
+    config.flags.flipScreen = true;
+    config.flags.offGrid = false;
+    config.soc = 100;
+    config.battWatts = -200;
+    config.eeinit = 0x15;
     saveEEPROM();
   }
 }

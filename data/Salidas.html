@@ -94,20 +94,20 @@
                 <div class="sidebar-heading">Monitor</div>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='wsolar2Text'>Potencia Solar:</span>
-                        <h6 class='pt-1' id='wsolar2'></h6>
+                        <span id='barText1'>Potencia Solar:</span>
+                        <h6 class='pt-1' id='barValue1'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span>Potencia de red:</span>
-                        <h6 class='pt-1' id='wgrid2'></h6>
+                        <span id='barText2'>Potencia de red:</span>
+                        <h6 class='pt-1' id='barValue2'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='pwm2Text'>PWM:</span>
-                        <h6 class='pt-1' id='pwm2'></h6>
+                        <span id='barText3'>PWM:</span>
+                        <h6 class='pt-1' id='barValue3'></h6>
                     </a>
                 </li>
                 <hr class="sidebar-divider d-none d-md-block">
@@ -151,13 +151,13 @@
                                                         </div>
                                                     </div>
                                                     <div class="row">
-                                                        <label class="col-sm-4 form-control-label">Consumo de red, valor mínimo (W):</label>
+                                                        <label class="col-sm-4 form-control-label">Potencia para aumentar derivación (W):</label>
                                                         <div class="col-sm-8 mg-t-8 mg-sm-t-0">
                                                             <input id='pwmmin' name='pwmmin' type="text" class="form-control" maxlength='5' value="%PWMMIN%">
                                                         </div>
                                                     </div>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Consumo de red, valor máximo (W):</label>
+                                                        <label class="col-sm-4 form-control-label">Potencia para reducir derivación (W):</label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='pwmmax' name='pwmmax' type="text" class="form-control" maxlength='5' value="%PWMMAX%">
                                                         </div>
@@ -186,6 +186,12 @@
                                                         <input id="lowcostactive" name="lowcostactive" type="checkbox"  class="custom-control-input" onchange="checkPWM();" %LOWCOSTACTIVE%>
                                                         <span class="custom-control-indicator"></span><span id='lowcostText'></span> 
                                                     </label>
+                                                    <div class="row">
+                                                        <label class="col-sm-4 form-control-label">Límite máximo potencia parche lowcost (1024 - 1232):</label>
+                                                        <div class="col-sm-8 mg-t-8 mg-sm-t-0">
+                                                            <input id='maxpwmlowcost' name='maxpwmlowcost' type="text" class="form-control" maxlength='4' value="%MAXPWMLOWCOST%">
+                                                        </div>
+                                                    </div>
                                                     <div class="row mg-t-2">
                                                         <label class="col-sm-4 form-control-label">Porcentaje de PWM en modo manual:</label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">

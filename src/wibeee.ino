@@ -28,12 +28,14 @@ void parseWibeee(char *xml) {
   // Pinza 1 como lector de Red
   meter.activePower = inverter.wgrid = midString(&response, "<fase1_p_activa>", "</fase1_p_activa>").toFloat();
   meter.voltage = midString(&response, "<fase1_vrms>", "</fase1_vrms>").toFloat();
+  meter.current = midString(&response, "<fase1_irms>", "</fase1_irms>").toFloat();
   meter.reactivePower = midString(&response, "<fase1_p_reactiva_ind>", "</fase1_p_reactiva_ind>").toFloat();
   meter.reactivePower += midString(&response, "<fase1_p_reactiva_cap>", "</fase1_p_reactiva_cap>").toFloat();;
 
   float value;
   value = midString(&response, "<fase1_factor_potencia>", "</fase1_factor_potencia>").toFloat();
   meter.powerFactor = value;
+  meter.frequency = midString(&response, "<fase1_frecuencia>", "</fase1_frecuencia>").toFloat();
   // Si powerFactor es negativo está volcando, positivo consumiendo.
   if (value > 0) {
     if (!config.flags.changeGridSign) { meter.activePower *= -1; inverter.wgrid *= -1; meter.reactivePower *= -1; }

@@ -111,22 +111,22 @@ void runAsyncClient()
 
     switch (config.wversion)
     {
-      case 0: // Solax v2 local mode
+      case SOLAX_V2_LOCAL: // Solax v2 local mode
         strcpy(url, "POST /?optType=ReadRealTimeData HTTP/1.1\r\nHost: 5.8.8.8\r\nConnection: close\r\nContent-Length: 0\r\nAccept: /*/\r\nContent-Type: application/x-www-form-urlencoded\r\nX-Requested-With: com.solaxcloud.starter\r\n\r\n");
         break;
-      case 1: // Solax v1
+      case SOLAX_V1: // Solax v1
         sprintf(url, "GET /api/realTimeData.htm HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", config.sensor_ip);
         break;
-      case 9: // Wibee
+      case WIBEEE: // Wibee
         sprintf(url, "GET /en/status.xml HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", config.sensor_ip);
         break;
-      case 10: // Shelly EM
+      case SHELLY_EM: // Shelly EM
         sprintf(url, "GET /emeter/%d HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", (shellySensor - 1), config.sensor_ip);
         break;
-      case 11: // Fronius
+      case FRONIUS_API: // Fronius
         sprintf(url, "GET /solar_api/v1/GetPowerFlowRealtimeData.fcgi HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", config.sensor_ip);
         break;
-      case 12: // Slave Freeds
+      case SLAVE_MODE: // Slave Freeds
         sprintf(url, "GET /masterdata HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", config.sensor_ip);
         break;
     }
@@ -231,7 +231,7 @@ void runAsyncClient()
     }
   });
 
-  if (config.wversion == 0) {
+  if (config.wversion == SOLAX_V2_LOCAL) {
     if (!aClient->connect("5.8.8.8", 80))
     {
       if (config.flags.moreDebug) { INFOV("Connect Fail\n"); }
@@ -273,24 +273,24 @@ void processingData(void)
 {
   switch (config.wversion)
   {
-    case 0: // Solax v2 local mode
+    case SOLAX_V2_LOCAL: // Solax v2 local mode
       parseJsonv2local(message.message);
       break;
-    case 1: // Solax v1
+    case SOLAX_V1: // Solax v1
       parseJsonv1(message.message);
       break;
-    case 9: // Wibee
+    case WIBEEE: // Wibee
       parseWibeee(message.message);
       break;
-    case 10: // Shelly EM
+    case SHELLY_EM: // Shelly EM
       parseShellyEM(message.message, shellySensor);
       shellySensor++;
       if (shellySensor > 2) { shellySensor = 1; }
       break;
-    case 12:
+    case SLAVE_MODE:
       parseMasterFreeDs(message.message);
       break;
-    case 11: // Fronius
+    case FRONIUS_API: // Fronius
       parseJson_fronius(message.message);
       break;
   }

@@ -116,6 +116,7 @@ void parseMasterFreeDs(char *json)
         inverter.pw2 =    (float)root["pw2"];    // Potencia string 2
         inverter.wtoday = (float)root["wtoday"];    // Potencia solar diaria
         inverter.wsolar = (float)root["wsolar"];    // Potencia solar actual
+        inverter.temperature =  (float)root["invTemp"];
         break;
       default:
         inverter.wtoday = (float)root["wtoday"];

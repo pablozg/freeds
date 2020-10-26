@@ -21,7 +21,7 @@
 struct topicData
 {
     float *variable;
-    char topics[12];
+    char topics[18];
 };
 
 topicData topicRegisters[] = {
@@ -37,13 +37,22 @@ topicData topicRegisters[] = {
     &inverter.wgrid, "wgrid",
     &inverter.wtogrid, "wtogrid",
     &inverter.gridv, "gridv",
+    &inverter.currentCalcWatts, "calcWatts",
     &temperaturaTermo, "tempTermo",
     &temperaturaTriac, "tempTriac",
-    &temperaturaCustom, "tempCustom"
+    &temperaturaCustom, "tempCustom",
+    &config.KwToday, "KwToday",
+    &config.KwYesterday, "KwYesterday",
+    &config.KwExportToday, "KwExportToday",
+    &config.KwExportYesterday, "KwExportYesterday",
+    &config.KwTotal, "KwTotal",
+    &config.KwExportTotal, "KwExportTotal"
 };
 
 void connectToWifi()
 {
+  if (config.flags.moreDebug) { INFOV("ConnectToWifi()\n"); }
+
   Serial.println("Connecting to Wi-Fi...");
   #ifdef OLED
     showLogo(_CONNECTING_, false);
@@ -117,7 +126,9 @@ void errorConnectToWifi(void)
 
 void connectToMqtt()
 {
-  if (config.wversion != 0 && config.flags.mqtt && !mqttClient.connected())
+  if (config.flags.moreDebug) { INFOV("ConnectToMqtt()\n"); }
+
+  if (config.wversion != SOLAX_V2_LOCAL && config.flags.mqtt && !mqttClient.connected())
   {
     INFOV(PSTR("Connecting to MQTT...\n"));
     mqttClient.connect();
@@ -133,6 +144,7 @@ void WiFiEvent(WiFiEvent_t event)
   {
   case SYSTEM_EVENT_STA_GOT_IP:
     Error.ConexionWifi = false;
+    Flags.pwmIsWorking = true;
     INFOV(PSTR("WiFi connected\nIP address: %s\n"),WiFi.localIP().toString().c_str());
     delay(1000);
 
@@ -140,7 +152,7 @@ void WiFiEvent(WiFiEvent_t event)
     Tickers.disable(3); // Wifi
     if (!config.flags.sensorTemperatura) { Tickers.disable(7); }
 
-    if (!config.flags.mqtt || config.wversion == 0) {
+    if (!config.flags.mqtt || config.wversion == SOLAX_V2_LOCAL) {
       Serial.printf("Desactivando timer mqtt\n");
       Tickers.disable(2);
       Tickers.disable(6);
@@ -149,6 +161,7 @@ void WiFiEvent(WiFiEvent_t event)
 
   case SYSTEM_EVENT_STA_DISCONNECTED:
     Error.ConexionWifi = true;
+    mqttClient.disconnect();
     INFOV(PSTR("WiFi lost connection\n"));
     receivingData = false;
     processData = false;
@@ -214,7 +227,7 @@ void onMqttConnect(bool sessionPresent)
     mqttClient.subscribe(tmpTopic, 0);
   }
 
-  if (config.wversion == 3 || config.wversion == 13) { suscribeMqttMeter(); }
+  if (config.wversion == MQTT_BROKER || config.wversion == ICC_SOLAR) { suscribeMqttMeter(); }
 
   if (config.flags.domoticz) { mqttClient.subscribe("domoticz/out", 0); }
 }
@@ -225,7 +238,7 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 
   Error.ConexionMqtt = true;
 
-  if (WiFi.isConnected() && config.flags.mqtt && config.wversion != 0 && !Flags.Updating) { Tickers.enable(2); }
+  if (WiFi.isConnected() && config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !Flags.Updating) { Tickers.enable(2); }
 }
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
@@ -236,7 +249,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     INFOV("Publish received, Topic: %s, Size: %d\n", topic, total);
   }
 
-  if (config.flags.mqtt && config.wversion != 0)
+  if (config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL)
   {
     
     if (strcmp(topic, "domoticz/out") == 0 && config.flags.domoticz)
@@ -298,7 +311,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       return;
     }
     
-    if (config.wversion == 3)
+    if (config.wversion == MQTT_BROKER)
     {
       if (strcmp(topic, config.Meter_mqtt) == 0)
       {
@@ -313,6 +326,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
           timers.ErrorRecepcionDatos = millis();
           Error.RecepcionDatos = false;
           inverter.wgrid = (float)root["ENERGY"]["Power"]; // Potencia de red (Negativo: de red - Positivo: a red) para usar con los datos de Tasmota
+          inverter.gridv = (float)root["ENERGY"]["Voltage"]; // Tension de red
           
           if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         }
@@ -335,7 +349,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
           inverter.pv2v = (float)root["ENERGY"]["Pv2Voltage"]; // Tension string 2
           inverter.pw1 = (float)root["ENERGY"]["Pv1Power"];    // Potencia string 1
           inverter.pw2 = (float)root["ENERGY"]["Pv2Power"];    // Potencia string 2
-          inverter.gridv = (float)root["ENERGY"]["Voltage"];   // Tension de red
+          //inverter.gridv = (float)root["ENERGY"]["Voltage"];   // Tension de red
           inverter.wtoday = (float)root["ENERGY"]["Today"];    // Potencia solar diaria
           inverter.wsolar = (float)root["ENERGY"]["Power"];    // Potencia solar actual
           inverter.temperature = (float)root["ENERGY"]["Temperature"];    // Temperatura Inversor
@@ -344,7 +358,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       }
     }
 
-    if (config.wversion == 13)
+    if (config.wversion == ICC_SOLAR)
     {
       timers.ErrorRecepcionDatos = millis();
       Error.RecepcionDatos = false;
@@ -436,8 +450,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       screen = constrain(int(payload[0] - '0'), 0, MAX_SCREENS);
       INFOV("Mqtt - Change to Screen: %i\n", screen);      
       
-      if ((config.wversion < 4 || config.wversion > 6) && screen == 2) { screen = 1; }
-      if ((config.wversion >= 4 && config.wversion <= 6)  && screen == 1) { screen = 2; }
+      if ((config.wversion < DDS238_METER || config.wversion > SDM_METER) && screen == 2) { screen = 1; }
+      if ((config.wversion >= DDS238_METER && config.wversion <= SDM_METER)  && screen == 1) { screen = 2; }
       if (!config.flags.sensorTemperatura && screen == 5) { screen = 6; }
       return;
     }
@@ -535,9 +549,9 @@ void publishMqtt()
 
   if (config.flags.moreDebug) { INFOV("PUBLISHMQTT()\n"); }
 
-  // if (WiFi.isConnected() && config.flags.mqtt && config.wversion != 0 && !mqttClient.connected()) { Tickers.enable(2); }
+  // if (WiFi.isConnected() && config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !mqttClient.connected()) { Tickers.enable(2); }
 
-  if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != 0)
+  if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
   {
     static char tmpString[33];
     static char tmpTopic[33];
@@ -586,7 +600,7 @@ void publishMqtt()
       publisher("domoticz/in", tmpTopic);
     }
 
-    if (config.wversion >= 4 && config.wversion <= 6)
+    if (config.wversion >= DDS238_METER && config.wversion <= SDM_METER)
     {
 
       DynamicJsonDocument jsonValues(512);

@@ -32,7 +32,7 @@ void data_display(void)
     Flags.flash = !Flags.flash;
   }
 
-  if (config.wversion == 12) { wversion = masterMode; }
+  if (config.wversion == SLAVE_MODE) { wversion = masterMode; }
   else { wversion = config.wversion; }
 
   if (config.flags.wifi)
@@ -46,12 +46,12 @@ void data_display(void)
 
         switch (wversion)
         {
-          case 4:
-          case 5:
-          case 6:
+          case DDS238_METER:
+          case DDSU666_METER:
+          case SDM_METER:
             display.drawString(0, 0, (Flags.flash ? "Voltage" : "Current"));
             break;
-          case 14:
+          case VICTRON:
             display.drawString(0, 0, (_BATTERY_));
             break;
           default:
@@ -64,53 +64,56 @@ void data_display(void)
 
         display.setTextAlignment(TEXT_ALIGN_CENTER);
         // Display Select Mode
-        if (config.wversion == 12) { display.drawString(92, 0, "SLV"); }
+        if (config.wversion == SLAVE_MODE) { display.drawString(92, 0, "SLV"); }
         else { 
           switch (wversion)
           {
-            case 0:
+            case SOLAX_V2_LOCAL:
               display.drawString(91, 0, "SV2L");
               break;
-            case 1:
+            case SOLAX_V1:
               display.drawString(91, 0, "SV1");
               break;
-            case 2:
+            case SOLAX_V2:
               display.drawString(91, 0, "SV2");
               break;
-            case 3:
+            case MQTT_BROKER:
               display.drawString(91, 0, "MQTT");
               break;
-            case 4:
+            case DDS238_METER:
               display.drawString(91, 0, "m238");
               break;
-            case 5:
+            case DDSU666_METER:
               display.drawString(91, 0, "m666");
               break;
-            case 6:
+            case SDM_METER:
               display.drawString(91, 0, "mSDM");
               break;
-            case 8:
-              display.drawString(91, 0, "SMA");
+            case SMA_BOY:
+              display.drawString(91, 0, "SMAB");
               break;
-            case 9:
+            case SMA_ISLAND:
+              display.drawString(91, 0, "SMAI");
+              break;
+            case WIBEEE:
               display.drawString(91, 0, "WIBE");
               break;
-            case 10:
+            case SHELLY_EM:
               display.drawString(91, 0, "SHLY");
               break;
-            case 11:
+            case FRONIUS_API:
               display.drawString(91, 0, "FAPI");
               break;
-            case 13:
+            case ICC_SOLAR:
               display.drawString(91, 0, "ICCS");
               break;
-            case 14:
+            case VICTRON:
               display.drawString(91, 0, "VICT");
               break;
-            case 15:
+            case FRONIUS_MODBUS:
               display.drawString(91, 0, "FBUS");
               break;
-            case 16:
+            case HUAWEI_MODBUS:
               display.drawString(91, 0, "HWEI");
               break;
           }
@@ -119,7 +122,7 @@ void data_display(void)
         {
           // 64
           display.drawString(58, 0, (String(Error.RecepcionDatos ? "S " : "S ") + String(Error.ConexionWifi ? "W " : "W ") + String(Error.ConexionMqtt ? "M " : "M  ")));
-          // if (config.wversion == 12) { display.drawString(92, 0, (String(config.wversion) + '(' + String(wversion) + ')')); }
+          // if (config.wversion == SLAVE_MODE) { display.drawString(92, 0, (String(config.wversion) + '(' + String(wversion) + ')')); }
           // else { display.drawString(85, 0, (String(config.wversion))); }
         }
         else
@@ -151,13 +154,13 @@ void data_display(void)
 
         switch (wversion)
         {
-          case 4:
-          case 5:
-          case 6:
+          case DDS238_METER:
+          case DDSU666_METER:
+          case SDM_METER:
             display.setFont(ArialMT_Plain_16);
             display.drawString(0, 14, (Flags.flash ? String(meter.voltage) : String(meter.current)));
             break;
-          case 14:
+          case VICTRON:
             display.drawString(0, 12, (String)(int)inverter.batterySoC + "%");
             break;
           default:
@@ -172,7 +175,7 @@ void data_display(void)
         break;
 
       case 1: // Strings Info
-          if (wversion < 4 || wversion > 6) {
+          if (wversion < DDS238_METER || wversion > SDM_METER) {
             display.clear();
             display.setFont(ArialMT_Plain_10);
             display.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -194,7 +197,7 @@ void data_display(void)
           break;
       
       case 2: // Meters
-          if (wversion >= 4 && wversion <= 6) {
+          if (wversion >= DDS238_METER && wversion <= SDM_METER) {
             display.clear();
             display.setFont(ArialMT_Plain_10);
             display.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -261,7 +264,7 @@ void data_display(void)
 void showLogo(String Texto, bool timeDelay)
 {
   display.clear();
-  display.flipScreenVertically();
+  //display.flipScreenVertically();
   display.drawFastImage(0, 0, 128, 64, FreeDS);
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.setFont(ArialMT_Plain_10);

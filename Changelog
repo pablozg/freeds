@@ -1,4 +1,21 @@
 Versión 1.0.5
+- Revisión 15
+	- Modificada la gestión de temperatura para evitar falsos errores.
+	- Cambiados los tiempos mínimos de adquisición de datos (Modbus 250ms, Slave 250ms, Solax con ESP01 fijo a 250ms, HTTP API 1500ms)
+	- Añadido contador básico de energia consumida y vertida según los datos de Red.
+	- Añadido comando "flipScreen" (desde la consola) para invertir la pantalla Oled.
+	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado.
+	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
+	- TODO: Permitir funcionamiento en instalación aislada (OFF-GRID)
+  	- TODO: Borrar líneas de debug usadas para detectar el fallo por el que no sube de pwm existiendo excedentes.
+  	- TODO: pinwatchdog o reincio preventivo programable.
+
+- Revisión 14
+	- Añadida la publicación por mqtt del valor calculado de la carga actual.
+	- Añadido campo configurable para ajustar el tope del pwm (100%) en las placas low-cost.
+	- Solucionado problema de derivación al 0% con parche low-cost.
+	- Solucionado registros incorrectos en modbus SMA (por Paco - @JalNuevemil)
+
 - Revisión 13
 	- Solucionado problema de recepción de datos con el solax X1-Hybrid-G3
 	- Reducido el pwm máximo en caso del derivador low-cost.

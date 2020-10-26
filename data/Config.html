@@ -11,7 +11,7 @@
         <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
         <link href="sb-admin-2.min.css" rel="stylesheet">
     </head>
-    <body onload='checkPowerOffOled();checkSensorTemp();checkAlexa();checkChangeGridSign();'>
+    <body onload='onloadConfigCheck();'>
         <div id="wrapper">
             <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
                 <a class="sidebar-brand d-flex align-items-center justify-content-center"  href='http://freeds.es/'>
@@ -94,20 +94,20 @@
                 <div class="sidebar-heading">Monitor</div>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='wsolar2Text'>Potencia Solar:</span>
-                        <h6 class='pt-1' id='wsolar2'></h6>
+                        <span id='barText1'>Potencia Solar:</span>
+                        <h6 class='pt-1' id='barValue1'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span>Potencia de red:</span>
-                        <h6 class='pt-1' id='wgrid2'></h6>
+                        <span id='barText2'>Potencia de red:</span>
+                        <h6 class='pt-1' id='barValue2'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='pwm2Text'>PWM:</span>
-                        <h6 class='pt-1' id='pwm2'></h6>
+                        <span id='barText3'>PWM:</span>
+                        <h6 class='pt-1' id='barValue3'></h6>
                     </a>
                 </li>
                 <hr class="sidebar-divider d-none d-md-block">
@@ -151,6 +151,23 @@
                                                         <label class="col-sm-4 form-control-label">Nueva clave de acceso:</label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='newpass' name='newpass' type="password" class="form-control" maxlength='12'>
+                                                        </div>
+                                                    </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Funcionamiento en instalación Aislada o con Baterías</h6>
+                                                    <label class="custom-control custom-checkbox pb-3">
+                                                        <input type="checkbox" class="custom-control-input" id="offGrid" name="offGrid" onchange='checkOffGrid();' %OFFGRID%>
+                                                        <span class="custom-control-indicator"></span><span id='offGridText'></span>
+                                                    </label>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Porcentaje mínimo de SoC para derivar:</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='soc' name='soc' type="text" class="form-control" maxlength='3' value="%SOC%" onchange='checkSoCValue();'>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mg-t-2">
+                                                        <label class="col-sm-4 form-control-label">Consumo máximo de Batería (W):</label>
+                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
+                                                            <input id='battWatts' name='battWatts' type="text" class="form-control" maxlength='5' value="%BATTWATTS%">
                                                         </div>
                                                     </div>
                                                     <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Origen de los Datos</h6>
