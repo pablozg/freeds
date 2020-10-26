@@ -65,6 +65,10 @@ extern "C"
 #include "es-ES.h"
 #endif
 
+#ifdef LANGUAGE_PT
+#include "pt-PT.h"
+#endif
+
 #define OLED
 
 #define MAX_SCREENS 5
