@@ -75,7 +75,7 @@ struct registerData
 };
 
 registerData smaRegistersBoy[] = { // Sunny Boy
-    &inverter.wtoday, 3, 30517, 2, U64FIX0,
+    &inverter.wtoday, 3, 30535, 2, U32FIX3,
     &inverter.pv1c, 3, 30769, 2, S32FIX3,
     &inverter.pv1v, 3, 30771, 2, S32FIX2,
     &inverter.pw1, 3, 30773, 2, S32FIX0,
@@ -84,16 +84,15 @@ registerData smaRegistersBoy[] = { // Sunny Boy
     &inverter.pv2c, 3, 30957, 2, S32FIX3,
     &inverter.pv2v, 3, 30959, 2, S32FIX2,
     &inverter.pw2, 3, 30961, 2, S32FIX0,
-    &inverter.wgrid, 3, 30867, 2, S32FIX0
+    &inverter.wgrid, 3, 30865, 2, S32FIX0
 };
 
 registerData smaRegistersIsland[] = { // Sunny Island
-    &inverter.wtoday, 3, 30597, 2, U32FIX0,
-    &inverter.wsolar, 3, 30983, 2, U32FIX0,
-    &inverter.gridv, 3, 30783, 2, U32FIX2,
-    &inverter.wgrid, 3, 30867, 2, S32FIX0,
     &inverter.batterySoC, 3, 30845, 2, U32FIX0,
-    &inverter.batteryWatts, 3, 30775, 2, S32FIX0
+    &inverter.batteryWatts, 3, 30775, 2, S32FIX0,
+    &inverter.temperature, 3, 30849, 2, S32FIX1,
+    &meter.current, 3, 30843, 2, S32FIX3,
+    &meter.voltage, 3, 30851, 2, U32FIX2
 };
 
 registerData victronRegisters[] = {
@@ -268,7 +267,7 @@ float parseSigned16(uint8_t *data, int precision)
 {
     int16_t value = 0;
     value = (data[0] << 8) | (data[1]);
-    Serial.printf("signed 16: %" PRId16 "\n",value);
+    //Serial.printf("signed 16: %" PRId16 "\n",value);
 
     switch (precision)
     {
@@ -339,13 +338,13 @@ void configModbusTcp(void)
             case FRONIUSPV2: { parseFroniusPV2(data); break; }
         }
 
-        if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == FRONIUS_MODBUS) {
           if (a->address == 40097 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
           data_ready = true; 
           froniusVariables.froniusRegisterNum++;
         }
-        if ((config.wversion == SMA_BOY || config.wversion == SMA_ISLAND) && a->address == 30867 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == SMA_BOY && a->address == 30865 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         Error.RecepcionDatos = false;
         timers.ErrorRecepcionDatos = millis();
        return;

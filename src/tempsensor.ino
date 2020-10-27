@@ -25,7 +25,7 @@ void calcDallasTemperature(void)
 
     float temperatura;
 
-    delay(30); // To ensure a completed conversion
+    //delay(30); // To ensure a completed conversion
 
     if (config.termoSensorAddress[0] != 0x0) {
         temperatura = sensors.getTempC(config.termoSensorAddress);
@@ -82,15 +82,15 @@ void checkTemperature(void)
     if (config.flags.sensorTemperatura && !Error.temperaturaTermo) {
         //timers.ErrorLecturaTemperatura[0] = millis();
         switch(config.modoTemperatura) {
-            case 1:
+            case 1: // Auto
                 if (!config.flags.pwmMan && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
                 if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
                 break;
-            case 2:
+            case 2: // Manual
                 if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
                 if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
                 break;
-            case 3:
+            case 3: // Auto y Manual
                 if (temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
                 if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
                 break;

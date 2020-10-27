@@ -556,12 +556,18 @@ const char *sendJsonWeb(void)
   jsonValues["baudiosMeter"] = config.baudiosMeter;
   jsonValues["configwVersion"] = config.wversion;
 
+  if (config.wversion == SLAVE_MODE) {
+    jsonValues["wversion"] = masterMode;
+  } else {
+    jsonValues["wversion"] = config.wversion;
+  }
+
   // Inverter data
   if (inverter.wsolar > 0) {
     dtostrfd(inverter.wsolar, 2, tmpString);
     jsonValues["wsolar"] = tmpString;
   }
-  if (inverter.wgrid < 0 || inverter.wgrid > 0) {
+  if (inverter.wgrid != 0) {
     dtostrfd(inverter.wgrid, 2, tmpString);
     jsonValues["wgrid"] = tmpString;
   }
@@ -569,7 +575,7 @@ const char *sendJsonWeb(void)
     dtostrfd(inverter.temperature, 2, tmpString);
     jsonValues["invTemp"] = tmpString;
   }
-  if (inverter.batteryWatts < 0 || inverter.batteryWatts > 0) {
+  if (inverter.batteryWatts != 0) {
     dtostrfd(inverter.batteryWatts, 2, tmpString);
     jsonValues["wbattery"] = tmpString;
   }
@@ -577,7 +583,7 @@ const char *sendJsonWeb(void)
     dtostrfd(inverter.batterySoC, 2, tmpString);
     jsonValues["invSoC"] = tmpString;
   }
-  if (inverter.loadWatts < 0 || inverter.loadWatts > 0) {
+  if (inverter.loadWatts != 0) {
     dtostrfd(inverter.loadWatts, 2, tmpString);
     jsonValues["wload"] = tmpString;
   }
@@ -623,7 +629,7 @@ const char *sendJsonWeb(void)
     dtostrfd(meter.current, 2, tmpString);
     jsonValues["mcurrent"] = tmpString;
   }
-  if (meter.powerFactor < 0 || meter.powerFactor > 0) {
+  if (meter.powerFactor != 0) {
     dtostrfd(meter.powerFactor, 2, tmpString);
     jsonValues["mpowerFactor"] = tmpString;
   }
@@ -640,21 +646,23 @@ const char *sendJsonWeb(void)
     jsonValues["mexportActive"] = tmpString;
   }
 
-  // Energy Import
-  dtostrfd(config.KwToday, 3, tmpString);
-  jsonValues["KwToday"] = tmpString;
-  dtostrfd(config.KwYesterday, 3, tmpString);
-  jsonValues["KwYesterday"] = tmpString;
-  dtostrfd(config.KwTotal, 3, tmpString);
-  jsonValues["KwTotal"] = tmpString;
+  if (!config.flags.offGrid) {
+    // Energy Import
+    dtostrfd(config.KwToday, 3, tmpString);
+    jsonValues["KwToday"] = tmpString;
+    dtostrfd(config.KwYesterday, 3, tmpString);
+    jsonValues["KwYesterday"] = tmpString;
+    dtostrfd(config.KwTotal, 3, tmpString);
+    jsonValues["KwTotal"] = tmpString;
 
-  // Energy export
-  dtostrfd(config.KwExportToday, 3, tmpString);
-  jsonValues["KwExportToday"] = tmpString;
-  dtostrfd(config.KwExportYesterday, 3, tmpString);
-  jsonValues["KwExportYesterday"] = tmpString;
-  dtostrfd(config.KwExportTotal, 3, tmpString);
-  jsonValues["KwExportTotal"] = tmpString;
+    // Energy export
+    dtostrfd(config.KwExportToday, 3, tmpString);
+    jsonValues["KwExportToday"] = tmpString;
+    dtostrfd(config.KwExportYesterday, 3, tmpString);
+    jsonValues["KwExportYesterday"] = tmpString;
+    dtostrfd(config.KwExportTotal, 3, tmpString);
+    jsonValues["KwExportTotal"] = tmpString;
+  }
 
   // Temperatures
   dtostrfd(temperaturaTermo, 1, tmpString);
@@ -843,7 +851,7 @@ const char *sendMasterData(void)
     dtostrfd(inverter.wsolar, 2, tmpString);
     jsonValues["wsolar"] = tmpString;
   }
-  if (inverter.wgrid < 0 || inverter.wgrid > 0) {
+  if (inverter.wgrid != 0) {
     dtostrfd(inverter.wgrid, 2, tmpString);
     jsonValues["wgrid"] = tmpString;
   }
@@ -851,7 +859,7 @@ const char *sendMasterData(void)
     dtostrfd(inverter.temperature, 2, tmpString);
     jsonValues["invTemp"] = tmpString;
   }
-  if (inverter.batteryWatts < 0 || inverter.batteryWatts > 0) {
+  if (inverter.batteryWatts != 0) {
     dtostrfd(inverter.batteryWatts, 2, tmpString);
     jsonValues["wbattery"] = tmpString;
   }
@@ -859,7 +867,7 @@ const char *sendMasterData(void)
     dtostrfd(inverter.batterySoC, 2, tmpString);
     jsonValues["invSoC"] = tmpString;
   }
-  if (inverter.loadWatts < 0 || inverter.loadWatts > 0) {
+  if (inverter.loadWatts != 0) {
     dtostrfd(inverter.loadWatts, 2, tmpString);
     jsonValues["wload"] = tmpString;
   }
@@ -905,7 +913,7 @@ const char *sendMasterData(void)
     dtostrfd(meter.current, 2, tmpString);
     jsonValues["mcurrent"] = tmpString;
   }
-  if (meter.powerFactor < 0 || meter.powerFactor > 0) {
+  if (meter.powerFactor != 0) {
     dtostrfd(meter.powerFactor, 2, tmpString);
     jsonValues["mpowerFactor"] = tmpString;
   }

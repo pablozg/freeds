@@ -119,7 +119,7 @@ void pwmControl()
     // if ((config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts) // Prueba Aeizoon por defecto 0
 
     if (config.flags.offGrid ?
-        (inverter.batteryWatts >= config.battWatts && inverter.batterySoC > config.soc) :
+        (inverter.batteryWatts >= config.battWatts && inverter.batterySoC >= config.soc) :
         (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts
        )
     {

@@ -51,11 +51,11 @@ String workingModeString(void)
   }
   if (config.wversion == SMA_BOY)
   {
-    return "SMA (Sunny Boy) (En desarrollo)";
+    return "SMA (Sunny Boy)";
   }
   if (config.wversion == SMA_ISLAND)
   {
-    return "SMA (Sunny Island) (En desarrollo)";
+    return "SMA (Sunny Island)";
   }
   if (config.wversion == WIBEEE)
   {
@@ -114,9 +114,9 @@ String processorFreeDS(const String &var)
                                                                               "<option value='6'" +
            String((config.wversion == SDM_METER) ? " selected='selected' " : " ") + ">Meter SDM120 / SDM220 Modbus</option>"
                                                                               "<option value='8'" +
-           String((config.wversion == SMA_BOY) ? " selected='selected' " : " ") + ">SMA (Sunny Boy) (En desarrollo)</option>"
+           String((config.wversion == SMA_BOY) ? " selected='selected' " : " ") + ">SMA (Sunny Boy)</option>"
                                                                               "<option value='17'" +
-           String((config.wversion == SMA_ISLAND) ? " selected='selected' " : " ") + ">SMA (Sunny Island) (En desarrollo)</option>"
+           String((config.wversion == SMA_ISLAND) ? " selected='selected' " : " ") + ">SMA (Sunny Island)</option>"
                                                                               "<option value='14'" +
            String((config.wversion == VICTRON) ? " selected='selected' " : " ") + ">Victron Modbus TCP</option>" +
                                                                               "<option value='15'" +

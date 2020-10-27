@@ -67,13 +67,13 @@ void setGetDataTime(void)
       break;
     case FRONIUS_MODBUS:
       // config.getDataTime = 250;
-      // break;
+      if (config.getDataTime < 250) config.getDataTime = 250;
+      break;
     case SMA_BOY:
     case SMA_ISLAND:
     case VICTRON:
     case HUAWEI_MODBUS:
-      // if (config.getDataTime < 1500) config.getDataTime = 1500;
-      if (config.getDataTime < 250) config.getDataTime = 250;
+      if (config.getDataTime < 1000) config.getDataTime = 1500;
       break;
   }
   Tickers.updatePeriod(4, config.getDataTime);
@@ -357,8 +357,8 @@ void checkTimer(void)
 
 void calcWattsToday()
 {
-  // float timeCalcWattsToday = (float(millis() - timers.KwToday)/1000.0);
-  float timeCalcWattsToday = 1.0;
+  float timeCalcWattsToday = (float(millis() - timers.KwToday)/1000.0);
+  //float timeCalcWattsToday = 1.0;
   float KwIncrement;
     
   // KwToday = KwToday + (inverter.currentCalcWatts * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
