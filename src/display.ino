@@ -41,9 +41,12 @@ void data_display(void)
     {
       case 0: // Principal
         display.clear();
-        display.setFont(ArialMT_Plain_10);
-        display.setTextAlignment(TEXT_ALIGN_LEFT);
 
+        // Texto Columnas
+        display.setFont(ArialMT_Plain_10);
+
+        // Columna Izquierda
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
         switch (wversion)
         {
           case DDS238_METER:
@@ -52,6 +55,7 @@ void data_display(void)
             display.drawString(0, 0, (Flags.flash ? "Voltage" : "Current"));
             break;
           case VICTRON:
+          case SMA_ISLAND:
             display.drawString(0, 0, (_BATTERY_));
             break;
           default:
@@ -59,9 +63,53 @@ void data_display(void)
             break;
         }
 
+        // Columna Derecha
         display.setTextAlignment(TEXT_ALIGN_RIGHT);
-        display.drawString(128, 0, (_GRID_));
+        switch (wversion)
+        {
+          case SMA_ISLAND:
+            display.drawString(128, 0, "SoC");
+            break;
+          default:
+            display.drawString(128, 0, (_GRID_));
+            break;
+        }
 
+        // Datos Columnas
+        display.setFont(ArialMT_Plain_24);
+
+        // Columna Izquierda
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        switch (wversion)
+        {
+          case DDS238_METER:
+          case DDSU666_METER:
+          case SDM_METER:
+            display.setFont(ArialMT_Plain_16);
+            display.drawString(0, 14, (Flags.flash ? String(meter.voltage) : String(meter.current)));
+            break;
+          case VICTRON:
+          case SMA_ISLAND:
+            display.drawString(0, 12, (String)(int)inverter.batteryWatts);
+            break;
+          default:
+            display.drawString(0, 12, (String)(int)inverter.wsolar);
+            break;
+        }
+
+        // Columna Derecha
+        display.setTextAlignment(TEXT_ALIGN_RIGHT);
+        switch (wversion)
+        {
+          case SMA_ISLAND:
+            display.drawString(128, 12, (String)(int)inverter.batterySoC + "%");
+            break;
+          default:
+            display.drawString(128, 12, (String)(int)inverter.wgrid);
+            break;
+        }
+
+        display.setFont(ArialMT_Plain_10);
         display.setTextAlignment(TEXT_ALIGN_CENTER);
         // Display Select Mode
         if (config.wversion == SLAVE_MODE) { display.drawString(92, 0, "SLV"); }
@@ -120,15 +168,11 @@ void data_display(void)
         }
         if (Flags.flash)
         {
-          // 64
           display.drawString(58, 0, (String(Error.RecepcionDatos ? "S " : "S ") + String(Error.ConexionWifi ? "W " : "W ") + String(Error.ConexionMqtt ? "M " : "M  ")));
-          // if (config.wversion == SLAVE_MODE) { display.drawString(92, 0, (String(config.wversion) + '(' + String(wversion) + ')')); }
-          // else { display.drawString(85, 0, (String(config.wversion))); }
         }
         else
         {
           display.drawString(58, 0, (String(Error.RecepcionDatos ? "_ " : "S ") + String(Error.ConexionWifi ? "_ " : "W ") + String(Error.ConexionMqtt ? "_ " : "M  ")));
-          // display.drawString(85, 0, "v");
         }
 
         if (Flags.Updating)
@@ -149,28 +193,6 @@ void data_display(void)
         display.setTextAlignment(TEXT_ALIGN_RIGHT);
         display.drawString(128, 52, (_RELAY_ + String((digitalRead(PIN_RL1) ? "1 " : "_ ")) + String((digitalRead(PIN_RL2) ? "2 " : "_ ")) + String((digitalRead(PIN_RL3) ? "3 " : "_ ")) + String((digitalRead(PIN_RL4) ? "4 " : "_ "))));
 
-        display.setFont(ArialMT_Plain_24);
-        display.setTextAlignment(TEXT_ALIGN_LEFT);
-
-        switch (wversion)
-        {
-          case DDS238_METER:
-          case DDSU666_METER:
-          case SDM_METER:
-            display.setFont(ArialMT_Plain_16);
-            display.drawString(0, 14, (Flags.flash ? String(meter.voltage) : String(meter.current)));
-            break;
-          case VICTRON:
-            display.drawString(0, 12, (String)(int)inverter.batterySoC + "%");
-            break;
-          default:
-            display.drawString(0, 12, (String)(int)inverter.wsolar);
-            break;
-        }
-
-        display.setFont(ArialMT_Plain_24);
-        display.setTextAlignment(TEXT_ALIGN_RIGHT);
-        display.drawString(128, 12, (String)(int)inverter.wgrid);
         display.display();
         break;
 

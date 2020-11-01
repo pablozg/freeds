@@ -125,7 +125,7 @@ bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "Pre_1.0.5Rev15";
+const char version[] PROGMEM = "1.0.5 Final";
 
 const char *www_username = "admin";
 
@@ -553,8 +553,8 @@ void defaultValues()
   strcpy(config.mask, "255.255.255.0");
   strcpy(config.dns1, "8.8.8.8");
   strcpy(config.dns2, "1.1.1.1");
-  config.pwmMin = -60;
-  config.pwmMax = -90;
+  config.pwmMin = 150;
+  config.pwmMax = 50;
   config.flags.pwmEnabled = true;
   config.relaysFlags.R01Man = false;
   config.relaysFlags.R02Man = false;
@@ -631,6 +631,11 @@ void defaultValues()
   config.KwExportYesterday = 0;
   config.KwTotal = 0;
   config.KwExportTotal = 0;
+
+  config.flags.flipScreen = true;
+  config.flags.offGrid = false;
+  config.soc = 100;
+  config.battWatts = -60; // Sólo para ongrid
 
   config.eeinit = eepromVersion;
   config.flags.wifi = false;
@@ -781,9 +786,11 @@ void setup()
       
       if (config.wversion == SOLAX_V2) { SerieEsp.printf("SSID: %s\n", config.ssid_esp01); }
 
-      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
+      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
         modbusIP.fromString((String)config.sensor_ip);
-        modbustcp = new esp32ModbusTCP(modbusIP, 502);
+        if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
+          modbustcp = new esp32ModbusTCP(modbusIP, 502);
+        } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
         configModbusTcp();
       }
 

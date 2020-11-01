@@ -89,6 +89,10 @@ String workingModeString(void)
   {
     return "Huawei Modbus TCP";
   }
+  if (config.wversion == SOLAREDGE)
+  {
+    return "SolarEdge Modbus TCP";
+  }
   return String();
 }
 
@@ -123,6 +127,8 @@ String processorFreeDS(const String &var)
            String((config.wversion == FRONIUS_MODBUS) ? " selected='selected' " : " ") + ">Fronius Modbus TCP</option>" +
                                                                               "<option value='16'" +
            String((config.wversion == HUAWEI_MODBUS) ? " selected='selected' " : " ") + ">Huawei Modbus TCP</option>" +
+                                                                              "<option value='18'" +
+           String((config.wversion == SOLAREDGE) ? " selected='selected' " : " ") + ">SolarEdge Modbus TCP</option>" +
                                                                               "<option value='9'" +
            String((config.wversion == WIBEEE) ? " selected='selected' " : " ") + ">Wibeee</option>" +
                                                                               "<option value='10'" +                                                                   
@@ -384,7 +390,7 @@ String processorConfig(const String &var)
              wifi += "</select></div>";
       return wifi;
     }
-    if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND))
+    if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE))
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Modbus TCP:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +

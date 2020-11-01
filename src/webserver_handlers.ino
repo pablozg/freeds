@@ -138,7 +138,7 @@ void handleConfig(AsyncWebServerRequest *request)
       strcpy(config.ssid_esp01, request->urlDecode(request->arg("wifis")).c_str());
       SerieEsp.printf("SSID: %s\n", config.ssid_esp01);
     }
-    if (config.wversion == SOLAX_V1 || (config.wversion >= SMA_BOY && config.wversion <= SLAVE_MODE) || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND))
+    if (config.wversion == SOLAX_V1 || (config.wversion >= SMA_BOY && config.wversion <= SLAVE_MODE) || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE))
     {
       strcpy(config.sensor_ip, request->urlDecode(request->arg("wifis")).c_str());
       modbustcp = NULL;
@@ -1100,11 +1100,12 @@ void setWebConfig(void)
 
     modbustcp = NULL;
 
-    if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
+    if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
       modbusIP.fromString((String)config.sensor_ip);
-      modbustcp = new esp32ModbusTCP(modbusIP, 502);
+      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
+        modbustcp = new esp32ModbusTCP(modbusIP, 502);
+      } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
       configModbusTcp();
-      froniusVariables.froniusRequestSend = false;
     }
     
     saveEEPROM();

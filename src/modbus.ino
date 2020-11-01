@@ -339,5 +339,8 @@ void readModbus(void)
     case 17:
       smaIsland();
       break;
+    case 18:
+      solarEdge();
+      break;
     }
 }

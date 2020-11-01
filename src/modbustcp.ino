@@ -63,6 +63,9 @@ enum valueType
     FRONIUSPV1,
     FRONIUSPV2,
     FRONIUSSCALE,
+    SUNNYBOYGRID,
+    SOLAREDGEINVERTER,
+    SOLAREDGEMETER
 };
 
 struct registerData
@@ -80,11 +83,11 @@ registerData smaRegistersBoy[] = { // Sunny Boy
     &inverter.pv1v, 3, 30771, 2, S32FIX2,
     &inverter.pw1, 3, 30773, 2, S32FIX0,
     &inverter.wsolar, 3, 30775, 2, S32FIX0,
-    &inverter.gridv, 3, 30783, 2, U32FIX2,
     &inverter.pv2c, 3, 30957, 2, S32FIX3,
     &inverter.pv2v, 3, 30959, 2, S32FIX2,
     &inverter.pw2, 3, 30961, 2, S32FIX0,
-    &inverter.wgrid, 3, 30865, 2, S32FIX0
+    &inverter.wgrid, 3, 30865, 2, S32FIX0,
+    &inverter.wgrid, 3, 30867, 2, SUNNYBOYGRID
 };
 
 registerData smaRegistersIsland[] = { // Sunny Island
@@ -124,6 +127,11 @@ registerData huaweiRegisters[] = {
     &inverter.wtoday, 0, 32114, 2, U32FIX2,
     &inverter.batteryWatts, 0, 37001, 2, S32FIX0,
     &inverter.wgrid, 0, 37113, 2, S32FIX0
+};
+
+registerData solaredgeRegisters[] = {
+    &inverter.wsolar, 1, 40083, 23, SOLAREDGEINVERTER,
+    &inverter.wgrid, 1, 40206, 4, SOLAREDGEMETER
 };
 
 void parseFroniusSolarToday(uint8_t *data)
@@ -185,6 +193,55 @@ void parseFroniusPV2(uint8_t *data)
   if (value != 0xFFFF) inverter.pv2v = (float)value / froniusVariables.scaleFactorV;
   value = (data[4] << 8) | (data[5]);
   if (value != 0xFFFF) inverter.pw2 = (float)value / froniusVariables.scaleFactorW;
+}
+
+void parseSunnyBoyGrid(uint8_t *data)
+{
+  int32_t vertido = 0;
+  vertido = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]); 
+  inverter.wgrid -= (float)vertido;
+}
+
+void parseSolarEdgeInverter(uint8_t *data)
+{
+  int16_t value = 0;
+  int16_t SF = 0;
+
+  // Registros 40084 - 40085
+  value = (data[0] << 8) | (data[1]);
+  SF = (data[2] << 8) | (data[3]);
+  inverter.wsolar = value * pow(10, SF);
+
+  // Ignoramos registros 40086 - 40096
+
+  // Registros 40097 - 400102 
+  value = (data[26] << 8) | (data[27]);
+  SF = (data[28] << 8) | (data[29]);
+  inverter.pv1c = value * pow(10, SF);
+
+  value = (data[30] << 8) | (data[31]);
+  SF = (data[32] << 8) | (data[33]);
+  inverter.pv1v = value * pow(10, SF);
+
+  value = (data[34] << 8) | (data[35]);
+  SF = (data[36] << 8) | (data[37]);
+  inverter.pw1 = value * pow(10, SF);
+
+  // Ignoramos registro 400103
+
+  // Registros 40104 - 400107
+  value = (data[40] << 8) | (data[41]);
+  SF = (data[46] << 8) | (data[47]);
+  inverter.temperature = value * pow(10, SF);
+}
+
+void parseSolarEdgeMeter(uint8_t *data)
+{
+  int16_t value = 0;
+  int16_t SF = 0;
+  value = (data[0] << 8) | (data[1]);
+  SF = (data[6] << 8) | (data[7]);
+  inverter.wgrid = value * pow(10, SF);
 }
 
 float parseFloat32(uint8_t *data, int precision)
@@ -303,6 +360,7 @@ void configModbusTcp(void)
 {
     modbustcp->onData([](uint16_t packet, uint8_t slave, esp32Modbus::FunctionCode fc , uint8_t* data , uint16_t len, void* arg) {
         registerData* a = reinterpret_cast<registerData*>(arg);
+        //Serial.printf("Received data address %d\n", a->address);
         switch (a->type)
         {
             case ENUM:
@@ -336,15 +394,19 @@ void configModbusTcp(void)
             case FRONIUSSCALE: { parseFroniusScale(data); break; }
             case FRONIUSPV1: { parseFroniusPV1(data); break; }
             case FRONIUSPV2: { parseFroniusPV2(data); break; }
+            case SUNNYBOYGRID: { parseSunnyBoyGrid(data); break; }
+            case SOLAREDGEINVERTER: { parseSolarEdgeInverter(data); break; }
+            case SOLAREDGEMETER: { parseSolarEdgeMeter(data); break; }
         }
-
         if (config.wversion == FRONIUS_MODBUS) {
           if (a->address == 40097 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
           data_ready = true; 
           froniusVariables.froniusRegisterNum++;
         }
-        if (config.wversion == SMA_BOY && a->address == 30865 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == SMA_BOY && a->address == 30867 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == SMA_ISLAND && a->address == 30775 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == SOLAREDGE && a->address == 40206 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         Error.RecepcionDatos = false;
         timers.ErrorRecepcionDatos = millis();
        return;
@@ -356,12 +418,17 @@ void configModbusTcp(void)
     });
 }
 
-void smaBoy(void)
+void checkModbusConnection(uint16_t port)
 {
     if (modbustcp == NULL) {
-        modbustcp = new esp32ModbusTCP(modbusIP, 502);
+        modbustcp = new esp32ModbusTCP(modbusIP, port);
         configModbusTcp();
     }
+}
+
+void smaBoy(void)
+{
+    checkModbusConnection(502);
 
     for (uint8_t i = 0; i < sizeOfArray(smaRegistersBoy); ++i) {
 
@@ -375,10 +442,7 @@ void smaBoy(void)
 
 void smaIsland(void)
 {
-    if (modbustcp == NULL) {
-        modbustcp = new esp32ModbusTCP(modbusIP, 502);
-        configModbusTcp();
-    }
+    checkModbusConnection(502);
 
     for (uint8_t i = 0; i < sizeOfArray(smaRegistersIsland); ++i) {
 
@@ -392,10 +456,7 @@ void smaIsland(void)
 
 void victron(void)
 {
-    if (modbustcp == NULL) {
-        modbustcp = new esp32ModbusTCP(modbusIP, 502);
-        configModbusTcp();
-    }
+    checkModbusConnection(502);
 
     for (uint8_t i = 0; i < sizeOfArray(victronRegisters); ++i) {
         if (modbustcp->readHoldingRegisters(victronRegisters[i].serverID, victronRegisters[i].address, victronRegisters[i].length, &(victronRegisters[i])) > 0) {
@@ -408,10 +469,7 @@ void victron(void)
 
 void fronius(void)
 {
-    if (modbustcp == NULL) {
-        modbustcp = new esp32ModbusTCP(modbusIP, 502);
-        configModbusTcp();
-    }
+    checkModbusConnection(502);
 
     if (froniusVariables.froniusRegisterNum >= sizeOfArray(froniusRegisters)) { froniusVariables.froniusRegisterNum = 0; }
     if (millis() - froniusVariables.sendTimeOut > 10000) { froniusVariables.froniusRequestSend = false; }
@@ -432,10 +490,7 @@ void fronius(void)
 
 void huawei(void)
 {
-    if (modbustcp == NULL) {
-        modbustcp = new esp32ModbusTCP(modbusIP, 502);
-        configModbusTcp();
-    }
+    checkModbusConnection(502);
 
     for (uint8_t i = 0; i < sizeOfArray(huaweiRegisters); ++i) {
         if (modbustcp->readHoldingRegisters(huaweiRegisters[i].serverID, huaweiRegisters[i].address, huaweiRegisters[i].length, &(huaweiRegisters[i])) > 0) {
@@ -446,4 +501,17 @@ void huawei(void)
     }
     inverter.pw1 = inverter.pv1v * inverter.pv1c;
     inverter.pw2 = inverter.pv2v * inverter.pv2c;
+}
+
+void solarEdge(void)
+{
+    checkModbusConnection(1502);
+
+    for (uint8_t i = 0; i < sizeOfArray(solaredgeRegisters); ++i) {
+        if (modbustcp->readHoldingRegisters(solaredgeRegisters[i].serverID, solaredgeRegisters[i].address, solaredgeRegisters[i].length, &(solaredgeRegisters[i])) > 0) {
+            //Serial.printf("  requested %d\n", solaredgeRegisters[i].address);
+        } else {
+            Serial.printf("  error requesting address %d\n", solaredgeRegisters[i].address);
+        }
+    }
 }

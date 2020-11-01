@@ -43,6 +43,7 @@ void getSensorData(void)
       case VICTRON: // Victron
       case FRONIUS_MODBUS: // Fronius Modbus
       case HUAWEI_MODBUS: // Huawei
+      case SOLAREDGE: // SolarEdge
         readModbus();
         break;
     }
@@ -73,7 +74,8 @@ void setGetDataTime(void)
     case SMA_ISLAND:
     case VICTRON:
     case HUAWEI_MODBUS:
-      if (config.getDataTime < 1000) config.getDataTime = 1500;
+    case SOLAREDGE:
+      if (config.getDataTime < 1000) config.getDataTime = 1000;
       break;
   }
   Tickers.updatePeriod(4, config.getDataTime);
@@ -358,10 +360,8 @@ void checkTimer(void)
 void calcWattsToday()
 {
   float timeCalcWattsToday = (float(millis() - timers.KwToday)/1000.0);
-  //float timeCalcWattsToday = 1.0;
   float KwIncrement;
     
-  // KwToday = KwToday + (inverter.currentCalcWatts * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
   if (inverter.wgrid < 0) {
     KwIncrement = (-inverter.wgrid * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
     config.KwToday += KwIncrement;

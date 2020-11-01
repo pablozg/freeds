@@ -33,8 +33,6 @@ void pwmControl()
   else { maxPwm = 1023;}
 
   // Check pwm_output
-
-  // if (inverter.wgrid_control != inverter.wgrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
   if ((inverter.wgrid_control != inverter.wgrid) || config.flags.offGrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
   {
     inverter.wgrid_control = inverter.wgrid;
@@ -61,7 +59,7 @@ void pwmControl()
   {
     if (config.flags.dimmerLowCost) { 
       targetPwm = ((((config.maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210);
-      if (targetPwm <= 210) { targetPwm = 0; } // Solución Fernando
+      if (targetPwm <= 210) { targetPwm = 0; }
     }
     else { targetPwm = (1023 * config.manualControlPWM) / 100; }
 
@@ -74,7 +72,7 @@ void pwmControl()
       else if (invert_pwm > changePwm)
         invert_pwm += fastPwm;
 
-      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 210; } // Solución Fernando
+      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 210; }
       
       invert_pwm = constrain(invert_pwm, 0, maxPwm);
       if (invert_pwm != last_invert_pwm)
@@ -97,7 +95,7 @@ void pwmControl()
         invert_pwm--;
       }
   
-      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; } // Solución Fernando
+      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
 
       invert_pwm = constrain(invert_pwm, 0, maxPwm);
       if (invert_pwm != last_invert_pwm)
@@ -113,19 +111,20 @@ void pwmControl()
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
   if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && Flags.pwmIsWorking)
   {
-    // if (inverter.wgrid > config.pwmMin && inverter.batteryWatts >= 0)
     if (config.flags.debug4) { INFOV("Dentro de Auto\n"); }
 
-    // if ((config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts) // Prueba Aeizoon por defecto 0
-
     if (config.flags.offGrid ?
-        (inverter.batteryWatts >= config.battWatts && inverter.batterySoC >= config.soc) :
-        (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts
+        (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && inverter.batterySoC >= config.soc : // Modo Off-grid
+        (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts // Modo On-grid
        )
     {
       if (config.flags.debug4) { INFOV("Dentro de pwmmin\n"); }
 
-      if (config.flags.changeGridSign ? inverter.wgrid < config.pwmMax : inverter.wgrid > config.pwmMax) {
+      if (config.flags.offGrid ?
+          config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMax : inverter.batteryWatts > config.pwmMax :
+          config.flags.changeGridSign ? inverter.wgrid < config.pwmMax : inverter.wgrid > config.pwmMax
+         ) 
+      {
         if (config.flags.debug4) { INFOV("Dentro de pwmmax\n"); }
 
         if (invert_pwm <= changePwm)
@@ -136,7 +135,7 @@ void pwmControl()
         }
       }
 
-      if (config.flags.dimmerLowCost && (invert_pwm > 0 && invert_pwm < 210)) { invert_pwm = 210; } // Solución Fernando
+      if (config.flags.dimmerLowCost && (invert_pwm > 0 && invert_pwm < 210)) { invert_pwm = 210; }
       
       invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)
@@ -145,11 +144,8 @@ void pwmControl()
         last_invert_pwm = invert_pwm;
       }
     }
-    // else if (inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0)
-    // else if ((config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts) // Prueba Aeizoon por defecto 0
-
     else if (config.flags.offGrid ?
-              (inverter.batteryWatts < config.battWatts || inverter.batterySoC < config.soc) :
+              (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || inverter.batterySoC < config.soc :
               (config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts
             )
     {
@@ -165,7 +161,7 @@ void pwmControl()
         invert_pwm--;
       }
       
-      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; } // Solución Fernando
+      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
             
       invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
       if (invert_pwm != last_invert_pwm)

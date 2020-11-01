@@ -15,3 +15,4 @@
 #define FRONIUS_MODBUS 15
 #define HUAWEI_MODBUS 16
 #define SMA_ISLAND 17
+#define SOLAREDGE 18
