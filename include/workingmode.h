@@ -16,3 +16,4 @@
 #define HUAWEI_MODBUS 16
 #define SMA_ISLAND 17
 #define SOLAREDGE 18
+#define MUSTSOLAR 40
