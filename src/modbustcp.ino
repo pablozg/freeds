@@ -398,6 +398,7 @@ void configModbusTcp(void)
             case SOLAREDGEINVERTER: { parseSolarEdgeInverter(data); break; }
             case SOLAREDGEMETER: { parseSolarEdgeMeter(data); break; }
         }
+        
         if (config.wversion == FRONIUS_MODBUS) {
           if (a->address == 40097 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
           data_ready = true; 
@@ -406,6 +407,7 @@ void configModbusTcp(void)
         if (config.wversion == SMA_BOY && a->address == 30867 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == SMA_ISLAND && a->address == 30775 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == HUAWEI_MODBUS && a->address == 37113 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == SOLAREDGE && a->address == 40206 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         Error.RecepcionDatos = false;
         timers.ErrorRecepcionDatos = millis();

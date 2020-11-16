@@ -20,7 +20,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define eepromVersion 0x15
+#define eepromVersion 0x16
 
 #define sizeOfArray(x)  (sizeof(x) / sizeof((x)[0]))
 
@@ -59,10 +59,14 @@ extern "C"
 
 #include "fauxmoESP.h"
 
-#define LANGUAGE_ES
+// #define LANGUAGE_EN
 
 #ifdef LANGUAGE_ES
 #include "es-ES.h"
+#endif
+
+#ifdef LANGUAGE_EN
+#include "en-EN.h"
 #endif
 
 #ifdef LANGUAGE_PT
@@ -115,7 +119,6 @@ extern "C"
 
 // NTP Config, use https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv to get the correct tz config.
 const char* ntpServer = "pool.ntp.org";
-const char* tzConfig = "CET-1CEST,M3.5.0,M10.5.0/3";
 
 // Debounce control
 unsigned long lastDebounceTime = 0;
@@ -125,7 +128,7 @@ bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "1.0.5 Final";
+const char version[] PROGMEM = "1.0.6";
 
 const char *www_username = "admin";
 
@@ -229,7 +232,8 @@ typedef union {
     uint32_t debug4 : 1;             // Bit 19
     uint32_t flipScreen : 1;         // Bit 20
     uint32_t offGrid : 1;            // Bit 21
-    uint32_t spare : 10;             // Bit 22 - 31
+    uint32_t showEnergyMeter : 1;    // Bit 22
+    uint32_t spare : 9;              // Bit 23 - 31
   };
 } SysBitfield;
 
@@ -243,6 +247,41 @@ typedef union {
     uint32_t spare : 28;   // Bit 4 - 31
   };
 } RelayFlags;
+
+union {
+  uint32_t data;
+  struct {
+    uint32_t energyTotal : 1;       // Bit 0
+    uint32_t voltage : 1;           // Bit 1
+    uint32_t current : 1;           // Bit 2
+    uint32_t activePower : 1;       // Bit 3
+    uint32_t aparentPower : 1;      // Bit 4
+    uint32_t reactivePower : 1;     // Bit 5
+    uint32_t powerFactor : 1;       // Bit 6
+    uint32_t frequency : 1;         // Bit 7
+    uint32_t importActive : 1;      // Bit 8
+    uint32_t exportActive : 1;      // Bit 9
+    uint32_t importReactive : 1;    // Bit 10
+    uint32_t exportReactive : 1;    // Bit 11
+    uint32_t phaseAngle : 1;        // Bit 12
+    uint32_t pv1c : 1;              // Bit 13
+    uint32_t pv2c : 1;              // Bit 14
+    uint32_t pv1v : 1;              // Bit 15
+    uint32_t pv2v : 1;              // Bit 16
+    uint32_t pw1 : 1;               // Bit 17
+    uint32_t pw2 : 1;               // Bit 18
+    uint32_t gridv : 1;             // Bit 19
+    uint32_t wsolar : 1;            // Bit 20
+    uint32_t wtoday : 1;            // Bit 21
+    uint32_t wgrid : 1;             // Bit 22
+    uint32_t wtogrid : 1;           // Bit 23
+    uint32_t temperature : 1;       // Bit 24
+    uint32_t batteryWatts : 1;      // Bit 25
+    uint32_t batterySoC : 1;        // Bit 26
+    uint32_t loadWatts : 1;         // Bit 27
+    uint32_t spare : 4;             // Bit 28 - 31
+  };
+} webMonitorFields;
 
 struct CONFIG
 {
@@ -358,9 +397,18 @@ struct CONFIG
   // OFFGRID
   uint8_t soc;
   int16_t battWatts;
+
+  // TIMEZONE
+  char tzConfig[30];
+
+  // User language
+  char language[5];
   
+  // Maximum watts in user tariff
+  uint16_t maxWattsTariff;
+
   // FREE MEMORY
-  uint8_t free[207];
+  uint8_t free[270];
 } config;
 
 struct METER
@@ -413,6 +461,36 @@ struct UPTIME
   int HighMillis = 0;
   int Rollover = 0;
 } uptime;
+
+struct
+{
+  char _GRID_[8];
+  char _SOLAR_[8];
+  char _BATTERY_[10];
+  char _INVERTERINFO_[18];
+  char _METERINFO_[18];
+  char _OLEDPOWER_[12];
+  char _VOLTAGE_[12];
+  char _CURRENT_[12];
+  char _IMPORT_[12];
+  char _EXPORT_[12];
+  char _OLEDTODAY_[8];
+  char _START_[16];
+  char _CONNECTING_[16];
+  char _RELAY_[12];
+  char _CONNECTSSID_[22];
+  char _CONFIGPAGE_[18];
+  char _PRGRESTORE_[32];
+  char _WAIT_[32];
+  char _UPDATING_[32];
+  char _LOSTWIFI_[32];
+  char _TEMPERATURES_[22];
+  char _INVERTERTEMP_[22];
+  char _TERMOTEMP_[22];
+  char _TRIACTEMP_[22];
+  char _DERIVADOR_[32];
+  char _COMPILATION_[22];
+} lang;
 
 struct tm timeinfo;
 
@@ -514,6 +592,9 @@ public:
   }
 };
 
+// Declaration of default values
+void down_pwm(boolean = true, const char* = "PWM: disabling PWM\n");
+
 ////////// WATCHDOG FUNCTIONS //////////
 
 const int loopTimeCtl = 0;
@@ -602,7 +683,8 @@ void defaultValues()
   config.flags.serial = true;
   config.flags.debug = false;
   config.flags.moreDebug = false;
-  config.flags.weblog = false;
+  config.flags.weblog = true;
+  config.flags.debug4 = false;
   config.publishMqtt = 10000;
   config.flags.timerEnabled = false;
   config.timerStart = 500;
@@ -636,6 +718,10 @@ void defaultValues()
   config.flags.offGrid = false;
   config.soc = 100;
   config.battWatts = -60; // Sólo para ongrid
+  config.maxWattsTariff = 3450;
+  config.flags.showEnergyMeter = true;
+  strcpy(config.tzConfig, "CET-1CEST,M3.5.0,M10.5.0/3");
+  strcpy(config.language, "es");
 
   config.eeinit = eepromVersion;
   config.flags.wifi = false;
@@ -644,7 +730,7 @@ void defaultValues()
 void configureTickers(void)
 {
   Tickers.add(0,  200, [&](void *) { data_display(); }, nullptr, true);                 // OLED loop
-  Tickers.add(1,  500, [&](void *) { send_events(); }, nullptr, false);                 // Send Events to Webpage
+  Tickers.add(1, 500, [&](void *) { send_events(); }, nullptr, false);                 // Send Events to Webpage
   Tickers.add(2, 5000, [&](void *) { connectToMqtt(); }, nullptr, false);               // Reconnect mqtt every 5 seconds
   Tickers.add(3, 5000, [&](void *) { connectToWifi(); }, nullptr, false);               // Reconnect Wifi
   Tickers.add(4, config.getDataTime, [&](void *) { getSensorData(); }, nullptr, false); // Sensor data adquisition time
@@ -700,7 +786,7 @@ void setup()
   display.init();
   display.setBrightness(config.oledBrightness);
   if (config.flags.flipScreen) { display.flipScreenVertically(); }
-  showLogo(_START_, true);
+  showLogo(lang._START_, true);
 #endif
 
   // Configuramos las salidas
@@ -774,7 +860,7 @@ void setup()
 
       // Init, Configure and get the ntp time
       if (config.wversion != SOLAX_V2_LOCAL) {
-        configTzTime(tzConfig, ntpServer);
+        configTzTime(config.tzConfig, ntpServer);
         updateLocalTime();
       }
       Flags.timerSet = false;
@@ -838,6 +924,7 @@ void setup()
       sensors.setResolution(9);
       buildSensorArray();
       setWebConfig();
+      defineWebMonitorFields(config.wversion);
     }
   }
 
@@ -847,24 +934,27 @@ void setup()
   {
     INFOV("An Error has occurred while mounting SPIFFS\n");
     return;
-  }
+  } else { readLanguages(); }
   
   if (!config.flags.wifi) { server.addHandler(new CaptiveRequestHandler).setFilter(ON_AP_FILTER); server.begin();}
   
   if (Flags.firstInit) {
     display.clear();
     display.setFont(ArialMT_Plain_10);
-    display.drawString(64, 0, _CONNECTSSID_);
+    display.drawString(64, 0, lang._CONNECTSSID_);
     display.drawString(64, 20, "FreeDS");
-    display.drawString(64, 40, _CONFIGPAGE_);
+    display.drawString(64, 40, lang._CONFIGPAGE_);
     display.display();
   }
 }
 
-long tme;
+long tme = millis();
 
 void loop()
 {
+  // Serial.printf("\nLoop Time: %lu\n", millis() - tme);
+  // tme = millis();
+  
   //////// Watchdog ////////////
   timerWrite(timer, 0); // reset timer (feed watchdog)
   /////////////////////////////////////
@@ -885,8 +975,6 @@ void loop()
 
     if (config.flags.debug4) { 
       if (millis() - timers.printDebug > 2000){
-        // INFOV("\nLoop Time: %lu\n", millis() - tme);
-        // tme = millis();
         INFOV("\nError Recepción Datos: %s, Error Variación Datos: %s, Error Conexión Mqtt: %s\n", Error.RecepcionDatos ? "true" : "false", Error.VariacionDatos ? "true" : "false", Error.ConexionMqtt ? "true" : "false");
         INFOV("Timer Recepción Datos: %ld, Timer Variación Datos: %ld\n", millis() - timers.ErrorRecepcionDatos, millis() - timers.ErrorVariacionDatos);
         INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, invert_pwm: %d, targetPwm: %d, battery: %.02f\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, invert_pwm, targetPwm, inverter.batteryWatts);
@@ -906,7 +994,7 @@ void loop()
 
     if (processData) { processingData(); }
     
-    if (config.wversion != SOLAX_V2_LOCAL) {
+    if (config.wversion != SOLAX_V2_LOCAL && Flags.ntpTime) {
       checkTimer();
       updateLocalTime();
     }

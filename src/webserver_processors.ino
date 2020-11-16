@@ -39,7 +39,7 @@ String workingModeString(void)
   }
   if (config.wversion == DDS238_METER)
   {
-    return "Meter DDS238-2 Modbus";
+    return "Meter DDS238-2(4) Modbus";
   }
   if (config.wversion == DDSU666_METER)
   {
@@ -48,6 +48,10 @@ String workingModeString(void)
   if (config.wversion == SDM_METER)
   {
     return "Meter SDM120 / SDM220 Modbus";
+  }
+  if (config.wversion == MUSTSOLAR)
+  {
+    return "MustSolar Modbus (En desarrollo)";
   }
   if (config.wversion == SMA_BOY)
   {
@@ -100,44 +104,57 @@ String processorFreeDS(const String &var)
 {
   if (var == "SELECT_MODE")
   {
-    return "<select class='form-control select2 mg-b-2 mg-r-30' onchange='run()' id='version'>"
-                                                                              "<option value='1'" +
+    return "<select class='form-control select2 mg-b-2 mg-r-30' onchange='run()' id='version'>"  
+                                                                              "<option value='" + String(SOLAX_V1) + "'" +
            String((config.wversion == SOLAX_V1) ? " selected='selected' " : " ") + ">Solax Wifi v1 - Hibridos</option>"
-                                                                              "<option value='2'" +
+                                                                              "<option value='" + String(SOLAX_V2) + "'" +
            String((config.wversion == SOLAX_V2) ? " selected='selected' " : " ") + ">Solax Wifi v2</option>"
-                                                                              "<option value='0'" +
+                                                                              "<option value='" + String(SOLAX_V2_LOCAL) + "'" +
            String((config.wversion == SOLAX_V2_LOCAL) ? " selected='selected' " : " ") + ">Solax Wifi v2 local</option>"
-                                                                              "<option value='11'" +
+                                                                              "<option value='" + String(FRONIUS_API) + "'" +
            String((config.wversion == FRONIUS_API) ? " selected='selected' " : " ") + ">Fronius (API)</option>" +
-                                                                              "<option value='3'" +
+                                                                              "<option value='" + String(MQTT_BROKER) + "'" +
            String((config.wversion == MQTT_BROKER) ? " selected='selected' " : " ") + ">Solax MQTT (Tasmota)</option>"
-                                                                              "<option value='4'" +
-           String((config.wversion == DDS238_METER) ? " selected='selected' " : " ") + ">Meter DDS238-2 Modbus</option>"
-                                                                              "<option value='5'" +
+                                                                              "<option value='" + String(DDS238_METER) + "'" +
+           String((config.wversion == DDS238_METER) ? " selected='selected' " : " ") + ">Meter DDS238-2(4) Modbus</option>"
+                                                                              "<option value='" + String(DDSU666_METER) + "'" +
            String((config.wversion == DDSU666_METER) ? " selected='selected' " : " ") + ">Meter DDSU666 Modbus</option>"
-                                                                              "<option value='6'" +
+                                                                              "<option value='" + String(SDM_METER) + "'" +
            String((config.wversion == SDM_METER) ? " selected='selected' " : " ") + ">Meter SDM120 / SDM220 Modbus</option>"
-                                                                              "<option value='8'" +
+                                                                              "<option value='"+ String(MUSTSOLAR) + "'" +
+           String((config.wversion == MUSTSOLAR) ? " selected='selected' " : " ") + ">MustSolar Modbus (En desarrollo)</option>"
+                                                                              "<option value='" + String(SMA_BOY) + "'" +
            String((config.wversion == SMA_BOY) ? " selected='selected' " : " ") + ">SMA (Sunny Boy)</option>"
-                                                                              "<option value='17'" +
+                                                                              "<option value='" + String(SMA_ISLAND) + "'" +
            String((config.wversion == SMA_ISLAND) ? " selected='selected' " : " ") + ">SMA (Sunny Island)</option>"
-                                                                              "<option value='14'" +
+                                                                              "<option value='" + String(VICTRON) + "'" +
            String((config.wversion == VICTRON) ? " selected='selected' " : " ") + ">Victron Modbus TCP</option>" +
-                                                                              "<option value='15'" +
+                                                                              "<option value='" + String(FRONIUS_MODBUS) + "'" +
            String((config.wversion == FRONIUS_MODBUS) ? " selected='selected' " : " ") + ">Fronius Modbus TCP</option>" +
-                                                                              "<option value='16'" +
+                                                                              "<option value='" + String(HUAWEI_MODBUS) + "'" +
            String((config.wversion == HUAWEI_MODBUS) ? " selected='selected' " : " ") + ">Huawei Modbus TCP</option>" +
-                                                                              "<option value='18'" +
+                                                                              "<option value='" + String(SOLAREDGE) + "'" +
            String((config.wversion == SOLAREDGE) ? " selected='selected' " : " ") + ">SolarEdge Modbus TCP</option>" +
-                                                                              "<option value='9'" +
+                                                                              "<option value='" + String(WIBEEE) + "'" +
            String((config.wversion == WIBEEE) ? " selected='selected' " : " ") + ">Wibeee</option>" +
-                                                                              "<option value='10'" +                                                                   
+                                                                              "<option value='" + String(SHELLY_EM) + "'" +                                                                   
            String((config.wversion == SHELLY_EM) ? " selected='selected' " : " ") + ">Shelly EM</option>"
-                                                                              "<option value='13'" +                                                                   
+                                                                              "<option value='" + String(ICC_SOLAR) + "'" +                                                                   
            String((config.wversion == ICC_SOLAR) ? " selected='selected' " : " ") + ">ICC Solar (Mqtt)</option>"
-                                                                              "<option value='12'" +
+                                                                              "<option value='" + String(SLAVE_MODE) + "'" +
            String((config.wversion == SLAVE_MODE) ? " selected='selected' " : " ") + ">Slave FreeDS</option>" +
-            "</select>";
+           "</select>";
+  }
+
+  if (var == "SELECT_LANGUAGE")
+  {
+    return "<li class='nav-item'><a class='nav-link'><select class='form-control country'>"
+              "<option value='es'>Español</option>"
+              "<option value='en'>English</option>"
+              "<option value='pt'>Português</option>"
+              "<option value='ca'>Català</option>"
+              "<option value='ga'>Galego</option>"
+            "</select></a></li>";
   }
 
   if (var == "MESSAGE")
@@ -299,10 +316,10 @@ String processorMqtt(const String &var)
   {
     if (config.wversion == MQTT_BROKER)
     {
-      return "<div class='row mg-t-2'><label class='col-sm-4 form-control-label'>Tema Solax:</label><div class='col-sm-8 mg-t-10 mg-sm-t-0'>"
+      return "<div class='row mg-t-2'><label class='col-sm-4 form-control-label language' key='SOLAXTOPIC'></label><div class='col-sm-8 mg-t-10 mg-sm-t-0'>"
              "<input id='solax' name='solax' type='text' class='form-control' maxlength='50' value='" +
              String(config.Solax_mqtt) + "'></div></div>"
-                                           "<div class='row mg-t-2'><label class='col-sm-4 form-control-label'>Tema Meter:</label><div class='col-sm-8 mg-t-10 mg-sm-t-0'>"
+                                           "<div class='row mg-t-2'><label class='col-sm-4 form-control-label language' key='METERTOPIC'></label><div class='col-sm-8 mg-t-10 mg-sm-t-0'>"
                                            "<input id='meter' name='meter' type='text' class='form-control' maxlength='50' value='" +
              String(config.Meter_mqtt) + "'></div></div>";
     }
@@ -448,6 +465,11 @@ String processorConfig(const String &var)
       return "<label id='labelModo' class='col-sm-4 form-control-label'>Modbus:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"SDM120 / SDM 220\" name=\"wifis\" disabled /></div>";
     }
+    if (config.wversion == MUSTSOLAR)
+    {
+      return "<label id='labelModo' class='col-sm-4 form-control-label'>Modbus:</label>"
+             "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"MustSolar\" name=\"wifis\" disabled /></div>";
+    }
   }
 
   if (var == "CHANGEGRIDSIGN")
@@ -559,11 +581,6 @@ String processorConfig(const String &var)
     return config.flags.alexaControl ? "checked" : "";
   }
 
-  // if (var == "REMOTE_API")
-  // {
-  //   return String(config.remote_api);
-  // }
-
   if (var == "GETDATATIME")
   {
     return String(config.getDataTime);
@@ -591,6 +608,10 @@ String processorSalidas(const String &var)
   if (var == "PWMACTIVE")
   {
     return config.flags.pwmEnabled ? "checked" : "";
+  }
+  if (var == "WATTSTARIFF")
+  {
+    return String(config.maxWattsTariff);
   }
   if (var == "LOADWATTS")
   {

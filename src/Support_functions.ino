@@ -44,6 +44,7 @@ void getSensorData(void)
       case FRONIUS_MODBUS: // Fronius Modbus
       case HUAWEI_MODBUS: // Huawei
       case SOLAREDGE: // SolarEdge
+      case MUSTSOLAR: // MustSolar
         readModbus();
         break;
     }
@@ -61,13 +62,12 @@ void setGetDataTime(void)
     case WIBEEE:
     case SHELLY_EM:
     case FRONIUS_API:
-      if (config.getDataTime < 1500) config.getDataTime = 1500;
+      if (config.getDataTime < 1000) config.getDataTime = 1000;
       break;
     case SLAVE_MODE:
       if (config.getDataTime < 500) config.getDataTime = 500;
       break;
     case FRONIUS_MODBUS:
-      // config.getDataTime = 250;
       if (config.getDataTime < 250) config.getDataTime = 250;
       break;
     case SMA_BOY:
@@ -359,15 +359,23 @@ void checkTimer(void)
 
 void calcWattsToday()
 {
+  // To avoid bad data, we set a maximum of 20000W as right value
+  if (inverter.wgrid < -20000 || inverter.wgrid > 20000) return;
+
   float timeCalcWattsToday = (float(millis() - timers.KwToday)/1000.0);
-  float KwIncrement;
-    
-  if (inverter.wgrid < 0) {
-    KwIncrement = (-inverter.wgrid * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
+  float KwIncrement = (inverter.wgrid * (timeCalcWattsToday/60/60/1000)); // Calculate kilowatt hours used
+
+  if (KwIncrement < -1 || KwIncrement > 1) {
+    INFOV("Millis: %lu, time float: %.03f\n", millis() - timers.KwToday, timeCalcWattsToday);
+    INFOV("Wgrid: %.03f, KwIncrement: %.10f, ChangeGridSign: %s\n", inverter.wgrid, KwIncrement, config.flags.changeGridSign ? "ON" : "OFF");
+  }
+  
+  if (config.flags.changeGridSign ? KwIncrement > 0 : KwIncrement < 0) {
+    if (!config.flags.changeGridSign) { KwIncrement *= -1; }
     config.KwToday += KwIncrement;
     config.KwTotal += KwIncrement;
   } else {
-    KwIncrement = (inverter.wgrid * (timeCalcWattsToday/60/60/1000));    // Calculate kilowatt hours used
+    if (config.flags.changeGridSign) { KwIncrement *= -1; }
     config.KwExportToday += KwIncrement;
     config.KwExportTotal += KwIncrement;
   }
@@ -378,12 +386,70 @@ void calcWattsToday()
     config.KwExportYesterday = config.KwExportToday;
     config.KwToday = 0;
     config.KwExportToday = 0;
+    saveEEPROM();
   }
-  
-  // INFOV("Millis: %lu, time float: %.03f\n", millis() - timers.KwToday, timeCalcWattsToday);
-  // INFOV("Consumo -> Kw Today: %.03f, Kw Yesterday: %.03f, Kw Total: %.03f\n", config.KwToday, config.KwYesterday, config.KwTotal);
-  // INFOV("Vertido -> Kw Today: %.03f, Kw Yesterday: %.03f, Kw Total: %.03f\n", config.KwExportToday, config.KwExportYesterday, config.KwExportTotal);
   timers.KwToday = millis();
+}
+
+void defineWebMonitorFields(uint8_t version)
+{
+  switch (version)
+  {
+    case SOLAX_V2: // Solax v2
+      webMonitorFields.data = 0x0177E000;
+      break;
+    case SOLAX_V2_LOCAL: // Solax v2 local mode
+      webMonitorFields.data = 0x0177E000;
+      break;
+    case SOLAX_V1: // Solax v1
+      webMonitorFields.data = 0x0177E000;
+      break;
+    case MQTT_BROKER: // Mqtt
+      webMonitorFields.data = 0x0177E000;
+      break;
+    case ICC_SOLAR: // Icc Solar
+      webMonitorFields.data = 0x0F77E000;
+      break;
+    case WIBEEE: // Wibee
+      webMonitorFields.data = 0x005801E6;
+      break;
+    case SHELLY_EM: // Shelly EM
+      webMonitorFields.data = 0x00580322;
+      break;
+    case FRONIUS_API: // Fronius API
+      webMonitorFields.data = 0x00700000;
+      break;
+    case DDS238_METER: // DDS2382
+      webMonitorFields.data = 0x004003EF;
+      break;
+    case DDSU666_METER: // DDSU666
+      webMonitorFields.data = 0x004003EE;
+      break;
+    case SDM_METER: // SDM120/220
+      webMonitorFields.data = 0x00401FFF;
+      break;
+    case SMA_BOY: // SMA
+      webMonitorFields.data = 0x0077E000;
+      break;
+    case SMA_ISLAND: // SMA
+      webMonitorFields.data = 0x07000006;
+      break;
+    case VICTRON: // Victron
+      webMonitorFields.data = 0x06500006;
+      break;
+    case FRONIUS_MODBUS: // Fronius Modbus
+      webMonitorFields.data = 0x0057E006;
+      break;
+    case HUAWEI_MODBUS: // Huawei
+      webMonitorFields.data = 0x0377E000;
+      break;
+    case SOLAREDGE: // SolarEdge
+      webMonitorFields.data = 0x0152A000;
+      break;
+    default:
+      webMonitorFields.data = 0x0177E000;
+      break;
+  }
 }
 
 void verbose_print_reset_reason(int cpu)
@@ -524,8 +590,73 @@ float getFragmentation() {
 
 }
 
-void checkEEPROM(void){
+bool readLanguages() {
+
+  Serial.printf("Actual language: %s\n", config.language);
   
+  File langFile = SPIFFS.open("/lang-" + String(config.language) + ".json", "r");
+  if (!langFile) {
+    Serial.println("Failed to open language file");
+    return false;
+  }
+
+  size_t size = langFile.size();
+  if (size > 1024) {
+    Serial.println("Config file size is too large");
+    return false;
+  }
+
+  // Asigne un buffer para almacenar el contenido del archivo.
+  std::unique_ptr<char[]> buf(new char[size]);
+
+  // No usamos String aquí porque la biblioteca ArduinoJson requiere la entrada
+  // buffer para ser mutable Si no usas ArduinoJson, también puedes
+  // use langFile.readString en su lugar.
+  langFile.readBytes(buf.get(), size);
+
+  DynamicJsonDocument jsonBuffer(1024);
+
+  DeserializationError error = deserializeJson(jsonBuffer, buf.get());
+  
+  if (error) {
+    Serial.println("Error al analizar el archivo de lenguajes");
+    return false;
+  }
+
+  strcpy(lang._GRID_, jsonBuffer[config.language][0]);
+  strcpy(lang._SOLAR_, jsonBuffer[config.language][1]);
+  strcpy(lang._BATTERY_, jsonBuffer[config.language][2]);
+  strcpy(lang._INVERTERINFO_, jsonBuffer[config.language][3]);
+  strcpy(lang._METERINFO_, jsonBuffer[config.language][4]);
+  strcpy(lang._OLEDPOWER_, jsonBuffer[config.language][5]);
+  strcpy(lang._VOLTAGE_, jsonBuffer[config.language][6]);
+  strcpy(lang._CURRENT_, jsonBuffer[config.language][7]);
+  strcpy(lang._IMPORT_, jsonBuffer[config.language][8]);
+  strcpy(lang._EXPORT_, jsonBuffer[config.language][9]);
+  strcpy(lang._OLEDTODAY_, jsonBuffer[config.language][10]);
+  strcpy(lang._START_, jsonBuffer[config.language][11]);
+  strcpy(lang._CONNECTING_, jsonBuffer[config.language][12]);
+  strcpy(lang._RELAY_, jsonBuffer[config.language][13]);
+  strcpy(lang._CONNECTSSID_, jsonBuffer[config.language][14]);
+  strcpy(lang._CONFIGPAGE_, jsonBuffer[config.language][15]);
+  strcpy(lang._PRGRESTORE_, jsonBuffer[config.language][16]);
+  strcpy(lang._WAIT_, jsonBuffer[config.language][17]);
+  strcpy(lang._UPDATING_, jsonBuffer[config.language][18]);
+  strcpy(lang._LOSTWIFI_, jsonBuffer[config.language][19]);
+  strcpy(lang._TEMPERATURES_, jsonBuffer[config.language][20]);
+  strcpy(lang._INVERTERTEMP_, jsonBuffer[config.language][21]);
+  strcpy(lang._TERMOTEMP_, jsonBuffer[config.language][22]);
+  strcpy(lang._TRIACTEMP_, jsonBuffer[config.language][23]);
+  strcpy(lang._DERIVADOR_, jsonBuffer[config.language][24]);
+  strcpy(lang._COMPILATION_, jsonBuffer[config.language][25]);
+
+  return true;
+}
+
+void checkEEPROM(void) {
+  
+  byte actualVersion = config.eeinit;
+    
   // Paso de versión 0x0A - 0x10 a 0x11
   if(config.eeinit >= 0x0A && config.eeinit <= 0x10)
   {
@@ -565,6 +696,16 @@ void checkEEPROM(void){
     config.soc = 100;
     config.battWatts = -200;
     config.eeinit = 0x15;
+  }
+
+  if(config.eeinit == 0x15)
+  {
+    config.flags.showEnergyMeter = true;
+    config.maxWattsTariff = 3450;
+    strcpy(config.tzConfig, "CET-1CEST,M3.5.0,M10.5.0/3");
+    strcpy(config.language, "es");
+    config.eeinit = 0x16;
+    INFOV("EEPROM Settings upgraded from versión %x to %x", actualVersion, config.eeinit);
     saveEEPROM();
   }
 }

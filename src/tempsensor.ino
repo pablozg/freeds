@@ -25,8 +25,6 @@ void calcDallasTemperature(void)
 
     float temperatura;
 
-    //delay(30); // To ensure a completed conversion
-
     if (config.termoSensorAddress[0] != 0x0) {
         temperatura = sensors.getTempC(config.termoSensorAddress);
 
@@ -78,9 +76,7 @@ void calcDallasTemperature(void)
 
 void checkTemperature(void)
 {
-    //if (config.flags.sensorTemperatura && temperaturaTermo != -127.00 && !Error.temperaturaTermo) {
     if (config.flags.sensorTemperatura && !Error.temperaturaTermo) {
-        //timers.ErrorLecturaTemperatura[0] = millis();
         switch(config.modoTemperatura) {
             case 1: // Auto
                 if (!config.flags.pwmMan && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }

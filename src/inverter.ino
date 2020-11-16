@@ -54,7 +54,7 @@ void parseJson(String json)
     inverter.pw2 = root["Data"][5];      // Potencia string 2
     inverter.gridv = root["Data"][6];    // Tension de red
     inverter.wsolar = root["Data"][7];   // Potencia solar
-    inverter.temperature = root["Data"][8];   // Potencia solar
+    inverter.temperature = root["Data"][8];   // Potencia temperature
     inverter.wtoday = root["Data"][9];   // Potencia solar diaria
     inverter.wgrid = root["Data"][10];    // Potencia de red (Negativo: de red - Positivo: a red)
     inverter.wtogrid = root["Data"][11]; // Potencia diaria enviada a red

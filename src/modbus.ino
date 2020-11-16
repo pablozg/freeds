@@ -304,7 +304,37 @@ void dds2382(void)
   }
 }
 
+void mustSolar(void)
+{
+  bool data_ready = modbusReceiveReady();
 
+  if (data_ready) {
+    uint8_t buffer[160];
+
+    uint32_t error = modbusReceiveBuffer(buffer, 75); 
+    
+    if (error) {
+      INFOV("MustSolar error: %i\n", error);
+    } else {
+      // meter.energyTotal = (float)((buffer[3] << 24) + (buffer[4] << 16) + (buffer[5] << 8) + buffer[6]) / 100.0;  // 429496.729 kW
+
+      inverter.wsolar = (float)((buffer[24] << 8) + buffer[25]) / 10.0;
+      inverter.wgrid = (float)((buffer[26] << 8) + buffer[27]) / 10.0;
+      if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+      
+      Error.VariacionDatos = false;
+      Error.RecepcionDatos = false;
+      timers.ErrorRecepcionDatos = millis();
+    }
+  } // end data ready
+
+  if (0 == meter.send_retry || data_ready) {
+    meter.send_retry = 5;
+    modbusSend(config.idMeter, 0x03, 6271, 75);
+  } else {
+    meter.send_retry--;
+  }
+}
 
 void readModbus(void)
 {
@@ -336,11 +366,14 @@ void readModbus(void)
     case 16:
       huawei();
       break;
-    case 17:
+    case SMA_ISLAND:
       smaIsland();
       break;
-    case 18:
+    case SOLAREDGE:
       solarEdge();
+      break;
+    case MUSTSOLAR:
+      mustSolar();
       break;
     }
 }

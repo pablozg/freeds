@@ -21,15 +21,15 @@
     }
     function checkScroll() {
         if ($("#scrollactive:checked").length) {
-            $("#scrollText").text("Scroll Automático Activado");
+            $("#scrollText").text(lang.enablescroll);
             scroll = true;
         } else {
-            $("#scrollText").text("Scroll Automático Desactivado");
+            $("#scrollText").text(lang.disablescroll);
             scroll = false;
         }
     }
 </script>
-<html lang="es">
+<html>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -40,8 +40,11 @@
         <link href="all.min.css" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
         <link href="sb-admin-2.min.css" rel="stylesheet">
+        <script src="jquery-3.5.1.min.js"></script>
+        <script src="bootstrap.bundle.min.js"></script>
+        <script src="freeds.min.js"></script>
     </head>
-    <body onload="checkScroll();">
+    <body>
         <div id="wrapper">
             <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
                 <a class="sidebar-brand d-flex align-items-center justify-content-center"  href='http://freeds.es/'>
@@ -54,49 +57,49 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/">
                         <i class="fas fa-home"></i>
-                        <span class="m-l-20">Monitorización</span>
+                        <span class="m-l-20 language" key="MONITOR"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Red.html">
                         <i class="fas fa-wifi"></i>
-                        <span>Ajustes de Red</span>
+                        <span class="language" key="LANSETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Mqtt.html">
                         <i class="fas fa-sliders-h"></i>
-                        <span>Configuración MQTT</span>
+                        <span class="language" key="MQTTSETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Config.html">
                         <i class="fas fa-sliders-h"></i>
-                        <span>Configuración</span>
+                        <span class="language" key="SETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Salidas.html">
                         <i class="fas fa-plug"></i>
-                        <span>Salidas</span>
+                        <span class="language" key="RELAYS"></span>
                     </a>
                 </li>
                 <hr class="sidebar-divider my-1">
                 <li class="nav-item">
                     <a id='panelControl' class="nav-link" href="#" data-toggle="collapse" data-target="#collapseControl" aria-expanded="true" aria-controls="collapseControl">
                         <i class="fas fa-lightbulb"></i>
-                        <span>Panel de Control</span>
+                        <span class="language" key="CONTROLPANEL"></span>
                     </a>
                     <div id="collapseControl" class="collapse" aria-labelledby="headingControl" data-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner rounded">
-                            <h6 class="collapse-header">Control Pantalla:</h6>
-                            <a id="Button5" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(5)" title="Enciende / Apaga la pantalla Oled">Pantalla (ON)</a>
+                            <h6 class="collapse-header language" key ="SCREENCONTROL"></h6>
+                            <a id="Button5" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" key="SCREEN" onclick="return tooglebuttons(5)"></a>
                             <div class="range-control">
-                                <input id="oledBrightness" type="range" min="0" max="100" step="1" value="100" data-thumbwidth="10" data-toggle="tooltip" data-placement="right" title="Ajusta el nivel de brillo de la pantalla Oled">
+                                <input id="oledBrightness" type="range" min="0" max="100" step="1" value="100" data-thumbwidth="10" data-toggle="tooltip" data-placement="right">
                                 <output id="rangeVal" name="rangeVal">100</output>
                             </div>
-                            <h6 class="collapse-header">Control PWM:</h6>
-                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(6)">PWM (ON)</a>
+                            <h6 class="collapse-header language" key="CONTROLPWM"></h6>
+                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)" key="pwmon"></a>
                             <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(7)">PWM <span class="man_auto man_auto-inactive" id="labelauto">AUTO</span> / <span class="man_auto man_auto-inactive" id="labelman">MAN</span>
                             </a>
                         </div>
@@ -106,31 +109,31 @@
                 <li class="nav-item">
                     <a class="nav-link" onclick="$('#modalRestart').modal();" href='#'>
                         <i class="fas fa-sync-alt"></i>
-                        <span>Reiniciar</span>
+                        <span class="language" key="RESTART"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Ota.html">
                         <i class="fas fa-download"></i>
-                        <span>Actualizar</span>
+                        <span class="language" key="UPDATE"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="weblog.html">
                         <i class="fas fa-desktop"></i>
-                        <span>Consola</span>
+                        <span class="language" key="CONSOLE"></span>
                     </a>
                 </li>
                 <div class="sidebar-heading">Monitor</div>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='barText1'>Potencia Solar:</span>
+                        <span id='barText1' class="language" key="wsolar"></span>
                         <h6 class='pt-1' id='barValue1'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='barText2'>Potencia de red:</span>
+                        <span id='barText2' class="language" key="wgrid"></span>
                         <h6 class='pt-1' id='barValue2'></h6>
                     </a>
                 </li>
@@ -140,7 +143,8 @@
                         <h6 class='pt-1' id='barValue3'></h6>
                     </a>
                 </li>
-                <hr class="sidebar-divider d-none d-md-block">
+                <hr class="sidebar-divider d-none d-md-block align-self-center">
+                %SELECT_LANGUAGE%
                 <div class="text-center d-none d-md-inline">
                     <button class="rounded-circle border-0" id="sidebarToggle"></button>
                 </div>
@@ -171,7 +175,7 @@
                                                 <textarea id='weblog' rows='20' class="form-control" style="overflow-y: scroll;resize: none;"></textarea>
                                                 <div class="row pb-3">
                                                     <div class="col">
-                                                        <button type="button" class="btn btn-danger" onclick='$("#weblog").get(0).value = "";'>Borrar log</button>
+                                                        <button type="button" class="btn btn-danger language" onclick='$("#weblog").get(0).value = "";' key="CLEAR"></button>
                                                     </div>
                                                     <div class="col-5">
                                                         <label class="custom-control custom-checkbox pb-2">
@@ -195,28 +199,32 @@
                     </div>
                 </div>
                 <footer class="sticky-footer bg-white">
+                    <form action="https://www.paypal.com/donate" method="post" target="_top">
+                        <input type="hidden" name="hosted_button_id" value="T3JE5XHDKDJN8" />
+                        <input type="image" src="https://www.paypalobjects.com/en_US/ES/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+                    </form>
+                    <br>
                     <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
-                    <div>Inspirado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
+                    <div>(C) 2020 Pablo Zerón, betatester: Aeizoon, Diseño pcb: Amcalo</div>
                     <small>
+                        <div>Inspirado en openDS+ de Iqas</div>
                         <div>Fecha compilación: %FECHA_COMPILACION%</div>
                         <div id='uptime_small'></div>
                     </small>
                 </footer>
             </div>
         </div>
-        <script src="jquery-3.4.1.min.js"></script>
-        <script src="bootstrap.bundle.min.js"></script>
         <script src="sb-admin-2.min.js"></script>
-        <script src="freeds.min.js"></script>
+        <!--   VENTANAS MODALES     -->
         <div id="modalRestart" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-sm" role="document">
                 <div class="modal-content text-center">
                     <div class="modal-body">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>                    
-                        <h4 class="tx-danger tx-semibold pt-2 pb-2">¡¡¡¡ATENCIÓN!!!!</h4>
-                        <p class="mg-b-20 mg-x-20">¿Seguro que desea Reiniciar?</p>
-                        <button type="button" onClick="location.href='/reboot'" class="btn btn-success" data-dismiss="modal" aria-label="Close">Reiniciar</button>
-                        <button type="button" class="btn btn-danger" data-dismiss="modal" aria-label="Close">Cerrar</button>
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <h4 class="tx-danger tx-semibold pt-2 pb-2 language" key="WARNING"></h4>
+                        <p class="mg-b-20 mg-x-20 language" key="RESTARTTEXT"></p>
+                        <button type="button" onClick="location.href='/reboot'" class="btn btn-success language" data-dismiss="modal" aria-label="Close" key="RESTART"></button>
+                        <button type="button" class="btn btn-danger language" data-dismiss="modal" aria-label="Close" key="CLOSE"></button>
                     </div>
                 </div>
             </div>

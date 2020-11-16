@@ -20,6 +20,7 @@
 
 #define CONNECTION_TIMEOUT 30000
 #define RECEIVING_DATA_TIMEOUT 10000
+#define MAX_MESSAGE_SIZE 4999
 
 static AsyncClient *aClient = NULL;
 uint32_t connectionTimeout;
@@ -31,7 +32,7 @@ uint8_t shellySensor = 1;
 
 struct TCP_MESSAGE
 {
-  char message[4000];
+  char message[MAX_MESSAGE_SIZE + 1];
   uint16_t totalMessageLength = 0;
   uint16_t messageLength = 0;
   uint16_t payloadStart = 0;
@@ -39,8 +40,8 @@ struct TCP_MESSAGE
 
 void runAsyncClient()
 {
-  INFOV("\nFree Heap: %d bytes, Fragmentation: %.02f %%\n", ESP.getFreeHeap(), getFragmentation());
-  Serial.printf("Connection timeout: %lu\n", millis() - connectionTimeout);
+  if (config.flags.debug) { INFOV("\nFree Heap: %d bytes, Fragmentation: %.02f %%\n", ESP.getFreeHeap(), getFragmentation()); }
+  // Serial.printf("Connection timeout: %lu\n", millis() - connectionTimeout);
   
   if (processData) {
     if (config.flags.moreDebug) { INFOV("Processing Received Data, waiting for a new request\n"); }
@@ -172,8 +173,12 @@ void runAsyncClient()
 
     // Search for end of header
     dataPayload = strstr(d, "\r\n\r\n");
-    if (dataPayload != NULL && !firstChunk) {
+    //if (dataPayload != NULL && !firstChunk) {
+    if (dataPayload != NULL) {
       if (config.flags.moreDebug) { INFOV("End Header received\n"); }
+      // If firstchunk is set, we clear all previous message
+      if (firstChunk) { INFOV("End Header received twice, erasing previous message\n"); clearMessage(); }
+      
       message.payloadStart = (uint16_t)(dataPayload - d + 4);
       message.messageLength = (uint16_t)len - message.payloadStart;
       
@@ -204,8 +209,8 @@ void runAsyncClient()
       
       arrayPos = message.messageLength;
       
-      // If total message length is smaller than the buffer, we proccess it.
-      if (message.totalMessageLength < 3999) {
+      // If total message length is smaller than the buffer and the temp buffer + incoming data is smaller too, we proccess it.
+      if (message.totalMessageLength < MAX_MESSAGE_SIZE && (message.messageLength + len) < MAX_MESSAGE_SIZE) {
         for (uint16_t i = 0; i < len; i++)
         {
           message.message[arrayPos] = d[i];
@@ -220,7 +225,7 @@ void runAsyncClient()
       }
     }
 
-    INFOV("Datos Recibidos, message: %d, total: %d\n", message.messageLength, message.totalMessageLength);
+    if (config.flags.debug) { INFOV("\nDatos Recibidos, message: %d, total: %d\n", message.messageLength, message.totalMessageLength); }
     if (config.flags.messageDebug) { Serial.printf("Message:%s\n", d); }
 
     // If the message is fully received we close the connection
@@ -238,7 +243,7 @@ void runAsyncClient()
       deleteClient();
     }
   } else {
-    if (!aClient->connect(String(config.sensor_ip).c_str(), 80))
+    if (!aClient->connect(String(config.sensor_ip).c_str(), 80))//80
     {
       if (config.flags.moreDebug) { INFOV("Connect Fail\n"); }
       deleteClient();

@@ -55,7 +55,7 @@ void connectToWifi()
 
   Serial.println("Connecting to Wi-Fi...");
   #ifdef OLED
-    showLogo(_CONNECTING_, false);
+    showLogo(lang._CONNECTING_, false);
   #endif
 
   wifiMulti.addAP(config.ssid1, config.pass1);
@@ -96,8 +96,8 @@ void errorConnectToWifi(void)
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 0, "WIFI");
   display.drawString(64, 16, "ERROR");
-  display.drawString(64, 30, _PRGRESTORE_);
-  display.drawString(64, 40, _WAIT_);
+  display.drawString(64, 30, lang._PRGRESTORE_);
+  display.drawString(64, 40, lang._WAIT_);
   display.display();
 #endif
   timers.ErrorConexionWifi = millis();
@@ -145,7 +145,7 @@ void WiFiEvent(WiFiEvent_t event)
   case SYSTEM_EVENT_STA_GOT_IP:
     Error.ConexionWifi = false;
     Flags.pwmIsWorking = true;
-    INFOV(PSTR("WiFi connected\nIP address: %s\n"),WiFi.localIP().toString().c_str());
+    INFOV(PSTR("WiFi connected to IP address: %s\n"),WiFi.localIP().toString().c_str());
     delay(1000);
 
     Tickers.enableAll();
@@ -380,6 +380,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       if (strcmp(topic, "Inverter/PvWattsTotal") == 0) { inverter.wsolar = atof(payload); return; }
       if (strcmp(topic, "Inverter/SolarKwUse") == 0) { inverter.wtoday = atof(payload); return; }
       if (strcmp(topic, "Inverter/BatteryWatts") == 0) { inverter.batteryWatts = atof(payload); return; }
+      if (strcmp(topic, "Inverter/BatterySOC") == 0) { inverter.batterySoC = atof(payload); return; }
       if (strcmp(topic, "Inverter/LoadWatts") == 0) { inverter.loadWatts = atof(payload); return; }
       if (strcmp(topic, "Inverter/Temperature") == 0) { inverter.temperature = atof(payload); return; }
     }
@@ -483,11 +484,11 @@ void suscribeMqttMeter(void)
 {
   switch (config.wversion)
   {
-    case 3:
+    case MQTT_BROKER:
       mqttClient.subscribe(config.Solax_mqtt, 0);
       mqttClient.subscribe(config.Meter_mqtt, 0);
       break;
-    case 13:
+    case ICC_SOLAR:
       mqttClient.subscribe("Inverter/GridWatts", 0);
       mqttClient.subscribe("Inverter/MPPT1_Watts", 0);
       mqttClient.subscribe("Inverter/MPPT2_Watts", 0);
@@ -500,6 +501,7 @@ void suscribeMqttMeter(void)
       mqttClient.subscribe("Inverter/BatteryWatts", 0);
       mqttClient.subscribe("Inverter/LoadWatts", 0);
       mqttClient.subscribe("Inverter/Temperature", 0);
+      mqttClient.subscribe("Inverter/BatterySOC", 0);
       break;
   }
 }
@@ -520,6 +522,7 @@ void unSuscribeMqtt(void)
   mqttClient.unsubscribe("Inverter/BatteryWatts");
   mqttClient.unsubscribe("Inverter/LoadWatts");
   mqttClient.unsubscribe("Inverter/Temperature");
+  mqttClient.unsubscribe("Inverter/BatterySOC");
   if (!config.flags.domoticz) { mqttClient.unsubscribe("domoticz/out"); }
 }
 

@@ -28,8 +28,7 @@ void parseMasterFreeDs(char *json)
     INFOV("deserializeJson() failed: %s\n", error.c_str());
   } else {
     masterMode = (int)root["wversion"];
-    inverter.wgrid =  (float)root["wgrid"]; // Potencia de red
-      
+
     if ((int)root["PwmMaster"] >= config.pwmSlaveOn) {
       Flags.pwmIsWorking = true;
     } else {
@@ -39,98 +38,71 @@ void parseMasterFreeDs(char *json)
       }
     }
 
-    switch (masterMode)
-    {
-      case 3: // Mqtt
-        inverter.pv1c =   (float)root["pv1c"]; // Corriente string 1
-        inverter.pv2c =   (float)root["pv2c"]; // Corriente string 2
-        inverter.pv1v =   (float)root["pv1v"]; // Tension string 1
-        inverter.pv2v =   (float)root["pv2v"]; // Tension string 2
-        inverter.pw1 =    (float)root["pw1"];    // Potencia string 1
-        inverter.pw2 =    (float)root["pw2"];    // Potencia string 2
-        inverter.gridv =  (float)root["gridv"];   // Tension de red
-        inverter.wtoday = (float)root["wtoday"];    // Potencia solar diaria
-        inverter.wsolar = (float)root["wsolar"];    // Potencia solar actual
-        inverter.temperature =  (float)root["invTemp"];
-        break;
-      case 4:
-      case 5:
-      case 6:
-        meter.voltage =      (float)root["mvoltage"];
-        meter.current =      (float)root["mcurrent"];
-        meter.powerFactor =  (float)root["mpowerFactor"];
-        meter.frequency =    (float)root["mfrequency"];
-        meter.importActive = (float)root["mimportActive"];
-        meter.exportActive = (float)root["mexportActive"];
-        meter.energyTotal =  (float)root["menergyTotal"];
-        meter.activePower =  (float)root["mactivePower"];
-        meter.aparentPower = (float)root["maparentPower"];
-        meter.reactivePower =  (float)root["mreactivePower"];
-        meter.importReactive = (float)root["mimportReactive"];
-        meter.exportReactive = (float)root["mexportReactive"];
-        meter.phaseAngle =     (float)root["mphaseAngle"];
-        break;
-      case 9:
-      case 10:
-        meter.voltage =       (float)root["mvoltage"];
-        meter.powerFactor =   (float)root["mpowerFactor"];
-        meter.importActive =  (float)root["mimportActive"];
-        meter.exportActive =  (float)root["mexportActive"];
-        meter.activePower =   (float)root["mactivePower"];
-        meter.reactivePower = (float)root["mreactivePower"];
-        inverter.wsolar =     (float)root["wsolar"];
-        inverter.gridv =      (float)root["gridv"];
-        break;
-      case 13:
-        meter.voltage =         (float)root["mvoltage"];
-        meter.current =         (float)root["mcurrent"];
-        inverter.pv1c =         (float)root["pv1c"]; // Corriente string 1
-        inverter.pv2c =         (float)root["pv2c"]; // Corriente string 2
-        inverter.pv1v =         (float)root["pv1v"]; // Tension string 1
-        inverter.pv2v =         (float)root["pv2v"]; // Tension string 2
-        inverter.pw1 =          (float)root["pw1"];    // Potencia string 1
-        inverter.pw2 =          (float)root["pw2"];    // Potencia string 2
-        inverter.gridv =        (float)root["gridv"];   // Tension de red
-        inverter.wtoday =       (float)root["wtoday"];    // Potencia solar diaria
-        inverter.wsolar =       (float)root["wsolar"];    // Potencia solar actual
-        inverter.batteryWatts = (float)root["wbattery"];
-        inverter.loadWatts =    (float)root["wload"];
-        inverter.temperature =  (float)root["invTemp"];
-        break;
-      case 14:
-        meter.voltage =         (float)root["mvoltage"];
-        meter.current =         (float)root["mcurrent"];
-        inverter.wsolar =       (float)root["wsolar"];
-        inverter.batteryWatts = (float)root["wbattery"];
-        inverter.batterySoC =   (float)root["invSoC"];
-        inverter.temperature =  (float)root["invTemp"];
-        break;
-      case 15:
-        meter.voltage =   (float)root["mvoltage"];
-        meter.current =   (float)root["mcurrent"];
-        inverter.pv1c =   (float)root["pv1c"]; // Corriente string 1
-        inverter.pv2c =   (float)root["pv2c"]; // Corriente string 2
-        inverter.pv1v =   (float)root["pv1v"]; // Tension string 1
-        inverter.pv2v =   (float)root["pv2v"]; // Tension string 2
-        inverter.pw1 =    (float)root["pw1"];    // Potencia string 1
-        inverter.pw2 =    (float)root["pw2"];    // Potencia string 2
-        inverter.wtoday = (float)root["wtoday"];    // Potencia solar diaria
-        inverter.wsolar = (float)root["wsolar"];    // Potencia solar actual
-        inverter.temperature =  (float)root["invTemp"];
-        break;
-      default:
-        inverter.wtoday = (float)root["wtoday"];
-        inverter.wsolar = (float)root["wsolar"];
-        inverter.gridv =  (float)root["gridv"];
-        inverter.pv1c =   (float)root["pv1c"];
-        inverter.pv1v =   (float)root["pv1v"];
-        inverter.pw1 =    (float)root["pw1"];
-        inverter.pv2c =   (float)root["pv2c"];
-        inverter.pv2v =   (float)root["pv2v"];
-        inverter.pw2 =    (float)root["pw2"];
-        inverter.temperature =  (float)root["invTemp"];
-        break;
-    }
+  defineWebMonitorFields(masterMode);
+  // Inverter data
+  if (webMonitorFields.wsolar) {
+    inverter.wsolar = (float)root["wsolar"]; // Potencia solar actual
+  }
+  if (webMonitorFields.wgrid) {
+    inverter.wgrid = (float)root["wgrid"]; // Potencia de red
+  }
+  if (webMonitorFields.temperature) {
+    inverter.temperature = (float)root["invTemp"]; // Temperatura Inversor
+  }
+  if (webMonitorFields.batteryWatts) {
+    inverter.batteryWatts = (float)root["wbattery"];
+  }
+  if (webMonitorFields.batterySoC) {
+    inverter.batterySoC = (float)root["invSoC"];
+  }
+  if (webMonitorFields.loadWatts) {
+    inverter.loadWatts = (float)root["wload"];
+  }
+  if (webMonitorFields.wtoday) {
+    inverter.wtoday = (float)root["wtoday"]; // Potencia solar diaria
+  }
+  if (webMonitorFields.gridv) {
+    inverter.gridv = (float)root["gridv"]; // Tension de red
+  }
+  if (webMonitorFields.pv1c) {
+    inverter.pv1c = (float)root["pv1c"]; // Corriente string 1
+  }
+  if (webMonitorFields.pv1v) {
+    inverter.pv1v = (float)root["pv1v"]; // Tension string 1
+  }
+  if (webMonitorFields.pw1) {
+    inverter.pw1 = (float)root["pw1"]; // Potencia string 1
+  }
+  if (webMonitorFields.pv2c) {
+    inverter.pv2c = (float)root["pv2c"]; // Corriente string 2
+  }
+  if (webMonitorFields.pv2v) {
+    inverter.pv2v = (float)root["pv2v"]; // Tension string 2
+  }
+  if (webMonitorFields.pw2) {
+    inverter.pw2 = (float)root["pw2"]; // Potencia string 2  
+  }
+
+  // Meter data
+  if (webMonitorFields.voltage) {
+    meter.voltage = (float)root["mvoltage"];
+  }
+  if (webMonitorFields.current) {
+    meter.current = (float)root["mcurrent"];
+  }
+  if (webMonitorFields.powerFactor) {
+    meter.powerFactor = (float)root["mpowerFactor"];
+  }
+  if (webMonitorFields.frequency) {
+    meter.frequency = (float)root["mfrequency"];
+  }
+  if (webMonitorFields.importActive) {
+    meter.importActive = (float)root["mimportActive"];
+  }
+  if (webMonitorFields.exportActive) {
+    meter.exportActive = (float)root["mexportActive"];
+  }
+
     Error.RecepcionDatos = false;
     timers.ErrorRecepcionDatos = millis();
   }

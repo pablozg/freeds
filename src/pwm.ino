@@ -57,29 +57,33 @@ void pwmControl()
   //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
   {
+    uint16_t tariffOffset = config.maxWattsTariff * 0.06; // Se calcula un 3% del total contratado, unos 104W sobre 3450
+    uint16_t maxTargetPwm;
     if (config.flags.dimmerLowCost) { 
-      targetPwm = ((((config.maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210);
-      if (targetPwm <= 210) { targetPwm = 0; }
+      maxTargetPwm = ((((config.maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210);
+      if (maxTargetPwm <= 210) { targetPwm = 0; }
+    } else { maxTargetPwm = (1023 * config.manualControlPWM) / 100; }
+    
+    if (config.flags.changeGridSign ? inverter.wgrid < (config.maxWattsTariff - tariffOffset) : inverter.wgrid > -(config.maxWattsTariff - tariffOffset))
+    {
+      if (targetPwm <= maxTargetPwm - 20) {
+        targetPwm += 20;
+      } else { targetPwm = maxTargetPwm;}
     }
-    else { targetPwm = (1023 * config.manualControlPWM) / 100; }
+    
+    if (config.flags.changeGridSign ? inverter.wgrid > config.maxWattsTariff : inverter.wgrid < -config.maxWattsTariff) {
+      if (targetPwm >= 25) {
+        targetPwm -= 25;
+      } else { targetPwm = 0;}
+    }
 
+    //INFOV("Target: %d, Wgrid:%.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n", targetPwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
+    
     relay_control_man(false);
 
     if (invert_pwm < targetPwm)
     {
-      if (invert_pwm <= changePwm) // hasta el 20 % subida lenta
-        invert_pwm += slowPwm;
-      else if (invert_pwm > changePwm)
-        invert_pwm += fastPwm;
-
-      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 210; }
-      
-      invert_pwm = constrain(invert_pwm, 0, maxPwm);
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: SUBIENDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
-      }
+      up_pwm("PWM MANUAL: SUBIENDO POTENCIA\n");
     }
     else if (invert_pwm > targetPwm)
     {
@@ -111,66 +115,28 @@ void pwmControl()
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
   if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && Flags.pwmIsWorking)
   {
-    if (config.flags.debug4) { INFOV("Dentro de Auto\n"); }
-
     if (config.flags.offGrid ?
         (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && inverter.batterySoC >= config.soc : // Modo Off-grid
+        // (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && meter.voltage >= config.soc : // Modo Off-grid
         (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts // Modo On-grid
        )
     {
-      if (config.flags.debug4) { INFOV("Dentro de pwmmin\n"); }
-
       if (config.flags.offGrid ?
           config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMax : inverter.batteryWatts > config.pwmMax :
           config.flags.changeGridSign ? inverter.wgrid < config.pwmMax : inverter.wgrid > config.pwmMax
          ) 
       {
-        if (config.flags.debug4) { INFOV("Dentro de pwmmax\n"); }
-
-        if (invert_pwm <= changePwm)
-        {
-          invert_pwm += slowPwm;
-        } else {
-          invert_pwm += fastPwm;
-        }
-      }
-
-      if (config.flags.dimmerLowCost && (invert_pwm > 0 && invert_pwm < 210)) { invert_pwm = 210; }
-      
-      invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug) { INFOV(PSTR("PWM: SUBIENDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
+        up_pwm("PWM: SUBIENDO POTENCIA\n");
       }
     }
     else if (config.flags.offGrid ?
               (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || inverter.batterySoC < config.soc :
+              // (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || meter.voltage < config.soc :
               (config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts
             )
     {
-      if (invert_pwm > (fastPwm * downFactor)) {
-        invert_pwm -= (fastPwm * downFactor);
-      } else if (invert_pwm > (slowPwm * downFactor)) {
-        invert_pwm -= (slowPwm * downFactor);
-      } else if (invert_pwm >= 10) {
-        invert_pwm -= 10;
-      } else if (invert_pwm >= 5) {
-        invert_pwm -= 5;
-      } else if (invert_pwm >= 1) {
-        invert_pwm--;
-      }
-      
-      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
-            
-      invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug) { INFOV(PSTR("PWM: BAJANDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
-      }
+      down_pwm(true, "PWM: BAJANDO POTENCIA\n");
     }
-    writePwmValue(invert_pwm);
   }
 
   calcPwmProgressBar();
@@ -383,14 +349,6 @@ void pwmControl()
   } 
 }
 
-void writePwmValue(uint16_t value)
-{
-  if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
-  
-  ledcWrite(2, value);
-  dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
-}
-
 void enableRelay(void)
 {
   Flags.RelayTurnOn = true;
@@ -415,11 +373,6 @@ void calcPwmProgressBar()
   }
 
   inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;
-
-  // Print PWM Values
-  // if (config.flags.debug) {
-  // INFOV("PWM Value: %d%%, PWM Value decimals: %lf, invert_pwm: %d\n", pwmValue, ((invert_pwm * 100.0) / 1023.0), invert_pwm);
-  // }
 }
 
 void relay_control_man(boolean forceOFF)
@@ -452,7 +405,27 @@ void relay_control_man(boolean forceOFF)
   }
 }
 
-void down_pwm(boolean softDown)
+// PWM Functions
+void up_pwm(const char *message) {
+  if (invert_pwm <= changePwm)
+  {
+    invert_pwm += slowPwm;
+  } else {
+    invert_pwm += fastPwm;
+  }
+
+  if (config.flags.dimmerLowCost && (invert_pwm > 0 && invert_pwm < 210)) { invert_pwm = 210; }
+
+  invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
+  if (invert_pwm != last_invert_pwm)
+  {
+    if (config.flags.debug) { INFOV(PSTR(message)); }
+    last_invert_pwm = invert_pwm;
+  }
+  writePwmValue(invert_pwm);
+}
+
+void down_pwm(boolean softDown, const char *message)
 {
   if (softDown == true)
   {
@@ -468,7 +441,8 @@ void down_pwm(boolean softDown)
       invert_pwm--;
     }
 
-    if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; } // Solución Fernando
+    if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
+    invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
     writePwmValue(invert_pwm);
   } else {
     invert_pwm = 0;
@@ -480,10 +454,19 @@ void down_pwm(boolean softDown)
 
   if (invert_pwm != last_invert_pwm)
   {
-    if (config.flags.debug) { INFOV(PSTR("PWM: disabling PWM\n")); }
+    if (config.flags.debug) { INFOV(PSTR(message)); }
     last_invert_pwm = invert_pwm;
   }
 
   relay_control_man(!softDown);
   calcPwmProgressBar();
 }
+
+void writePwmValue(uint16_t value)
+{
+  if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
+  
+  ledcWrite(2, value);
+  dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
+}
+
