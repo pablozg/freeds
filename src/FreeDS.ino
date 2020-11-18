@@ -59,20 +59,6 @@ extern "C"
 
 #include "fauxmoESP.h"
 
-// #define LANGUAGE_EN
-
-#ifdef LANGUAGE_ES
-#include "es-ES.h"
-#endif
-
-#ifdef LANGUAGE_EN
-#include "en-EN.h"
-#endif
-
-#ifdef LANGUAGE_PT
-#include "pt-PT.h"
-#endif
-
 #define OLED
 
 #define MAX_SCREENS 5
@@ -128,7 +114,7 @@ bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "1.0.6";
+const char version[] PROGMEM = "1.0.7";
 
 const char *www_username = "admin";
 

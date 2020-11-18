@@ -9,12 +9,13 @@
 
 namespace ARDUINOJSON_NAMESPACE {
 
-template <typename Visitor>
-inline void variantAccept(const VariantData *var, Visitor &visitor) {
+template <typename TVisitor>
+inline typename TVisitor::result_type variantAccept(const VariantData *var,
+                                                    TVisitor &visitor) {
   if (var != 0)
-    var->accept(visitor);
+    return var->accept(visitor);
   else
-    visitor.visitNull();
+    return visitor.visitNull();
 }
 
 inline const CollectionData *variantAsArray(const VariantData *var) {
@@ -40,13 +41,7 @@ inline bool variantCopyFrom(VariantData *dst, const VariantData *src,
   return dst->copyFrom(*src, pool);
 }
 
-inline bool variantEquals(const VariantData *a, const VariantData *b) {
-  if (a == b)
-    return true;
-  if (!a || !b)
-    return false;
-  return a->equals(*b);
-}
+inline int variantCompare(const VariantData *a, const VariantData *b);
 
 inline bool variantIsArray(const VariantData *var) {
   return var && var->isArray();
@@ -105,29 +100,18 @@ inline bool variantSetOwnedRaw(VariantData *var, SerializedValue<T> value,
   return var != 0 && var->setOwnedRaw(value, pool);
 }
 
-inline bool variantSetLinkedString(VariantData *var, const char *value) {
-  if (!var)
-    return false;
-  var->setLinkedString(value);
-  return true;
-}
-
 inline void variantSetNull(VariantData *var) {
   if (!var)
     return;
   var->setNull();
 }
 
-inline bool variantSetOwnedString(VariantData *var, char *value) {
+template <typename TAdaptedString>
+inline bool variantSetString(VariantData *var, TAdaptedString value,
+                             MemoryPool *pool) {
   if (!var)
     return false;
-  var->setOwnedString(value);
-  return true;
-}
-
-template <typename T>
-inline bool variantSetOwnedString(VariantData *var, T value, MemoryPool *pool) {
-  return var != 0 && var->setOwnedString(value, pool);
+  return var->setString(value, pool);
 }
 
 template <typename T>

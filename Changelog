@@ -1,3 +1,15 @@
+Versión 1.0.7
+- Revisión 0
+	- TODO: Dehabilitar la opción de programador si no ha actualizado la hora correctamente.
+	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado
+	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
+  	- TODO: pinwatchdog o reinicio preventivo programable
+	- TODO: Añadir la opción de realizar un on/off temporizado en lugar de un ON y OFF para las salidas 1 - 4
+	- TODO: Añadir contador para energia consumida en solar (wsolar) para los que tienen vertido cero
+	- TODO: Añadir programador horario al modo automático con selección de potencia mínima y máxima (como en modo automatico normal)
+	- TODO: Añadir tema personalizado para obtener el valor del SoC mediante Mqtt (Icc Solar)
+
+
 Versión 1.0.6
 
 	¡¡¡¡¡¡ IMPORTANTE !!!! para actualizar a esta versión y debido a los cambios realizados en la web, el orden de actualización de los ficheros mediante web debe ser el sigiente:

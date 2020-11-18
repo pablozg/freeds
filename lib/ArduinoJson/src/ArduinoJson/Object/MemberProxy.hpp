@@ -21,10 +21,13 @@ namespace ARDUINOJSON_NAMESPACE {
 template <typename TObject, typename TStringRef>
 class MemberProxy : public VariantOperators<MemberProxy<TObject, TStringRef> >,
                     public VariantShortcuts<MemberProxy<TObject, TStringRef> >,
-                    public Visitable {
+                    public Visitable,
+                    public VariantTag {
   typedef MemberProxy<TObject, TStringRef> this_type;
 
  public:
+  typedef VariantRef variant_type;
+
   FORCE_INLINE MemberProxy(TObject variant, TStringRef key)
       : _object(variant), _key(key) {}
 
@@ -56,14 +59,6 @@ class MemberProxy : public VariantOperators<MemberProxy<TObject, TStringRef> >,
     return *this;
   }
 
-  FORCE_INLINE bool operator==(VariantConstRef rhs) const {
-    return static_cast<VariantConstRef>(getUpstreamMember()) == rhs;
-  }
-
-  FORCE_INLINE bool operator!=(VariantConstRef rhs) const {
-    return static_cast<VariantConstRef>(getUpstreamMember()) != rhs;
-  }
-
   FORCE_INLINE void clear() const {
     getUpstreamMember().clear();
   }
@@ -80,11 +75,6 @@ class MemberProxy : public VariantOperators<MemberProxy<TObject, TStringRef> >,
   template <typename T>
   FORCE_INLINE operator T() const {
     return getUpstreamMember();
-  }
-
-  template <typename T>
-  FORCE_INLINE int compare(const T &rhs) const {
-    return getUpstreamMember().template compare<T>(rhs);
   }
 
   template <typename TValue>
@@ -133,8 +123,8 @@ class MemberProxy : public VariantOperators<MemberProxy<TObject, TStringRef> >,
     return getOrAddUpstreamMember().set(value);
   }
 
-  template <typename Visitor>
-  void accept(Visitor &visitor) const {
+  template <typename TVisitor>
+  typename TVisitor::result_type accept(TVisitor &visitor) const {
     return getUpstreamMember().accept(visitor);
   }
 

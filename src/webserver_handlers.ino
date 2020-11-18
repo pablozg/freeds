@@ -336,7 +336,7 @@ const char *sendJsonWeb(void)
   jsonValues["Oled"] = config.flags.oledPower;
   jsonValues["oledBrightness"] = config.oledBrightness;
   jsonValues["POn"] = config.flags.pwmEnabled;
-  jsonValues["PwmMan"] = config.flags.pwmMan;
+  jsonValues["PwmMan"] = config.flags.pwmMan | Flags.pwmManAuto;
   jsonValues["SenTemp"] = config.flags.sensorTemperatura;
   jsonValues["Msg"] = webMessageResponse;
   jsonValues["pwmfrec"] = config.pwmFrequency;
@@ -920,15 +920,15 @@ void setWebConfig(void)
     }
 
     if (comando == "KwTotal") {
-      if (value >= 0) { config.KwToday = value / 1000.0; }
+      if (value >= 0) { config.KwTotal = value / 1000.0; }
     }
 
      if (comando == "KwExportToday") {
-      if (value >= 0) { config.KwToday = value / 1000.0; }
+      if (value >= 0) { config.KwExportToday = value / 1000.0; }
     }
 
     if (comando == "KwExportTotal") {
-      if (value >= 0) { config.KwToday = value / 1000.0; }
+      if (value >= 0) { config.KwExportTotal = value / 1000.0; }
     }
 
     if (comando == "flipScreen") {

@@ -350,7 +350,6 @@ void checkTimer(void)
         
     if (changeToManual) {
       if (!Flags.timerSet) { INFOV("Timer started\n"); Flags.timerSet = true; config.flags.pwmMan = true; }
-
     } else {
       if (Flags.timerSet) { INFOV("Timer stopped\n"); Flags.timerSet = false; config.flags.pwmMan = false; }
     }

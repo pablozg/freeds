@@ -19,10 +19,13 @@ namespace ARDUINOJSON_NAMESPACE {
 template <typename TArray>
 class ElementProxy : public VariantOperators<ElementProxy<TArray> >,
                      public VariantShortcuts<ElementProxy<TArray> >,
-                     public Visitable {
+                     public Visitable,
+                     public VariantTag {
   typedef ElementProxy<TArray> this_type;
 
  public:
+  typedef VariantRef variant_type;
+
   FORCE_INLINE ElementProxy(TArray array, size_t index)
       : _array(array), _index(index) {}
 
@@ -53,14 +56,6 @@ class ElementProxy : public VariantOperators<ElementProxy<TArray> >,
     return *this;
   }
 
-  FORCE_INLINE bool operator==(VariantConstRef rhs) const {
-    return static_cast<VariantConstRef>(getUpstreamElement()) == rhs;
-  }
-
-  FORCE_INLINE bool operator!=(VariantConstRef rhs) const {
-    return static_cast<VariantConstRef>(getUpstreamElement()) != rhs;
-  }
-
   FORCE_INLINE void clear() const {
     getUpstreamElement().clear();
   }
@@ -77,11 +72,6 @@ class ElementProxy : public VariantOperators<ElementProxy<TArray> >,
   template <typename T>
   FORCE_INLINE operator T() const {
     return getUpstreamElement();
-  }
-
-  template <typename T>
-  FORCE_INLINE int compare(const T& rhs) const {
-    return getUpstreamElement().template compare<T>(rhs);
   }
 
   template <typename T>
@@ -111,8 +101,8 @@ class ElementProxy : public VariantOperators<ElementProxy<TArray> >,
     return getOrAddUpstreamElement().set(value);
   }
 
-  template <typename Visitor>
-  void accept(Visitor& visitor) const {
+  template <typename TVisitor>
+  typename TVisitor::result_type accept(TVisitor& visitor) const {
     return getUpstreamElement().accept(visitor);
   }
 
@@ -146,6 +136,10 @@ class ElementProxy : public VariantOperators<ElementProxy<TArray> >,
 
   VariantRef getElement(size_t index) const {
     return getOrAddUpstreamElement().getElement(index);
+  }
+
+  VariantRef getOrAddElement(size_t index) const {
+    return getOrAddUpstreamElement().getOrAddElement(index);
   }
 
   FORCE_INLINE void remove(size_t index) const {

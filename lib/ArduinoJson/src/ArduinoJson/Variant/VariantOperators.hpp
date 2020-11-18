@@ -5,153 +5,162 @@
 #pragma once
 
 #include <ArduinoJson/Misc/Visitable.hpp>
+#include <ArduinoJson/Numbers/arithmeticCompare.hpp>
 #include <ArduinoJson/Polyfills/attributes.hpp>
 #include <ArduinoJson/Polyfills/type_traits.hpp>
 #include <ArduinoJson/Variant/VariantAs.hpp>
+#include <ArduinoJson/Variant/VariantTag.hpp>
 
 namespace ARDUINOJSON_NAMESPACE {
 
+template <typename T1, typename T2>
+CompareResult compare(const T1 &lhs, const T2 &rhs);  // VariantCompare.cpp
+
 template <typename TVariant>
 struct VariantOperators {
-  // Returns the default value if the VariantRef is undefined of incompatible
+  // Returns the default value if the VariantRef is undefined or incompatible
   template <typename T>
-  friend T operator|(const TVariant &variant, const T &defaultValue) {
+  friend typename enable_if<!IsVariant<T>::value, T>::type operator|(
+      const TVariant &variant, T defaultValue) {
     if (variant.template is<T>())
       return variant.template as<T>();
     else
       return defaultValue;
   }
-
-  // Returns the default value if the VariantRef is undefined of incompatible
-  // Special case for string: null is treated as undefined
-  friend const char *operator|(const TVariant &variant,
-                               const char *defaultValue) {
-    const char *value = variant.template as<const char *>();
-    return value ? value : defaultValue;
+  // Returns the default value if the VariantRef is undefined or incompatible
+  template <typename T>
+  friend typename enable_if<IsVariant<T>::value, typename T::variant_type>::type
+  operator|(const TVariant &variant, T defaultValue) {
+    if (variant)
+      return variant;
+    else
+      return defaultValue;
   }
 
   // value == TVariant
   template <typename T>
   friend bool operator==(T *lhs, TVariant rhs) {
-    return rhs.compare(lhs) == 0;
+    return compare(rhs, lhs) == COMPARE_RESULT_EQUAL;
   }
   template <typename T>
-  friend typename enable_if<!IsVisitable<T>::value, bool>::type operator==(
-      const T &lhs, TVariant rhs) {
-    return rhs.compare(lhs) == 0;
+  friend bool operator==(const T &lhs, TVariant rhs) {
+    return compare(rhs, lhs) == COMPARE_RESULT_EQUAL;
   }
 
   // TVariant == value
   template <typename T>
   friend bool operator==(TVariant lhs, T *rhs) {
-    return lhs.compare(rhs) == 0;
+    return compare(lhs, rhs) == COMPARE_RESULT_EQUAL;
   }
   template <typename T>
   friend typename enable_if<!IsVisitable<T>::value, bool>::type operator==(
       TVariant lhs, const T &rhs) {
-    return lhs.compare(rhs) == 0;
+    return compare(lhs, rhs) == COMPARE_RESULT_EQUAL;
   }
 
   // value != TVariant
   template <typename T>
   friend bool operator!=(T *lhs, TVariant rhs) {
-    return rhs.compare(lhs) != 0;
+    return compare(rhs, lhs) != COMPARE_RESULT_EQUAL;
   }
   template <typename T>
-  friend typename enable_if<!IsVisitable<T>::value, bool>::type operator!=(
-      const T &lhs, TVariant rhs) {
-    return rhs.compare(lhs) != 0;
+  friend bool operator!=(const T &lhs, TVariant rhs) {
+    return compare(rhs, lhs) != COMPARE_RESULT_EQUAL;
   }
 
   // TVariant != value
   template <typename T>
   friend bool operator!=(TVariant lhs, T *rhs) {
-    return lhs.compare(rhs) != 0;
+    return compare(lhs, rhs) != COMPARE_RESULT_EQUAL;
   }
   template <typename T>
   friend typename enable_if<!IsVisitable<T>::value, bool>::type operator!=(
       TVariant lhs, const T &rhs) {
-    return lhs.compare(rhs) != 0;
+    return compare(lhs, rhs) != COMPARE_RESULT_EQUAL;
   }
 
   // value < TVariant
   template <typename T>
   friend bool operator<(T *lhs, TVariant rhs) {
-    return rhs.compare(lhs) > 0;
+    return compare(rhs, lhs) == COMPARE_RESULT_GREATER;
   }
   template <typename T>
   friend bool operator<(const T &lhs, TVariant rhs) {
-    return rhs.compare(lhs) > 0;
+    return compare(rhs, lhs) == COMPARE_RESULT_GREATER;
   }
 
   // TVariant < value
   template <typename T>
   friend bool operator<(TVariant lhs, T *rhs) {
-    return lhs.compare(rhs) < 0;
+    return compare(lhs, rhs) == COMPARE_RESULT_LESS;
   }
   template <typename T>
-  friend bool operator<(TVariant lhs, const T &rhs) {
-    return lhs.compare(rhs) < 0;
+  friend typename enable_if<!IsVisitable<T>::value, bool>::type operator<(
+      TVariant lhs, const T &rhs) {
+    return compare(lhs, rhs) == COMPARE_RESULT_LESS;
   }
 
   // value <= TVariant
   template <typename T>
   friend bool operator<=(T *lhs, TVariant rhs) {
-    return rhs.compare(lhs) >= 0;
+    return (compare(rhs, lhs) & COMPARE_RESULT_GREATER_OR_EQUAL) != 0;
   }
   template <typename T>
   friend bool operator<=(const T &lhs, TVariant rhs) {
-    return rhs.compare(lhs) >= 0;
+    return (compare(rhs, lhs) & COMPARE_RESULT_GREATER_OR_EQUAL) != 0;
   }
 
   // TVariant <= value
   template <typename T>
   friend bool operator<=(TVariant lhs, T *rhs) {
-    return lhs.compare(rhs) <= 0;
+    return (compare(lhs, rhs) & COMPARE_RESULT_LESS_OR_EQUAL) != 0;
   }
   template <typename T>
-  friend bool operator<=(TVariant lhs, const T &rhs) {
-    return lhs.compare(rhs) <= 0;
+  friend typename enable_if<!IsVisitable<T>::value, bool>::type operator<=(
+      TVariant lhs, const T &rhs) {
+    return (compare(lhs, rhs) & COMPARE_RESULT_LESS_OR_EQUAL) != 0;
   }
 
   // value > TVariant
   template <typename T>
   friend bool operator>(T *lhs, TVariant rhs) {
-    return rhs.compare(lhs) < 0;
+    return compare(rhs, lhs) == COMPARE_RESULT_LESS;
   }
   template <typename T>
   friend bool operator>(const T &lhs, TVariant rhs) {
-    return rhs.compare(lhs) < 0;
+    return compare(rhs, lhs) == COMPARE_RESULT_LESS;
   }
 
   // TVariant > value
   template <typename T>
   friend bool operator>(TVariant lhs, T *rhs) {
-    return lhs.compare(rhs) > 0;
+    return compare(lhs, rhs) == COMPARE_RESULT_GREATER;
   }
   template <typename T>
-  friend bool operator>(TVariant lhs, const T &rhs) {
-    return lhs.compare(rhs) > 0;
+  friend typename enable_if<!IsVisitable<T>::value, bool>::type operator>(
+      TVariant lhs, const T &rhs) {
+    return compare(lhs, rhs) == COMPARE_RESULT_GREATER;
   }
 
   // value >= TVariant
   template <typename T>
   friend bool operator>=(T *lhs, TVariant rhs) {
-    return rhs.compare(lhs) <= 0;
+    return (compare(rhs, lhs) & COMPARE_RESULT_LESS_OR_EQUAL) != 0;
   }
   template <typename T>
   friend bool operator>=(const T &lhs, TVariant rhs) {
-    return rhs.compare(lhs) <= 0;
+    return (compare(rhs, lhs) & COMPARE_RESULT_LESS_OR_EQUAL) != 0;
   }
 
   // TVariant >= value
   template <typename T>
   friend bool operator>=(TVariant lhs, T *rhs) {
-    return lhs.compare(rhs) >= 0;
+    return (compare(lhs, rhs) & COMPARE_RESULT_GREATER_OR_EQUAL) != 0;
   }
   template <typename T>
-  friend bool operator>=(TVariant lhs, const T &rhs) {
-    return lhs.compare(rhs) >= 0;
+  friend typename enable_if<!IsVisitable<T>::value, bool>::type operator>=(
+      TVariant lhs, const T &rhs) {
+    return (compare(lhs, rhs) & COMPARE_RESULT_GREATER_OR_EQUAL) != 0;
   }
 };
 }  // namespace ARDUINOJSON_NAMESPACE
