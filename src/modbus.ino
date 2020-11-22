@@ -248,7 +248,7 @@ void dds2382(void)
       INFOV("DDS238-2 error: %i\n", error);
     } else {
 
-      if (config.flags.messageDebug) { 
+      if (config.flags.debug3) { 
         char hexarray[200] = {0};
         char hexvalue[5] = {0};
         for (int i = 0; i < 45; i++)
@@ -339,7 +339,7 @@ void mustSolar(void)
 void readModbus(void)
 {
   
-  if (config.flags.debug) { 
+  if (config.flags.debug1) { 
     INFOV(PSTR("Baudios: %lu\n"), SerieMeter.baudRate());
   }
 

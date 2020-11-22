@@ -22,7 +22,7 @@
 
 void parseWibeee(char *xml) {
   
-  if (config.flags.messageDebug) { Serial.printf("Wibee Size: %d, Json: %s\n", strlen(xml), xml); } // No usar INFOV produce stack error
+  if (config.flags.debug3) { Serial.printf("Wibee Size: %d, Json: %s\n", strlen(xml), xml); } // No usar INFOV produce stack error
   String response = xml;
   
   // Pinza 1 como lector de Red

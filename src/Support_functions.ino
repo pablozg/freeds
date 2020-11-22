@@ -302,7 +302,7 @@ String printDateOled()
 void updateLocalTime(void)
 {
   if(!getLocalTime(&timeinfo)){
-    if (config.flags.debug) { INFOV("Failed to obtain time\n"); }
+    if (config.flags.debug1) { INFOV("Failed to obtain time\n"); }
     Flags.ntpTime = false;
     return;
   }
@@ -349,9 +349,19 @@ void checkTimer(void)
     }
         
     if (changeToManual) {
-      if (!Flags.timerSet) { INFOV("Timer started\n"); Flags.timerSet = true; config.flags.pwmMan = true; }
+      if (!Flags.timerSet) { 
+        INFOV("Timer started\n");
+        Flags.timerSet = true;
+        config.flags.pwmMan = true;
+        if (config.modoTemperatura != 3) { Flags.pwmIsWorking = true; }
+      }
     } else {
-      if (Flags.timerSet) { INFOV("Timer stopped\n"); Flags.timerSet = false; config.flags.pwmMan = false; }
+      if (Flags.timerSet) {
+        INFOV("Timer stopped\n");
+        Flags.timerSet = false;
+        config.flags.pwmMan = false;
+        if (config.modoTemperatura != 3) { Flags.pwmIsWorking = true; }
+      }
     }
   }
 }
@@ -672,7 +682,7 @@ void checkEEPROM(void) {
   if(config.eeinit == 0x12)
   {
     config.flags.changeGridSign = false;
-    config.flags.messageDebug = false;
+    config.flags.debug3 = false;
     config.eeinit = 0x13;
   }
 

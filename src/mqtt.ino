@@ -51,7 +51,7 @@ topicData topicRegisters[] = {
 
 void connectToWifi()
 {
-  if (config.flags.moreDebug) { INFOV("ConnectToWifi()\n"); }
+  if (config.flags.debug2) { INFOV("ConnectToWifi()\n"); }
 
   Serial.println("Connecting to Wi-Fi...");
   #ifdef OLED
@@ -126,7 +126,7 @@ void errorConnectToWifi(void)
 
 void connectToMqtt()
 {
-  if (config.flags.moreDebug) { INFOV("ConnectToMqtt()\n"); }
+  if (config.flags.debug2) { INFOV("ConnectToMqtt()\n"); }
 
   if (config.wversion != SOLAX_V2_LOCAL && config.flags.mqtt && !mqttClient.connected())
   {
@@ -245,7 +245,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
 {
   Error.ConexionMqtt = false;
   
-  if (config.flags.debug) { 
+  if (config.flags.debug1) { 
     INFOV("Publish received, Topic: %s, Size: %d\n", topic, total);
   }
 
@@ -467,7 +467,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       return;
     }
 
-    // DEBUG FUNCTION
+    // debug1 FUNCTION
     sprintf(tmpTopic, "%s/cmnd/pwmvalue", config.hostServer);
     if (strcmp(topic, tmpTopic) == 0)
     { // Manual pwm control value
@@ -550,7 +550,7 @@ void publishMqtt()
   // nombrehost/stat/pwm -> Modo actual de funcionamiento
   // nombrehost/Meter -> En caso de usar el modo meter envía los datos del meter en este Topic
 
-  if (config.flags.moreDebug) { INFOV("PUBLISHMQTT()\n"); }
+  if (config.flags.debug2) { INFOV("PUBLISHMQTT()\n"); }
 
   // if (WiFi.isConnected() && config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !mqttClient.connected()) { Tickers.enable(2); }
 

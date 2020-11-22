@@ -820,7 +820,7 @@ void setWebConfig(void)
     //checkAuth(request);
     uint8_t button = request->arg("data").toInt();
 
-    if (config.flags.debug) {
+    if (config.flags.debug1) {
       INFOV("Comando recibido Nº %i\n", button);
     }
 
@@ -885,23 +885,23 @@ void setWebConfig(void)
       saveEEPROM();
     }
 
-    if (comando == "debug") {
+    if (comando == "debug1") {
       switch (value)
       {
       case 0:
-        config.flags.debug = false;
-        config.flags.moreDebug = false;
-        config.flags.messageDebug = false;
+        config.flags.debug1 = false;
+        config.flags.debug2 = false;
+        config.flags.debug3 = false;
         config.flags.debug4 = false;
         break;
       case 1:
-        config.flags.debug = true; 
+        config.flags.debug1 = true; 
         break;
       case 2:
-        config.flags.moreDebug = true;
+        config.flags.debug2 = true;
         break;
       case 3:
-        config.flags.messageDebug = true;
+        config.flags.debug3 = true;
         break;
       case 4:
         config.flags.debug4 = true;

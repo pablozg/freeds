@@ -23,7 +23,7 @@
 // Solax v2
 void readESP01(void)
 {
-  if (config.flags.moreDebug) { INFOV("readESP01()\n"); }
+  if (config.flags.debug2) { INFOV("readESP01()\n"); }
   
   if (SerieEsp.available())
   {
@@ -38,7 +38,7 @@ void readESP01(void)
 // Solax v2 (Serial ESP01)
 void parseJson(String json)
 {
-  if (config.flags.messageDebug) { INFOV("Size: %d, Json: %s\n", strlen(json.c_str()), json.c_str()); }
+  if (config.flags.debug3) { INFOV("Size: %d, Json: %s\n", strlen(json.c_str()), json.c_str()); }
   
   DeserializationError error = deserializeJson(root, json);
   
@@ -80,7 +80,7 @@ void parseJsonv1(char *json)
   }
   newv1[copyPos]= '\0';
 
-  if (config.flags.messageDebug) { INFOV("Size: %d, Json: %s\n", strlen(newv1), newv1); }
+  if (config.flags.debug3) { INFOV("Size: %d, Json: %s\n", strlen(newv1), newv1); }
 
   DeserializationError error = deserializeJson(root, newv1);
   
@@ -111,7 +111,7 @@ void parseJsonv1(char *json)
 // Solax v2 local
 void parseJsonv2local(char *json)
 {
-  if (config.flags.messageDebug) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
+  if (config.flags.debug3) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
   
   DeserializationError error = deserializeJson(root, json);
   
@@ -142,7 +142,7 @@ void parseJsonv2local(char *json)
 // Fronius
 void parseJson_fronius(char *json)
 {
-  if (config.flags.messageDebug) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
+  if (config.flags.debug3) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
   DeserializationError error = deserializeJson(root, json);
   
   if (error) {

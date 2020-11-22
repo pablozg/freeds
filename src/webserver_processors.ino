@@ -655,7 +655,7 @@ String processorSalidas(const String &var)
   }
   if (var == "TIMERACTIVE")
   {
-    return config.flags.timerEnabled ? "checked" : "";
+    return (config.flags.timerEnabled && Flags.ntpTime) ? "checked" : "disabled=\"disabled\"";
   }
   if (var == "TIMERSTART")
   {

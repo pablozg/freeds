@@ -21,7 +21,7 @@
 // Shelly EM
 void parseShellyEM(char *json, int sensor)
 {
-  if (config.flags.messageDebug) { INFOV("Shelly Size: %d, Json: %s\n", strlen(json), json); }
+  if (config.flags.debug3) { INFOV("Shelly Size: %d, Json: %s\n", strlen(json), json); }
   
   DeserializationError error = deserializeJson(root, json);
   

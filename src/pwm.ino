@@ -27,7 +27,7 @@
 
 void pwmControl()
 { 
-  if (config.flags.moreDebug) { INFOV("PWMCONTROL()\n"); }
+  if (config.flags.debug2) { INFOV("PWMCONTROL()\n"); }
 
   if (config.flags.dimmerLowCost) { maxPwm = config.maxPwmLowCost; } 
   else { maxPwm = 1023;}
@@ -104,7 +104,7 @@ void pwmControl()
       invert_pwm = constrain(invert_pwm, 0, maxPwm);
       if (invert_pwm != last_invert_pwm)
       {
-        if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
+        if (config.flags.debug1) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
         last_invert_pwm = invert_pwm;
       }
     }
@@ -378,7 +378,7 @@ void calcPwmProgressBar()
 void relay_control_man(boolean forceOFF)
 {
 
-  if (config.flags.moreDebug) { INFOV("relay_control_man()\n"); }
+  if (config.flags.debug2) { INFOV("relay_control_man()\n"); }
 
   // if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && !Flags.Relay01Auto)
   //   digitalWrite(PIN_RL1, LOW);
@@ -419,7 +419,7 @@ void up_pwm(const char *message) {
   invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
   if (invert_pwm != last_invert_pwm)
   {
-    if (config.flags.debug) { INFOV(PSTR(message)); }
+    if (config.flags.debug1) { INFOV(PSTR(message)); }
     last_invert_pwm = invert_pwm;
   }
   writePwmValue(invert_pwm);
@@ -454,7 +454,7 @@ void down_pwm(boolean softDown, const char *message)
 
   if (invert_pwm != last_invert_pwm)
   {
-    if (config.flags.debug) { INFOV(PSTR(message)); }
+    if (config.flags.debug1) { INFOV(PSTR(message)); }
     last_invert_pwm = invert_pwm;
   }
 

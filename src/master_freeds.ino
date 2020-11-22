@@ -20,7 +20,7 @@
 
 void parseMasterFreeDs(char *json)
 {
-  if (config.flags.messageDebug) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
+  if (config.flags.debug3) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
 
   DeserializationError error = deserializeJson(root, json);
   

@@ -40,17 +40,17 @@ struct TCP_MESSAGE
 
 void runAsyncClient()
 {
-  if (config.flags.debug) { INFOV("\nFree Heap: %d bytes, Fragmentation: %.02f %%\n", ESP.getFreeHeap(), getFragmentation()); }
+  if (config.flags.debug1) { INFOV("\nFree Heap: %d bytes, Fragmentation: %.02f %%\n", ESP.getFreeHeap(), getFragmentation()); }
   // Serial.printf("Connection timeout: %lu\n", millis() - connectionTimeout);
   
   if (processData) {
-    if (config.flags.moreDebug) { INFOV("Processing Received Data, waiting for a new request\n"); }
+    if (config.flags.debug2) { INFOV("Processing Received Data, waiting for a new request\n"); }
     return;
   }
   
   if (aClient) // client already exists
   { 
-    if (config.flags.moreDebug) { INFOV("Client already exists, waiting to finish the connection\n"); }
+    if (config.flags.debug2) { INFOV("Client already exists, waiting to finish the connection\n"); }
 
     if ((millis() - receivingDataTimeout) > RECEIVING_DATA_TIMEOUT) {
       Serial.printf("Processing Data timeout\n");
@@ -69,7 +69,7 @@ void runAsyncClient()
     return;
   }
 
-  if (config.flags.moreDebug) { INFOV("Connecting\n"); }
+  if (config.flags.debug2) { INFOV("Connecting\n"); }
   
   aClient = new AsyncClient();
   if (!aClient) //could not allocate client
@@ -80,32 +80,32 @@ void runAsyncClient()
   aClient->setRxTimeout(3);    // no RX data timeout for the connection in seconds
 
   aClient->onError([](void *arg, AsyncClient *client, err_t error) {
-    if (config.flags.moreDebug) { INFOV("Connect Error\n"); }
+    if (config.flags.debug2) { INFOV("Connect Error\n"); }
     receivingData = false;
     if (client->connected()) { client->close(true); }
   });
 
   aClient->onTimeout([](void *arg, AsyncClient *client, uint32_t time) {
-    if (config.flags.moreDebug) { INFOV("Timeout\n"); }
+    if (config.flags.debug2) { INFOV("Timeout\n"); }
     receivingData = false;
     if (client->connected()) { client->close(true); }
   });
 
   aClient->onDisconnect([](void *arg, AsyncClient *client) {
-    if (config.flags.moreDebug) { INFOV("Disconnected\n\n"); }
+    if (config.flags.debug2) { INFOV("Disconnected\n\n"); }
     receivingData = false;
     delete client;
     aClient = NULL;
 
     if (message.messageLength > 0)
     {
-      if (config.flags.moreDebug) { INFOV("Parsing data\n"); }
+      if (config.flags.debug2) { INFOV("Parsing data\n"); }
       processData = true;
     }
   });
 
   aClient->onConnect([](void *arg, AsyncClient *client) {
-    if (config.flags.moreDebug) { INFOV("Connected\n"); }
+    if (config.flags.debug2) { INFOV("Connected\n"); }
     client->onError(NULL, NULL);
 
     static char url[250];
@@ -135,7 +135,7 @@ void runAsyncClient()
     // send the request
     if (client->space() > 32 && client->canSend()) {
       client->write(url);
-      if (config.flags.moreDebug) { INFOV("Request send to %s\n", IPAddress(client->getRemoteAddress()).toString().c_str()); }
+      if (config.flags.debug2) { INFOV("Request send to %s\n", IPAddress(client->getRemoteAddress()).toString().c_str()); }
     }
   });
 
@@ -153,7 +153,7 @@ void runAsyncClient()
     // Search for content length
     posContentLength = strstr(d, "Content-Length:");
     if (posContentLength != NULL) {
-      if (config.flags.moreDebug) { INFOV("Content-Length received\n"); }
+      if (config.flags.debug2) { INFOV("Content-Length received\n"); }
       
       // If firstchunk is set, we clear all previous message
       if (firstChunk) { clearMessage(); }
@@ -169,13 +169,13 @@ void runAsyncClient()
         arrayPos++;
       }
       message.totalMessageLength = atoi(tmp);
-    } else { if (config.flags.moreDebug) { INFOV("Content-Length is null\n"); } }
+    } else { if (config.flags.debug2) { INFOV("Content-Length is null\n"); } }
 
     // Search for end of header
     dataPayload = strstr(d, "\r\n\r\n");
     //if (dataPayload != NULL && !firstChunk) {
     if (dataPayload != NULL) {
-      if (config.flags.moreDebug) { INFOV("End Header received\n"); }
+      if (config.flags.debug2) { INFOV("End Header received\n"); }
       // If firstchunk is set, we clear all previous message
       if (firstChunk) { INFOV("End Header received twice, erasing previous message\n"); clearMessage(); }
       
@@ -187,12 +187,12 @@ void runAsyncClient()
         message.payloadStart = (uint16_t)len;
         message.messageLength = 0;
       }
-    } else { if (config.flags.moreDebug) { INFOV("End Header is null or first chunk received previously\n"); } }
+    } else { if (config.flags.debug2) { INFOV("End Header is null or first chunk received previously\n"); } }
 
     // Proccess the first chunk
     if (dataPayload != NULL && !firstChunk)
     {
-      if (config.flags.moreDebug) { INFOV("First chunk\nLen: %d, payloadStart: %d, messageLength: %d\n", (uint16_t)len, message.payloadStart, message.messageLength); }
+      if (config.flags.debug2) { INFOV("First chunk\nLen: %d, payloadStart: %d, messageLength: %d\n", (uint16_t)len, message.payloadStart, message.messageLength); }
       
       firstChunk = true;
       arrayPos = 0;
@@ -205,7 +205,7 @@ void runAsyncClient()
 
     } else { // Proccess the next chunks
 
-      if (config.flags.moreDebug) { INFOV("Next chunk\n"); }
+      if (config.flags.debug2) { INFOV("Next chunk\n"); }
       
       arrayPos = message.messageLength;
       
@@ -225,13 +225,13 @@ void runAsyncClient()
       }
     }
 
-    if (config.flags.debug) { INFOV("\nDatos Recibidos, message: %d, total: %d\n", message.messageLength, message.totalMessageLength); }
-    if (config.flags.messageDebug) { Serial.printf("Message:%s\n", d); }
+    if (config.flags.debug1) { INFOV("\nDatos Recibidos, message: %d, total: %d\n", message.messageLength, message.totalMessageLength); }
+    if (config.flags.debug3) { Serial.printf("Message:%s\n", d); }
 
     // If the message is fully received we close the connection
     if (message.messageLength == message.totalMessageLength)
     {
-      if (config.flags.moreDebug) { INFOV("Message fully received\n"); }
+      if (config.flags.debug2) { INFOV("Message fully received\n"); }
       client->close();
     }
   });
@@ -239,13 +239,13 @@ void runAsyncClient()
   if (config.wversion == SOLAX_V2_LOCAL) {
     if (!aClient->connect("5.8.8.8", 80))
     {
-      if (config.flags.moreDebug) { INFOV("Connect Fail\n"); }
+      if (config.flags.debug2) { INFOV("Connect Fail\n"); }
       deleteClient();
     }
   } else {
     if (!aClient->connect(String(config.sensor_ip).c_str(), 80))//80
     {
-      if (config.flags.moreDebug) { INFOV("Connect Fail\n"); }
+      if (config.flags.debug2) { INFOV("Connect Fail\n"); }
       deleteClient();
     }
   }
@@ -272,6 +272,7 @@ void clearMessage(void)
   message.messageLength = 0;
   message.totalMessageLength = 0;
   firstChunk = false;
+  receivingDataTimeout = millis();
 }
 
 void processingData(void)

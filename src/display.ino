@@ -22,7 +22,7 @@
 
 void data_display(void)
 {
-  //if (config.flags.Debug == 4) { INFOV("DATA_DISPLAY()\n"); }
+  //if (config.flags.debug1 == 4) { INFOV("DATA_DISPLAY()\n"); }
 #ifdef OLED
   uint8_t wversion = 0;
 

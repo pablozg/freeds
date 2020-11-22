@@ -1,6 +1,10 @@
 Versión 1.0.7
-- Revisión 0
-	- TODO: Dehabilitar la opción de programador si no ha actualizado la hora correctamente.
+
+	- Solucionado fallo usando el programador cuando el control por temperatura está activado.
+	- Solucionado fallo con el comando para reiniciar los contadores.
+	- Cambio de posición del parametro "Parche derivador lowcost", para evitar confusiones (sugerido por ).
+	- Deshabilitada la opción de programador si no ha actualizado la hora correctamente.
+
 	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado
 	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
   	- TODO: pinwatchdog o reinicio preventivo programable

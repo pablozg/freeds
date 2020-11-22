@@ -205,16 +205,16 @@ typedef union {
     uint32_t oledAutoOff : 1;        // Bit 6
     uint32_t potManPwmActive : 1;    // Bit 7
     uint32_t serial : 1;             // Bit 8
-    uint32_t debug : 1;              // Bit 9
+    uint32_t debug1 : 1;              // Bit 9
     uint32_t weblog : 1;             // Bit 10
     uint32_t timerEnabled : 1;       // Bit 11
-    uint32_t moreDebug : 1;          // Bit 12
+    uint32_t debug2 : 1;          // Bit 12
     uint32_t sensorTemperatura : 1;  // Bit 13
     uint32_t alexaControl : 1;       // Bit 14
     uint32_t domoticz : 1;           // Bit 15
     uint32_t dimmerLowCost : 1;      // Bit 16
     uint32_t changeGridSign : 1;     // Bit 17
-    uint32_t messageDebug : 1;       // Bit 18
+    uint32_t debug3 : 1;       // Bit 18
     uint32_t debug4 : 1;             // Bit 19
     uint32_t flipScreen : 1;         // Bit 20
     uint32_t offGrid : 1;            // Bit 21
@@ -667,8 +667,8 @@ void defaultValues()
   config.potManPwm = 0;
   config.flags.potManPwmActive = false;
   config.flags.serial = true;
-  config.flags.debug = false;
-  config.flags.moreDebug = false;
+  config.flags.debug1 = false;
+  config.flags.debug2 = false;
   config.flags.weblog = true;
   config.flags.debug4 = false;
   config.publishMqtt = 10000;
@@ -741,7 +741,7 @@ void setup()
   Flags.data = 0; // All Bits to false
   Flags.RelayTurnOn = true;
 
-  Serial.begin(115200); // Se inicia la UART0 para debug
+  Serial.begin(115200); // Se inicia la UART0 para debug1
   Serial.setDebugOutput(true);
   
   verbose_print_reset_reason(0);
@@ -972,7 +972,7 @@ void loop()
 
     if (diffErrorRecepcionDatos > config.maxErrorTime && !Error.RecepcionDatos)
     {
-      if (config.flags.debug) { INFOV("DATA ERROR: Error de comunicación, Diff: %ld, Errortime: %ld\n", diffErrorRecepcionDatos, config.maxErrorTime); }
+      if (config.flags.debug1) { INFOV("DATA ERROR: Error de comunicación, Diff: %ld, Errortime: %ld\n", diffErrorRecepcionDatos, config.maxErrorTime); }
       memset(&inverter, 0, sizeof(inverter));
       memset(&meter, 0, sizeof(meter));
       Error.RecepcionDatos = true;
