@@ -20,7 +20,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define eepromVersion 0x16
+#define eepromVersion 0x17
 
 #define sizeOfArray(x)  (sizeof(x) / sizeof((x)[0]))
 
@@ -42,6 +42,7 @@
 #include <bitmap.h>
 #include <DNSServer.h>
 #include <esp32ModbusTCP.h>
+#include <EmonLib.h>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -53,8 +54,10 @@ extern "C"
 #include <freertos/timers.h>
 #include <rom/rtc.h>
 #include <driver/dac.h>
+#include <driver/adc.h>
 #include <esp_system.h>
 #include <time.h>
+#include <esp_adc_cal.h>
 }
 
 #include "fauxmoESP.h"
@@ -78,6 +81,9 @@ extern "C"
   #define PIN_RL2 12
   #define PIN_RL3 14
   #define PIN_RL4 27
+
+  // ADC PIN
+  #define ADC_INPUT 34
 
   #include "SSD1306.h"
   SSD1306 display(0x3c, 4, 15);
@@ -103,9 +109,6 @@ extern "C"
 #define RX1 19
 #define TX1 23
 
-// NTP Config, use https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv to get the correct tz config.
-const char* ntpServer = "pool.ntp.org";
-
 // Debounce control
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 100;
@@ -122,6 +125,7 @@ uint16_t invert_pwm = 0; // Hasta 1023 con 10 bits resolution
 uint16_t last_invert_pwm = 0;
 
 uint8_t pwmValue = 0;
+uint8_t readClampPos = 0;
 
 uint8_t webMessageResponse = 0;
 boolean processData = false;
@@ -131,8 +135,6 @@ uint8_t workingMode;
 uint8_t masterMode = 0;
 
 uint8_t scanDoneCounter = 0;
-
-size_t outputLength; // For base64
 
 IPAddress modbusIP;
 
@@ -205,21 +207,24 @@ typedef union {
     uint32_t oledAutoOff : 1;        // Bit 6
     uint32_t potManPwmActive : 1;    // Bit 7
     uint32_t serial : 1;             // Bit 8
-    uint32_t debug1 : 1;              // Bit 9
+    uint32_t debug1 : 1;             // Bit 9
     uint32_t weblog : 1;             // Bit 10
     uint32_t timerEnabled : 1;       // Bit 11
-    uint32_t debug2 : 1;          // Bit 12
+    uint32_t debug2 : 1;             // Bit 12
     uint32_t sensorTemperatura : 1;  // Bit 13
     uint32_t alexaControl : 1;       // Bit 14
     uint32_t domoticz : 1;           // Bit 15
     uint32_t dimmerLowCost : 1;      // Bit 16
     uint32_t changeGridSign : 1;     // Bit 17
-    uint32_t debug3 : 1;       // Bit 18
+    uint32_t debug3 : 1;             // Bit 18
     uint32_t debug4 : 1;             // Bit 19
     uint32_t flipScreen : 1;         // Bit 20
     uint32_t offGrid : 1;            // Bit 21
     uint32_t showEnergyMeter : 1;    // Bit 22
-    uint32_t spare : 9;              // Bit 23 - 31
+    uint32_t offgridVoltage : 1;     // Bit 23
+    uint32_t debug5 : 1;             // Bit 24
+    uint32_t useClamp : 1;           // Bit 25
+    uint32_t spare : 6;              // Bit 26 - 31
   };
 } SysBitfield;
 
@@ -385,6 +390,7 @@ struct CONFIG
   int16_t battWatts;
 
   // TIMEZONE
+  // Use https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv to get the correct tz config.
   char tzConfig[30];
 
   // User language
@@ -393,8 +399,18 @@ struct CONFIG
   // Maximum watts in user tariff
   uint16_t maxWattsTariff;
 
+  // MQTT SoC Topic ICC Solar
+  char SoC_mqtt[30];
+  float batteryVoltage;
+
+  // NTP Server
+  char ntpServer[30];
+
+  // Store clampValues
+  float clampValues[20];
+
   // FREE MEMORY
-  uint8_t free[270];
+  uint8_t free[236];
 } config;
 
 struct METER
@@ -480,11 +496,11 @@ struct
 
 struct tm timeinfo;
 
-#define LOGGINGSIZE 30
+#define LOGGINGSIZE 20 //30
 char loggingMessage[LOGGINGSIZE][1024];
 int logcount = 0;
 
-char response[768];
+char jsonResponse[768];
 
 // Variables Globales calculo PWM
 uint16_t maxPwm;
@@ -522,6 +538,15 @@ uint8_t tempSensorAddress[15][8];
 float temperaturaTermo = -127.0;
 float temperaturaTriac = -127.0;
 float temperaturaCustom = -127.0;
+
+// Energy Monitor
+#define GRID_VOLTAGE 230.0 // TO BE ERASED WHEN WILL READ THE VOLTAGE
+#define emonTxV3
+
+EnergyMonitor emon1;
+
+#define V_REF 1100  // ADC reference voltage
+esp_adc_cal_characteristics_t *adc_chars = new esp_adc_cal_characteristics_t;
 
 //////////////////// CAPTIVE PORTAL ////////////////
 
@@ -562,7 +587,7 @@ public:
       response->print("<div><select id='wifis' name='wifis'>");
       response->print("<option disabled selected>Seleccione una red</option>");
       
-      char tmp[50];
+      char tmp[80];
       for (int i = 0; i < 15; ++i) {
         if (scanNetworks[i] == "") { break; }
         sprintf(tmp,"%s (%d dBm)", scanNetworks[i].c_str(), rssiNetworks[i]);
@@ -649,6 +674,7 @@ void defaultValues()
   strcpy(config.R04_mqtt, tmpTopic);
   strcpy(config.Solax_mqtt, "solaxX1/tele/SENSOR");
   strcpy(config.Meter_mqtt, "meter/tele/SENSOR");
+  strcpy(config.SoC_mqtt, "Inverter/BatterySOC");
   strcpy(config.password, "YWRtaW4=");
   config.flags.oledPower = true;
   config.flags.oledAutoOff = false;
@@ -704,9 +730,13 @@ void defaultValues()
   config.flags.offGrid = false;
   config.soc = 100;
   config.battWatts = -60; // Sólo para ongrid
+  config.batteryVoltage = 51.0;
   config.maxWattsTariff = 3450;
   config.flags.showEnergyMeter = true;
+  config.flags.useClamp = false;
+  memset(config.clampValues, 0, sizeof config.clampValues);
   strcpy(config.tzConfig, "CET-1CEST,M3.5.0,M10.5.0/3");
+  strcpy(config.ntpServer, "pool.ntp.org");
   strcpy(config.language, "es");
 
   config.eeinit = eepromVersion;
@@ -715,15 +745,15 @@ void defaultValues()
 
 void configureTickers(void)
 {
-  Tickers.add(0,  200, [&](void *) { data_display(); }, nullptr, true);                 // OLED loop
-  Tickers.add(1, 500, [&](void *) { send_events(); }, nullptr, false);                 // Send Events to Webpage
+  Tickers.add(0, 400,  [&](void *) { data_display(); }, nullptr, true);                 // OLED loop
+  Tickers.add(1, 500,  [&](void *) { send_events(); }, nullptr, false);                 // Send Events to Webpage
   Tickers.add(2, 5000, [&](void *) { connectToMqtt(); }, nullptr, false);               // Reconnect mqtt every 5 seconds
-  Tickers.add(3, 5000, [&](void *) { connectToWifi(); }, nullptr, false);               // Reconnect Wifi
+  Tickers.add(3, 5000, [&](void *) { connectToWifi(); }, nullptr, false);               // Reconnect Wifi  every 5 seconds
   Tickers.add(4, config.getDataTime, [&](void *) { getSensorData(); }, nullptr, false); // Sensor data adquisition time
   Tickers.add(5, config.pwmControlTime, [&](void *) { pwmControl(); }, nullptr, false); // Pwm Control loop
   Tickers.add(6, config.publishMqtt, [&](void *) { publishMqtt(); }, nullptr, false);   // Publish Mqtt messages
-  Tickers.add(7, 1500, [&](void *) { calcDallasTemperature(); }, nullptr, false);       // Read temp sensors
-  Tickers.add(8, 1000, [&](void *) { calcWattsToday(); }, nullptr, false);       // Calc Watts used today
+  Tickers.add(7, 1000, [&](void *) { every1000ms(); }, nullptr, false);                 // 1000ms functions loop
+  Tickers.add(8, 6000, [&](void *) { storeClampValues(); }, nullptr, false);            // Store Clamp Values
   Tickers.disableAll();
 }
 
@@ -732,11 +762,21 @@ void setup()
   ////////////////////// WATCHDOG //////////////////
   pinMode(loopTimeCtl, INPUT_PULLUP);
   delay(1000);
-  timer = timerBegin(0, 240, true); //timer 0, div 240
+  timer = timerBegin(0, 240, true); // Timer 0, div 240
   timerAttachInterrupt(timer, &resetModule, true);
-  timerAlarmWrite(timer, 30000000, false); //set time in us (30 seconds)
-  timerAlarmEnable(timer);                 //enable interrupt
+  timerAlarmWrite(timer, 30000000, false); // Set time in us (30 seconds)
+  timerAlarmEnable(timer); // Enable interrupt
   /////////////////////////////////////////////////
+
+  // ENERGY MONITOR
+  adc1_config_width(ADC_WIDTH_BIT_12);
+  adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_11);
+  //esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, V_REF, adc_chars);
+  esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, V_REF, adc_chars);
+  
+  analogReadResolution(12);
+
+  emon1.current(ADC_INPUT, 32.6); // 2000 Turns / 62 Ohms burden resistor SCT-013 30A/1V
 
   Flags.data = 0; // All Bits to false
   Flags.RelayTurnOn = true;
@@ -746,14 +786,24 @@ void setup()
   
   verbose_print_reset_reason(0);
   verbose_print_reset_reason(1);
+  
+  // Configuramos las salidas
+  pinMode(PIN_RL1, OUTPUT);
+  pinMode(PIN_RL2, OUTPUT);
+  pinMode(PIN_RL3, OUTPUT);
+  pinMode(PIN_RL4, OUTPUT);
+  digitalWrite(PIN_RL1, LOW);
+  digitalWrite(PIN_RL2, LOW);
+  digitalWrite(PIN_RL3, LOW);
+  digitalWrite(PIN_RL4, LOW);
 
   //// Comprobación del estado de la configuración
-  INFOV("Testing EEPROM Library\n");
-  INFOV("EEPROM Size: %d bytes\n", sizeof(config));
+  Serial.printf("Testing EEPROM Library\n");
+  Serial.printf("EEPROM Size: %d bytes\n", sizeof(config));
 
   if (!EEPROM.begin(sizeof(config)))
   {
-    INFOV("Failed to initialise EEPROM\nRestarting...\n");
+    Serial.printf("Failed to initialise EEPROM\nRestarting...\n");
     down_pwm(false);
     delay(1000);
     ESP.restart();
@@ -761,6 +811,20 @@ void setup()
 
   EEPROM.get(0, config);
   checkEEPROM();
+
+  // Initialize SPIFFS
+  if (!SPIFFS.begin(true))
+  {
+    INFOV("An Error has occurred while mounting SPIFFS\n");
+    return;
+  } else { readLanguages(); }
+
+  // Initialize channels
+  ledcSetup(2, config.pwmFrequency, 10); // Frecuencia según configuración, 10-bit resolution
+  ledcAttachPin(pin_pwm, 2);
+  ledcWrite(2, invert_pwm);
+
+  dac_output_enable(DAC_CHANNEL_2); // Salida Analógica /// DAC_CHANNEL_1 -> PIN 25 /// DAC_CHANNEL_2 -> PIN 26
 
   // OLED
 #ifdef OLED
@@ -774,23 +838,6 @@ void setup()
   if (config.flags.flipScreen) { display.flipScreenVertically(); }
   showLogo(lang._START_, true);
 #endif
-
-  // Configuramos las salidas
-  pinMode(PIN_RL1, OUTPUT);
-  pinMode(PIN_RL2, OUTPUT);
-  pinMode(PIN_RL3, OUTPUT);
-  pinMode(PIN_RL4, OUTPUT);
-  digitalWrite(PIN_RL1, LOW);
-  digitalWrite(PIN_RL2, LOW);
-  digitalWrite(PIN_RL3, LOW);
-  digitalWrite(PIN_RL4, LOW);
-
-  // Initialize channels
-  ledcSetup(2, config.pwmFrequency, 10); // Frecuencia según configuración, 10-bit resolution
-  ledcAttachPin(pin_pwm, 2);
-  ledcWrite(2, invert_pwm);
-
-  dac_output_enable(DAC_CHANNEL_2); // Salida Analógica /// DAC_CHANNEL_1 -> PIN 25 /// DAC_CHANNEL_2 -> PIN 26
 
   if (config.eeinit != eepromVersion)
   {
@@ -846,7 +893,7 @@ void setup()
 
       // Init, Configure and get the ntp time
       if (config.wversion != SOLAX_V2_LOCAL) {
-        configTzTime(config.tzConfig, ntpServer);
+        configTzTime(config.tzConfig, config.ntpServer);
         updateLocalTime();
       }
       Flags.timerSet = false;
@@ -860,7 +907,7 @@ void setup()
 
       if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
         modbusIP.fromString((String)config.sensor_ip);
-        if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
+        if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= WIBEEE_MODBUS)) {
           modbustcp = new esp32ModbusTCP(modbusIP, 502);
         } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
         configModbusTcp();
@@ -915,13 +962,6 @@ void setup()
   }
 
   // HTTP server
-  // Initialize SPIFFS
-  if (!SPIFFS.begin(true))
-  {
-    INFOV("An Error has occurred while mounting SPIFFS\n");
-    return;
-  } else { readLanguages(); }
-  
   if (!config.flags.wifi) { server.addHandler(new CaptiveRequestHandler).setFilter(ON_AP_FILTER); server.begin();}
   
   if (Flags.firstInit) {
@@ -932,6 +972,7 @@ void setup()
     display.drawString(64, 40, lang._CONFIGPAGE_);
     display.display();
   }
+  memset(config.free, 255, sizeof config.free);
 }
 
 long tme = millis();
@@ -954,7 +995,7 @@ void loop()
   {
     Tickers.update(); // Actualiza todos los tareas Temporizadas
     changeScreen();
-    checkTemperature();
+    if (config.flags.sensorTemperatura) { checkTemperature(); }
     
     long diffErrorRecepcionDatos = millis() - timers.ErrorRecepcionDatos ;
     if ( diffErrorRecepcionDatos < 0) diffErrorRecepcionDatos = 0;

@@ -69,9 +69,9 @@
                                 <output id="rangeVal" name="rangeVal">100</output>
                             </div>
                             <h6 class="collapse-header language" key="CONTROLPWM"></h6>
-                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)" key="pwmon"></a>
-                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(7)">PWM <span class="man_auto man_auto-inactive" id="labelauto">AUTO</span> / <span class="man_auto man_auto-inactive" id="labelman">MAN</span>
-                            </a>
+                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)"></a>
+                            <h6 class="collapse-header language" key="PWMMODE"></h6>
+                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(7)"></a>
                         </div>
                     </div>
                 </li>
@@ -146,8 +146,8 @@
                                                     <div class="row mg-t-2">
                                                         <label class="col-sm-4 form-control-label language" key="OLDPASSWORD"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='oldpass' name='oldpass' type="password" class="form-control" maxlength='12'>
-                                                            <input id='storedpass' name='storedpass' type="hidden" class="form-control" maxlength='12' value="%STOREDPASS%">
+                                                            <input id='oldpass' name='oldpass' type="password" class="form-control" maxlength='20'>
+                                                            <input id='storedpass' name='storedpass' type="hidden" class="form-control" maxlength='30' value="%STOREDPASS%">
                                                         </div>
                                                     </div>
                                                     <div class="row mg-t-2">
@@ -161,12 +161,7 @@
                                                         <input type="checkbox" class="custom-control-input" id="offGrid" name="offGrid" onchange='checkOffGrid();' %OFFGRID%>
                                                         <span class="custom-control-indicator"></span><span id='offGridText'></span>
                                                     </label>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label language" key="OFFGRIDSOC"></label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='soc' name='soc' type="text" class="form-control" maxlength='3' value="%SOC%" onchange='checkSoCValue();'>
-                                                        </div>
-                                                    </div>
+                                                    %OFFGRIDMODE%
                                                     <div class="row mg-t-2">
                                                         <label class="col-sm-4 form-control-label language" key="BATTWATTS"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
@@ -175,6 +170,7 @@
                                                     </div>
                                                     <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="SOURCE"></h6>
                                                     <div id='modo' class="row mg-t-2">%WIFIS%</div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="CHANGESIGN"></h6>
                                                     <label class="custom-control custom-checkbox pb-3">
                                                         <input type="checkbox" class="custom-control-input" id="changeGridSign" name="changeGridSign" onchange='checkChangeGridSign();' %CHANGEGRIDSIGN%>
                                                         <span class="custom-control-indicator"></span><span id='changeGridSignText'></span>

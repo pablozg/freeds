@@ -56,6 +56,7 @@ void data_display(void)
             break;
           case VICTRON:
           case SMA_ISLAND:
+          case SCHNEIDER:
             display.drawString(0, 0, lang._BATTERY_);
             break;
           default:
@@ -69,6 +70,9 @@ void data_display(void)
         {
           case SMA_ISLAND:
             display.drawString(128, 0, "SoC");
+            break;
+          case SCHNEIDER:
+            display.drawString(128, 0, "Volts");
             break;
           default:
             display.drawString(128, 0, lang._GRID_);
@@ -90,6 +94,7 @@ void data_display(void)
             break;
           case VICTRON:
           case SMA_ISLAND:
+          case SCHNEIDER:
             display.drawString(0, 12, (String)(int)inverter.batteryWatts);
             break;
           default:
@@ -103,6 +108,9 @@ void data_display(void)
         {
           case SMA_ISLAND:
             display.drawString(128, 12, (String)(int)inverter.batterySoC + "%");
+            break;
+          case SCHNEIDER:
+            display.drawString(128, 12, (String)(int)meter.voltage);
             break;
           default:
             display.drawString(128, 12, (String)(int)inverter.wgrid);
@@ -166,6 +174,9 @@ void data_display(void)
               break;
             case HUAWEI_MODBUS:
               display.drawString(69, 0, "HWEI");
+              break;
+            case SCHNEIDER:
+              display.drawString(69, 0, "SCHN");
               break;
           }
         }

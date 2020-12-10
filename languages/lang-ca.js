@@ -87,8 +87,8 @@ lang = {
     LOADTEXT : "Potència de la càrrega connectada (W):",
     PWMUP : "Potència per augmentar derivació (W):",
     PWMDOWN : "Potència per reduir derivació (W):",
-    LOOPPWM : "FreqŸüència càlcul PWM (ms):",
-    FRECPWM : "FreqŸüència PWM:",
+    LOOPPWM : "Freqüència càlcul PWM (ms):",
+    FRECPWM : "Freqüència PWM:",
     LOWCOSTMAX : "Límit màxim de potència pegat lowcost (1024 - 1232):",
     MANPWM : "Percentatge de PWM en modo manual:",
     SLAVEPWM : "Percentatge de PWM en el màster per activar el derivador esclau:",
@@ -166,5 +166,12 @@ lang = {
     FIRMUPDATE : "Actualització",
     RESTARTING : "¡¡¡¡ REINICIAN !!!!",
     COUNTDOWN : "Espereu, servei redirigit a la pàgina principal en:",
-    WATTSTARIFFTEXT : "Potència contractada (W):"
+    WATTSTARIFFTEXT : "Potència contractada (W):",
+    SOCTOPIC : "Tema SoC:",
+    PWMMODE : "Mode actual:",
+    pwmmodeauto : "AUTOMÀTIC",
+    pwmmodemanual : "MANUAL",
+    pwmoffmonitor : "PWM (OFF):",
+    OFFGRIDVOLTAGE : "Voltaje mínimo de batería para derivar:",
+    CHANGESIGN : "Canvi de Signe"
 };

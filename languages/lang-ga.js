@@ -166,5 +166,12 @@ lang = {
     FIRMUPDATE : "Actualización",
     RESTARTING : "¡¡¡¡ REINICIANDO !!!!",
     COUNTDOWN : "Espere, será redirixido a páxina principal en:",
-    WATTSTARIFFTEXT : "Potencia Contratada (W):"
+    WATTSTARIFFTEXT : "Potencia Contratada (W):",
+    SOCTOPIC : "Tema SoC:",
+    PWMMODE : "Modo actual:",
+    pwmmodeauto : "AUTOMÁTICO",
+    pwmmodemanual : "MANUAL",
+    pwmoffmonitor : "PWM (OFF):",
+    OFFGRIDVOLTAGE : "Voltaje mínimo de batería para derivar:",
+    CHANGESIGN : "Cambio de Sinal"
 };

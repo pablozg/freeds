@@ -166,5 +166,12 @@ lang = {
     FIRMUPDATE : "Firmware Update",
     RESTARTING : "¡¡¡¡ RESTARTING !!!!",
     COUNTDOWN : "Please wait, you will be redirected to the main page in:",
-    WATTSTARIFFTEXT : "Hired Watts (W):"
+    WATTSTARIFFTEXT : "Hired Watts (W):",
+    SOCTOPIC : "SoC Topic:",
+    PWMMODE : "Working Mode:",
+    pwmmodeauto : "AUTO",
+    pwmmodemanual : "MANUAL",
+    pwmoffmonitor : "PWM (OFF):",
+    OFFGRIDVOLTAGE : "Minimum Voltage mínimo of the batteries to divert:",
+    CHANGESIGN : "Sign Change"
 };

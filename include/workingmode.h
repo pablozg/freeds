@@ -15,5 +15,7 @@
 #define FRONIUS_MODBUS 15
 #define HUAWEI_MODBUS 16
 #define SMA_ISLAND 17
-#define SOLAREDGE 18
+#define SCHNEIDER 18
+#define WIBEEE_MODBUS 19
+#define SOLAREDGE 20 // Debe ser el último de modbus
 #define MUSTSOLAR 40

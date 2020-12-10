@@ -345,25 +345,25 @@ void readModbus(void)
 
   switch (config.wversion)
   {
-    case 4:
+    case DDS238_METER:
       dds2382();
       break;
-    case 5:
+    case DDSU666_METER:
       ddsu666();
       break;
-    case 6:
+    case SDM_METER:
       sdm120();
       break;
-    case 8:
+    case SMA_BOY:
       smaBoy();
       break;
-    case 14:
+    case VICTRON:
       victron();
       break;
-    case 15:
+    case FRONIUS_MODBUS:
       fronius();
       break;
-    case 16:
+    case HUAWEI_MODBUS:
       huawei();
       break;
     case SMA_ISLAND:
@@ -371,6 +371,12 @@ void readModbus(void)
       break;
     case SOLAREDGE:
       solarEdge();
+      break;
+    case WIBEEE_MODBUS:
+      wibeeeModbus();
+      break;
+    case SCHNEIDER:
+      schneiderModbus();
       break;
     case MUSTSOLAR:
       mustSolar();

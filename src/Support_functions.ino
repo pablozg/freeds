@@ -44,6 +44,8 @@ void getSensorData(void)
       case FRONIUS_MODBUS: // Fronius Modbus
       case HUAWEI_MODBUS: // Huawei
       case SOLAREDGE: // SolarEdge
+      case WIBEEE_MODBUS: // Wibeee Modbus
+      case SCHNEIDER:
       case MUSTSOLAR: // MustSolar
         readModbus();
         break;
@@ -74,11 +76,20 @@ void setGetDataTime(void)
     case SMA_ISLAND:
     case VICTRON:
     case HUAWEI_MODBUS:
+    case WIBEEE_MODBUS:
+    case SCHNEIDER:
     case SOLAREDGE:
       if (config.getDataTime < 1000) config.getDataTime = 1000;
       break;
   }
   Tickers.updatePeriod(4, config.getDataTime);
+}
+
+void every1000ms(void)
+{
+  calcWattsToday(); // Calculate the imported / exported energy
+  readClamp(); // Read Current Clamp
+  if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
 }
 
 String midString(String *str, String start, String finish){
@@ -278,11 +289,11 @@ const char *printUptime()
   //char tmp[80];
  
   if (Flags.ntpTime) {
-    sprintf(response, "Fecha: %02d/%02d/%04d Hora: %02d:%02d:%02d<br>Uptime: %li días %02d:%02d:%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+    sprintf(jsonResponse, "Fecha: %02d/%02d/%04d Hora: %02d:%02d:%02d<br>Uptime: %li días %02d:%02d:%02d", timeinfo.tm_mday, timeinfo.tm_mon + 1, timeinfo.tm_year + 1900, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
   } else {
-    sprintf(response, "Uptime: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
+    sprintf(jsonResponse, "Uptime: %li días %02d:%02d:%02d", uptime.Day, uptime.Hour, uptime.Minute, uptime.Second);
   }
-  return response;
+  return jsonResponse;
 };
 
 String printUptimeOled()
@@ -368,6 +379,9 @@ void checkTimer(void)
 
 void calcWattsToday()
 {
+  // Exits if not NTP Time
+  if (!Flags.ntpTime) return;
+  
   // To avoid bad data, we set a maximum of 20000W as right value
   if (inverter.wgrid < -20000 || inverter.wgrid > 20000) return;
 
@@ -420,6 +434,7 @@ void defineWebMonitorFields(uint8_t version)
       webMonitorFields.data = 0x0F77E000;
       break;
     case WIBEEE: // Wibee
+    case WIBEEE_MODBUS: // Wibee Modbus
       webMonitorFields.data = 0x005801E6;
       break;
     case SHELLY_EM: // Shelly EM
@@ -454,6 +469,9 @@ void defineWebMonitorFields(uint8_t version)
       break;
     case SOLAREDGE: // SolarEdge
       webMonitorFields.data = 0x0152A000;
+      break;
+    case SCHNEIDER:
+      webMonitorFields.data = 0x0B100006;
       break;
     default:
       webMonitorFields.data = 0x0177E000;
@@ -596,12 +614,88 @@ int INFOV(const char * __restrict format, ...)
 float getFragmentation() {
   //return 100 - getLargestAvailableBlock() * 100.0 / getTotalAvailableMemory();
   return 100 - ESP.getMaxAllocHeap() * 100.0 / ESP.getFreeHeap();
+}
+
+
+void readClamp(void) {
+
+  if (config.flags.useClamp) {
+    double amps = emon1.calcIrms(1480); // Calculate Irms only
+    if (amps > 0.60) {
+      inverter.currentCalcWatts = amps * GRID_VOLTAGE;
+    } else { inverter.currentCalcWatts = 0; }
+    //INFOV("Watts: %.02f Current: %.02f\n", inverter.currentCalcWatts, amps);
+  } else {
+    inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;
+  }
 
 }
 
-bool readLanguages() {
+void storeClampValues(void)
+{
+  double amps = 0;
+      
+  amps = emon1.calcIrms(1480); // Calculate Irms only
+  
+  if (amps > 0.60) {
+    config.clampValues[readClampPos] = amps * GRID_VOLTAGE;
+  } else { config.clampValues[readClampPos] = 0; }
 
-  Serial.printf("Actual language: %s\n", config.language);
+  INFOV("Reading values at %d%%: %.03f Watts\n", 5 * (readClampPos + 1), config.clampValues[readClampPos]);
+
+  readClampPos++;
+
+  if (readClampPos == 20) {
+  
+    // Disable pwm Output
+    down_pwm(false);
+
+    // Disable all timers and enable again the essentials timers
+    Tickers.enableAll();
+    Tickers.disable(2); // Mqtt
+    Tickers.disable(3); // Wifi
+    Tickers.disable(8); // Store Clamp Values
+
+    saveEEPROM();
+  } else { writeClampPwm(); }
+}
+
+void writeClampPwm(void)
+{
+  invert_pwm = calculeTargetPwm(5 * (readClampPos + 1));
+  writePwmValue(invert_pwm);
+  calcPwmProgressBar();
+  INFOV("invert_pwm -> %d\n", invert_pwm);
+}
+
+void writeConfigSpiffs(const char *filename)
+{
+  File myFile = SPIFFS.open(filename, FILE_WRITE);
+  if(!myFile){
+    INFOV("There was an error opening the file for writing\n");
+    return;
+  }
+  myFile.write((byte *)&config, sizeof(config));
+  INFOV("Write %d bytes\n", myFile.size());
+  myFile.close();
+}
+
+void readConfigSpiffs(void)
+{
+  File myFile = SPIFFS.open("/config.bin", FILE_READ);
+  if(!myFile){
+    INFOV("There was an error opening the file for reading\n");
+    return;
+  }
+  myFile.read((byte *)&config, sizeof(config));
+  INFOV("Read %d bytes\n", myFile.size());
+  myFile.close();
+  SPIFFS.remove("/config.bin");
+}
+
+bool readLanguages(void) {
+
+  Serial.printf("Current language: %s\n", config.language);
   
   File langFile = SPIFFS.open("/lang-" + String(config.language) + ".json", "r");
   if (!langFile) {
@@ -714,7 +808,17 @@ void checkEEPROM(void) {
     strcpy(config.tzConfig, "CET-1CEST,M3.5.0,M10.5.0/3");
     strcpy(config.language, "es");
     config.eeinit = 0x16;
-    INFOV("EEPROM Settings upgraded from versión %x to %x", actualVersion, config.eeinit);
+  }
+
+  if(config.eeinit == 0x16)
+  {
+    strcpy(config.SoC_mqtt, "Inverter/BatterySOC");
+    config.batteryVoltage = 51.0;
+    config.flags.useClamp = false;
+    memset(config.clampValues, 0, sizeof config.clampValues);
+    strcpy(config.ntpServer, "pool.ntp.org");
+    config.eeinit = 0x17;
+    INFOV(PSTR("EEPROM Settings upgraded from version %x to version %x\n"), actualVersion, config.eeinit);
     saveEEPROM();
   }
 }

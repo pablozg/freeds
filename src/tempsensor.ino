@@ -76,26 +76,26 @@ void calcDallasTemperature(void)
 
 void checkTemperature(void)
 {
-    if (config.flags.sensorTemperatura && !Error.temperaturaTermo) {
+    if (!Error.temperaturaTermo) {
         switch(config.modoTemperatura) {
             case 1: // Auto
                 if (!config.flags.pwmMan && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
+                if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; INFOV("APAGADO TEMP AUTO\n"); down_pwm(false); } }
                 break;
             case 2: // Manual
                 if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
+                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; INFOV("APAGADO TEMP MANUAL\n");  down_pwm(false); } }
                 break;
             case 3: // Auto y Manual
                 if (temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
+                if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; INFOV("APAGADO TEMP AUTO/MAN\n");  down_pwm(false); } }
                 break;
         }
     }
 
-    if (((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) && config.modoTemperatura > 0)
+    if (((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) && config.modoTemperatura > 0 && config.termoSensorAddress[0] != 0x0)
     {
-        if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); }
+        if (invert_pwm > 0) { Flags.pwmIsWorking = false; INFOV("APAGADO TEMP ERROR LECTURA\n"); down_pwm(false); }
     }
 }
 

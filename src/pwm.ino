@@ -58,12 +58,12 @@ void pwmControl()
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
   {
     uint16_t tariffOffset = config.maxWattsTariff * 0.06; // Se calcula un 3% del total contratado, unos 104W sobre 3450
-    uint16_t maxTargetPwm;
-    if (config.flags.dimmerLowCost) { 
-      maxTargetPwm = ((((config.maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210);
-      if (maxTargetPwm <= 210) { targetPwm = 0; }
-    } else { maxTargetPwm = (1023 * config.manualControlPWM) / 100; }
-    
+    uint16_t maxTargetPwm = calculeTargetPwm(config.manualControlPWM);
+    // if (config.flags.dimmerLowCost) { 
+    //   maxTargetPwm = ((((config.maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210);
+    //   if (maxTargetPwm <= 210) { targetPwm = 0; }
+    // } else { maxTargetPwm = (1023 * config.manualControlPWM) / 100; }
+
     if (config.flags.changeGridSign ? inverter.wgrid < (config.maxWattsTariff - tariffOffset) : inverter.wgrid > -(config.maxWattsTariff - tariffOffset))
     {
       if (targetPwm <= maxTargetPwm - 20) {
@@ -76,9 +76,7 @@ void pwmControl()
         targetPwm -= 25;
       } else { targetPwm = 0;}
     }
-
-    //INFOV("Target: %d, Wgrid:%.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n", targetPwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
-    
+   
     relay_control_man(false);
 
     if (invert_pwm < targetPwm)
@@ -110,15 +108,19 @@ void pwmControl()
     }
     
     writePwmValue(invert_pwm);
+
+    // INFOV("Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n", targetPwm, invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
   }
 
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
   if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && Flags.pwmIsWorking)
   {
-    if (config.flags.offGrid ?
-        (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && inverter.batterySoC >= config.soc : // Modo Off-grid
-        // (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && meter.voltage >= config.soc : // Modo Off-grid
-        (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts // Modo On-grid
+    if (config.flags.offGrid ? // Modo Off-grid
+        (config.flags.offgridVoltage ? // True
+          (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && meter.voltage >= config.batteryVoltage : // True
+          (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && inverter.batterySoC >= config.soc // False
+        ) : // Modo On-grid
+        (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts // False
        )
     {
       if (config.flags.offGrid ?
@@ -130,8 +132,10 @@ void pwmControl()
       }
     }
     else if (config.flags.offGrid ?
-              (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || inverter.batterySoC < config.soc :
-              // (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || meter.voltage < config.soc :
+              (config.flags.offgridVoltage ?
+                (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || meter.voltage < (config.batteryVoltage - 0.10) : // True
+                (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || inverter.batterySoC < config.soc // False
+              ) :
               (config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts
             )
     {
@@ -371,8 +375,6 @@ void calcPwmProgressBar()
   } else {  
     pwmValue = round((invert_pwm * 100.0) / 1023.0);
   }
-
-  inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;
 }
 
 void relay_control_man(boolean forceOFF)
@@ -468,5 +470,17 @@ void writePwmValue(uint16_t value)
   
   ledcWrite(2, value);
   dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
+}
+
+uint16_t calculeTargetPwm(uint16_t targetValue)
+{
+  uint16_t maxTargetPwm;
+
+  if (config.flags.dimmerLowCost) { 
+    maxTargetPwm = ((((config.maxPwmLowCost - 210) * targetValue) / 100) + 210);
+    if (maxTargetPwm <= 210) { targetPwm = 0; }
+  } else { maxTargetPwm = (1023 * targetValue) / 100; }
+
+  return maxTargetPwm;
 }
 

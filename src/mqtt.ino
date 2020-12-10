@@ -150,7 +150,7 @@ void WiFiEvent(WiFiEvent_t event)
 
     Tickers.enableAll();
     Tickers.disable(3); // Wifi
-    if (!config.flags.sensorTemperatura) { Tickers.disable(7); }
+    Tickers.disable(8); // Store Clamp Values
 
     if (!config.flags.mqtt || config.wversion == SOLAX_V2_LOCAL) {
       Serial.printf("Desactivando timer mqtt\n");
@@ -380,7 +380,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       if (strcmp(topic, "Inverter/PvWattsTotal") == 0) { inverter.wsolar = atof(payload); return; }
       if (strcmp(topic, "Inverter/SolarKwUse") == 0) { inverter.wtoday = atof(payload); return; }
       if (strcmp(topic, "Inverter/BatteryWatts") == 0) { inverter.batteryWatts = atof(payload); return; }
-      if (strcmp(topic, "Inverter/BatterySOC") == 0) { inverter.batterySoC = atof(payload); return; }
+      if (strcmp(topic, config.SoC_mqtt) == 0) { inverter.batterySoC = atof(payload); return; }
       if (strcmp(topic, "Inverter/LoadWatts") == 0) { inverter.loadWatts = atof(payload); return; }
       if (strcmp(topic, "Inverter/Temperature") == 0) { inverter.temperature = atof(payload); return; }
     }
@@ -467,7 +467,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       return;
     }
 
-    // debug1 FUNCTION
+    // DEBUG FUNCTION
     sprintf(tmpTopic, "%s/cmnd/pwmvalue", config.hostServer);
     if (strcmp(topic, tmpTopic) == 0)
     { // Manual pwm control value
@@ -501,7 +501,7 @@ void suscribeMqttMeter(void)
       mqttClient.subscribe("Inverter/BatteryWatts", 0);
       mqttClient.subscribe("Inverter/LoadWatts", 0);
       mqttClient.subscribe("Inverter/Temperature", 0);
-      mqttClient.subscribe("Inverter/BatterySOC", 0);
+      mqttClient.subscribe(config.SoC_mqtt, 0);
       break;
   }
 }
@@ -522,7 +522,7 @@ void unSuscribeMqtt(void)
   mqttClient.unsubscribe("Inverter/BatteryWatts");
   mqttClient.unsubscribe("Inverter/LoadWatts");
   mqttClient.unsubscribe("Inverter/Temperature");
-  mqttClient.unsubscribe("Inverter/BatterySOC");
+  mqttClient.unsubscribe(config.SoC_mqtt);
   if (!config.flags.domoticz) { mqttClient.unsubscribe("domoticz/out"); }
 }
 

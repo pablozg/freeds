@@ -65,7 +65,10 @@ enum valueType
     FRONIUSSCALE,
     SUNNYBOYGRID,
     SOLAREDGEINVERTER,
-    SOLAREDGEMETER
+    SOLAREDGEMETER,
+    WIBEEEMODBUS,
+    SCHNEIDERMODBUS1,
+    SCHNEIDERMODBUS2
 };
 
 struct registerData
@@ -132,6 +135,15 @@ registerData huaweiRegisters[] = {
 registerData solaredgeRegisters[] = {
     &inverter.wsolar, 1, 40083, 23, SOLAREDGEINVERTER,
     &inverter.wgrid, 1, 40206, 4, SOLAREDGEMETER
+};
+
+registerData wibeeeRegisters[] = {
+    &inverter.wgrid, 1, 0, 72, WIBEEEMODBUS
+};
+
+registerData schneiderRegisters[] = { // Schneider
+    &inverter.loadWatts, 201, 98, 66, SCHNEIDERMODBUS1,
+    &inverter.wsolar, 201, 354, 4, SCHNEIDERMODBUS2
 };
 
 void parseFroniusSolarToday(uint8_t *data)
@@ -233,6 +245,93 @@ void parseSolarEdgeInverter(uint8_t *data)
   value = (data[40] << 8) | (data[41]);
   SF = (data[46] << 8) | (data[47]);
   inverter.temperature = value * pow(10, SF);
+}
+
+void parseWibeeeModbus(uint8_t *data)
+{
+  int16_t value = 0;
+  uint16_t uvalue = 0;
+
+  // Registro 0
+  uvalue = (data[0] << 8) | (data[1]);
+  inverter.wgrid = uvalue;
+  
+  // Registro 2
+  uvalue = (data[4] << 8) | (data[5]);
+  inverter.wsolar = uvalue;
+  
+  // Registro 24
+  uvalue = (data[48] << 8) | (data[49]);
+  meter.importActive = (float)uvalue / 100;
+  
+  // Registro 48
+  uvalue = (data[96] << 8) | (data[97]);
+  meter.current = (float)uvalue / 100;
+  
+  // Registro 58
+  uvalue = (data[116] << 8) | (data[117]);
+  meter.voltage = (float)uvalue / 100;
+  
+  // Registro 59
+  uvalue = (data[118] << 8) | (data[119]);
+  inverter.gridv = (float)uvalue / 100;
+  
+  // Registro 62
+  uvalue = (data[124] << 8) | (data[125]);
+  meter.frequency = (float)uvalue / 100;
+  
+  // Registro 66
+  value = (data[132] << 8) | (data[133]);
+  meter.powerFactor = (float)value / 100;
+  
+  if (meter.powerFactor > 0) {
+    if (!config.flags.changeGridSign) { inverter.wgrid *= -1; }
+  } else {
+    meter.powerFactor *= -1;
+    if (config.flags.changeGridSign) { inverter.wgrid *= -1; }
+  }  
+}
+
+void parseSchneiderModbus1(uint8_t *data)
+{
+  int32_t value = 0;
+  uint32_t uvalue = 0;
+
+  // LITTLE ENDIAN COMBOX
+  //          DEC HEX
+  // Registro 98  (62)
+  uvalue = (data[2] << 24) | (data[3] << 16) | (data[0] << 8) | (data[1]);
+  inverter.loadWatts = uvalue;
+
+  // Registro 152 (98)
+  uvalue = (data[110] << 24) | (data[111] << 16) | (data[108] << 8) | (data[109]);
+  meter.voltage = uvalue * 0.001;
+
+  // Registro 154 (9A)
+  uvalue = (data[114] << 24) | (data[115] << 16) | (data[112] << 8) | (data[113]);
+  inverter.temperature = (uvalue * 0.01) - 273;
+  
+  // Registro 156 (9B)
+  value = (data[118] << 24) | (data[119] << 16) | (data[116] << 8) | (data[117]);
+  meter.current = value * 0.001;
+
+  inverter.batteryWatts = meter.voltage * meter.current;
+}
+
+void parseSchneiderModbus2(uint8_t *data)
+{
+  uint32_t PVv = 0;
+  uint32_t PVc = 0;
+
+  // LITTLE ENDIAN COMBOX
+  //          DEC HEX
+  // Registro 354 (162)
+  PVv = (data[2] << 24) | (data[3] << 16) | (data[0] << 8) | (data[1]);
+  
+  // Registro 356 (164)
+  PVc = (data[6] << 24) | (data[7] << 16) | (data[4] << 8) | (data[5]);
+   
+  inverter.wsolar = (PVv * 0.001) * (PVc * 0.001);
 }
 
 void parseSolarEdgeMeter(uint8_t *data)
@@ -397,6 +496,9 @@ void configModbusTcp(void)
             case SUNNYBOYGRID: { parseSunnyBoyGrid(data); break; }
             case SOLAREDGEINVERTER: { parseSolarEdgeInverter(data); break; }
             case SOLAREDGEMETER: { parseSolarEdgeMeter(data); break; }
+            case WIBEEEMODBUS: { parseWibeeeModbus(data); break; }
+            case SCHNEIDERMODBUS1: { parseSchneiderModbus1(data); break; }
+            case SCHNEIDERMODBUS2: { parseSchneiderModbus2(data); break; }
         }
         
         if (config.wversion == FRONIUS_MODBUS) {
@@ -404,8 +506,9 @@ void configModbusTcp(void)
           data_ready = true; 
           froniusVariables.froniusRegisterNum++;
         }
+
         if (config.wversion == SMA_BOY && a->address == 30867 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
-        if (config.wversion == SMA_ISLAND && a->address == 30775 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == SMA_ISLAND && a->address == 30775 && !config.flags.changeGridSign) { inverter.batteryWatts *= -1.0; }
         if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == HUAWEI_MODBUS && a->address == 37113 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == SOLAREDGE && a->address == 40206 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
@@ -503,6 +606,34 @@ void huawei(void)
     }
     inverter.pw1 = inverter.pv1v * inverter.pv1c;
     inverter.pw2 = inverter.pv2v * inverter.pv2c;
+}
+
+void wibeeeModbus(void)
+{
+    checkModbusConnection(502);
+
+    for (uint8_t i = 0; i < sizeOfArray(wibeeeRegisters); ++i) {
+        if (modbustcp->readHoldingRegisters(wibeeeRegisters[i].serverID, wibeeeRegisters[i].address, wibeeeRegisters[i].length, &(wibeeeRegisters[i])) > 0) {
+            //Serial.printf("  requested %d\n", wibeeeRegisters[i].address);
+        } else {
+            // Serial.printf("  error requesting address %d\n", wibeeeRegisters[i].address);
+            INFOV("  error requesting address %d\n", wibeeeRegisters[i].address);
+        }
+    }
+}
+
+void schneiderModbus(void)
+{
+    checkModbusConnection(502);
+
+    for (uint8_t i = 0; i < sizeOfArray(schneiderRegisters); ++i) {
+        if (modbustcp->readHoldingRegisters(schneiderRegisters[i].serverID, schneiderRegisters[i].address, schneiderRegisters[i].length, &(schneiderRegisters[i])) > 0) {
+            Serial.printf("  requested %d\n", schneiderRegisters[i].address);
+        } else {
+            // Serial.printf("  error requesting address %d\n", schneiderRegisters[i].address);
+            INFOV("  error requesting address %d\n", schneiderRegisters[i].address);
+        }
+    }
 }
 
 void solarEdge(void)

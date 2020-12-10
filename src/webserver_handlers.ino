@@ -78,11 +78,16 @@ void handleConfigMqtt(AsyncWebServerRequest *request)
     strcpy(config.R03_mqtt, request->urlDecode(request->arg("mqttr3")).c_str());
     strcpy(config.R04_mqtt, request->urlDecode(request->arg("mqttr4")).c_str());
 
-    if (config.wversion == MQTT_BROKER)
+    switch(config.wversion)
     {
-      strcpy(config.Solax_mqtt, request->urlDecode(request->arg("solax")).c_str());
-      strcpy(config.Meter_mqtt, request->urlDecode(request->arg("meter")).c_str());
-    }
+      case MQTT_BROKER:
+        strcpy(config.Solax_mqtt, request->urlDecode(request->arg("solax")).c_str());
+        strcpy(config.Meter_mqtt, request->urlDecode(request->arg("meter")).c_str());
+      break;
+      case ICC_SOLAR:
+        strcpy(config.SoC_mqtt, request->urlDecode(request->arg("soctopic")).c_str());
+      break;
+    } 
   }
 
   config.flags.domoticz = false;
@@ -111,7 +116,11 @@ void handleConfig(AsyncWebServerRequest *request)
 {
   if (request->arg("offGrid") == "on") {
     config.flags.offGrid = true;
-    config.soc = constrain(request->arg("soc").toInt(), 0, 100);
+    if (config.flags.offgridVoltage) {
+      config.batteryVoltage = request->arg("soc").toFloat();
+    } else {
+      config.soc = constrain(request->arg("soc").toInt(), 0, 100);
+    }
   } else { config.flags.offGrid = false; }
 
   config.battWatts = constrain(request->arg("battWatts").toInt(), -9999, 9999);
@@ -149,6 +158,7 @@ void handleConfig(AsyncWebServerRequest *request)
   if (request->urlDecode(request->arg("oldpass")) == String(config.password))
   {
     strcpy(config.password, request->urlDecode(request->arg("newpass")).c_str());
+    INFOV("New Password -> %s\n", config.password);
   }
 
   config.maxErrorTime = constrain(request->arg("maxerrortime").toInt(), 10000, 60000);
@@ -200,7 +210,6 @@ void handleConfig(AsyncWebServerRequest *request)
     
   } else {
     config.flags.sensorTemperatura = false;
-    Tickers.disable(7);
   }
   
   request->arg("alexa") == "on" ? config.flags.alexaControl = true : config.flags.alexaControl = false;
@@ -439,7 +448,7 @@ const char *sendJsonWeb(void)
     jsonValues["mexportActive"] = tmpString;
   }
 
-  if (config.flags.showEnergyMeter && !config.flags.offGrid) {
+  if (config.flags.showEnergyMeter && !config.flags.offGrid && Flags.ntpTime) {
     // Energy Import
     dtostrfd(config.KwToday, 3, tmpString);
     jsonValues["KwToday"] = tmpString;
@@ -469,9 +478,9 @@ const char *sendJsonWeb(void)
 
   jsonValues["customSensor"] = config.nombreSensor;
 
-  serializeJson(jsonValues, response);
+  serializeJson(jsonValues, jsonResponse);
 
-  return response;
+  return jsonResponse;
 }
 
 const char *sendMasterData(void)
@@ -568,18 +577,27 @@ const char *sendMasterData(void)
     jsonValues["mexportActive"] = tmpString;
   }
 
-  serializeJson(jsonValues, response);
+  serializeJson(jsonValues, jsonResponse);
 
-  return response;
+  return jsonResponse;
 }
 
 void checkAuth(AsyncWebServerRequest *request)
 {
-  char *toDecode = config.password;
-  unsigned char *decoded = base64_decode((const unsigned char *)toDecode, strlen(toDecode), &outputLength);
+  size_t outputLength;
+  char password[30];
 
-  if (!request->authenticate(www_username, (const char *)decoded))
+  unsigned char *decoded = base64_decode((const unsigned char *)config.password, strlen(config.password), &outputLength);
+
+  sprintf(password, "%.*s", outputLength, decoded);
+ 
+  // Serial.printf("Decoded Password -> %.*s\n", outputLength, decoded);
+
+  if (!request->authenticate(www_username, (const char *)password)) {
+    free(decoded);
     return request->requestAuthentication();
+  }
+  free(decoded);
 }
 
 void send_events()
@@ -631,6 +649,11 @@ void setWebConfig(void)
   server.on("/weblog.html", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     checkAuth(request);
     request->send(SPIFFS, "/weblog.html", "text/html", false, processorOta);
+  });
+
+  server.on("/backup.html", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    checkAuth(request);
+    request->send(SPIFFS, "/backup.html", "text/html", false, processorOta);
   });
 
   //////////// JAVASCRIPT EN LA MEMORIA SPPIFS ////////
@@ -777,7 +800,7 @@ void setWebConfig(void)
 
     if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
       modbusIP.fromString((String)config.sensor_ip);
-      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SMA_ISLAND)) {
+      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= WIBEEE_MODBUS)) {
         modbustcp = new esp32ModbusTCP(modbusIP, 502);
       } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
       configModbusTcp();
@@ -797,7 +820,7 @@ void setWebConfig(void)
   server.on("/language", HTTP_POST, [](AsyncWebServerRequest *request) {
     //checkAuth(request);
     strcpy(config.language, request->arg("value").c_str());
-    Serial.printf("new language: %s", config.language);
+    Serial.printf("new language: %s\n", config.language);
     saveEEPROM();
     readLanguages();
     
@@ -885,7 +908,7 @@ void setWebConfig(void)
       saveEEPROM();
     }
 
-    if (comando == "debug1") {
+    if (comando == "debug") {
       switch (value)
       {
       case 0:
@@ -893,6 +916,7 @@ void setWebConfig(void)
         config.flags.debug2 = false;
         config.flags.debug3 = false;
         config.flags.debug4 = false;
+        config.flags.debug5 = false;
         break;
       case 1:
         config.flags.debug1 = true; 
@@ -905,6 +929,9 @@ void setWebConfig(void)
         break;
       case 4:
         config.flags.debug4 = true;
+        break;
+      case 5:
+        config.flags.debug5 = true;
         break;
       }
       saveEEPROM();
@@ -949,16 +976,72 @@ void setWebConfig(void)
     }
 
     if (comando == "tzConfig") {
-      strcpy(config.tzConfig, payload.c_str());
-      if (config.wversion != SOLAX_V2_LOCAL) { configTzTime(config.tzConfig, ntpServer); updateLocalTime(); }
-      INFOV("Payload: %s\n",payload.c_str());
+      if (payload != "tzConfig") {
+        strcpy(config.tzConfig, payload.c_str());
+        if (config.wversion != SOLAX_V2_LOCAL) { configTzTime(config.tzConfig, config.ntpServer); updateLocalTime(); }
+        INFOV("Payload: %s\n",payload.c_str());
+        saveEEPROM();
+      } else {
+        INFOV("tzConfig: %s\n", config.tzConfig);
+      }
+    }
+
+    if (comando == "ntpServer") {
+      if (payload != "ntpServer") {
+        strcpy(config.ntpServer, payload.c_str());
+        if (config.wversion != SOLAX_V2_LOCAL) { configTzTime(config.tzConfig, config.ntpServer); updateLocalTime(); }
+        INFOV("Payload: %s\n",payload.c_str());
+        saveEEPROM();
+      } else {
+        INFOV("ntpServer: %s\n", config.ntpServer);
+      }
+    }
+
+    if (comando == "offgridVoltage") {
+      if (value == 1) { config.flags.offgridVoltage = true; }
+      else { config.flags.offgridVoltage = false; }
       saveEEPROM();
+    }
+
+    if (comando == "calibration") {
+      emon1.current(ADC_INPUT, value);  
+      saveEEPROM();
+    }
+
+    if (comando == "useClamp") {
+      if (value == 1) { config.flags.useClamp = true; }
+      else { config.flags.useClamp = false; }
+      saveEEPROM();
+    }
+
+    if (comando == "storeClampValues") {
+      // Disable pwm Output
+      down_pwm(false);
+
+      // Start with a 5%
+      readClampPos = 0;
+      writeClampPwm();
+  
+      // Disable all timers and enable again the essentials timers
+      Tickers.disableAll();
+      Tickers.enable(0); // Oled
+      Tickers.enable(1); // Send Events
+      Tickers.enable(7); // Every 1000ms loop
+      Tickers.enable(8); // Store Clamp Values
     }
 
     if (comando == "maxWattsTariff") {
       config.maxWattsTariff = value;
       INFOV("maxWattsTariff: %d\n", config.maxWattsTariff);
       saveEEPROM();
+    }
+
+    if (comando == "writeConfig") {
+      writeConfigSpiffs("/config.bin");
+    }
+
+    if (comando == "readConfig") {
+      readConfigSpiffs();
     }
 
     AsyncWebServerResponse *response = request->beginResponse(200);
@@ -981,21 +1064,21 @@ void setWebConfig(void)
   });
 
   server.on("/handleConfigMqtt", HTTP_POST, [](AsyncWebServerRequest *request) {
-    //checkAuth(request);
+    checkAuth(request);
     handleConfigMqtt(request);
     webMessageResponse = 1;
     request->redirect("/");
   });
 
   server.on("/handleConfig", HTTP_POST, [](AsyncWebServerRequest *request) {
-    //checkAuth(request);
+    checkAuth(request);
     handleConfig(request);
     webMessageResponse = 1;
     request->redirect("/");
   });
 
   server.on("/handleRelay", HTTP_POST, [](AsyncWebServerRequest *request) {
-    //checkAuth(request);
+    checkAuth(request);
     handleRelay(request);
     webMessageResponse = 1;
     request->redirect("/");
@@ -1006,6 +1089,15 @@ void setWebConfig(void)
     request->redirect("/");
     defaultValues();
     restartFunction();
+  });
+
+  server.on("/downloadBackup", HTTP_GET, [](AsyncWebServerRequest *request) {
+    checkAuth(request);
+    char filename[30];
+    sprintf(filename, "/config_%s.bin", version);
+    writeConfigSpiffs(filename);
+    request->send(SPIFFS, filename, "application/octet-stream", true);
+    SPIFFS.remove(filename);
   });
 
   server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -1054,6 +1146,30 @@ void setWebConfig(void)
         Update.printError(Serial);
       }
     } });
+  
+  server.on("/backup", HTTP_POST, [](AsyncWebServerRequest *request) {
+      
+  }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+  if(!index){
+    INFOV("UploadStart: %s\n", filename.c_str());
+    // open the file on first call and store the file handle in the request object
+    request->_tempFile = SPIFFS.open("/config.bin", "w");
+  }
+  if(len) {
+    // stream the incoming chunk to the opened file
+    request->_tempFile.write(data,len);
+  }
+  if(final){
+    request->send(200);
+    INFOV("UploadEnd: %s, size: %d\n", filename.c_str(), index + len);
+    // close the file handle as the upload is now done
+    request->_tempFile.close();
+    readConfigSpiffs();
+    saveEEPROM();
+    delay(500);
+    ESP.restart();
+  }
+  });
 
   events.onConnect([](AsyncEventSourceClient *client) {
     if (client->lastId())

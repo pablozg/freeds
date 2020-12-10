@@ -423,9 +423,11 @@ void OLEDDisplay::drawProgressBar(uint16_t x, uint16_t y, uint16_t width, uint16
 
   uint16_t maxProgressWidth = (width - doubleRadius + 1) * progress / 100;
 
-  fillCircle(xRadius, yRadius, innerRadius);
-  fillRect(xRadius + 1, y + 2, maxProgressWidth, height - 3);
-  fillCircle(xRadius + maxProgressWidth, yRadius, innerRadius);
+  if (progress > 0) {
+    fillCircle(xRadius, yRadius, innerRadius);
+    fillRect(xRadius + 1, y + 2, maxProgressWidth, height - 3);
+    fillCircle(xRadius + maxProgressWidth, yRadius, innerRadius);
+  }
 }
 
 void OLEDDisplay::drawFastImage(int16_t xMove, int16_t yMove, int16_t width, int16_t height, const uint8_t *image) {

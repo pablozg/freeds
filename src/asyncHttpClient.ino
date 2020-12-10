@@ -27,6 +27,7 @@ uint32_t connectionTimeout;
 uint32_t receivingDataTimeout;
 boolean receivingData = false;
 boolean firstChunk = false;
+uint8_t chunkNumber = 1;
 
 uint8_t shellySensor = 1;
 
@@ -40,17 +41,17 @@ struct TCP_MESSAGE
 
 void runAsyncClient()
 {
-  if (config.flags.debug1) { INFOV("\nFree Heap: %d bytes, Fragmentation: %.02f %%\n", ESP.getFreeHeap(), getFragmentation()); }
+  if (config.flags.debug1) { INFOV(PSTR("\nFree Heap: %d bytes, Fragmentation: %.02f %%\n"), ESP.getFreeHeap(), getFragmentation()); }
   // Serial.printf("Connection timeout: %lu\n", millis() - connectionTimeout);
   
   if (processData) {
-    if (config.flags.debug2) { INFOV("Processing Received Data, waiting for a new request\n"); }
+    if (config.flags.debug5) { INFOV(PSTR("Processing Received Data, waiting for a new request\n")); }
     return;
   }
   
   if (aClient) // client already exists
   { 
-    if (config.flags.debug2) { INFOV("Client already exists, waiting to finish the connection\n"); }
+    if (config.flags.debug5) { INFOV(PSTR("Client already exists, waiting to finish the connection\n")); }
 
     if ((millis() - receivingDataTimeout) > RECEIVING_DATA_TIMEOUT) {
       Serial.printf("Processing Data timeout\n");
@@ -58,7 +59,7 @@ void runAsyncClient()
     }
 
     if ((millis() - connectionTimeout) > CONNECTION_TIMEOUT && !receivingData) {
-      Serial.printf("Cerrando conexión por timeout\n");
+      Serial.printf("Closing connection by timeout\n");
       if (aClient->connected()) {
         aClient->close(true);
       } else { 
@@ -69,7 +70,7 @@ void runAsyncClient()
     return;
   }
 
-  if (config.flags.debug2) { INFOV("Connecting\n"); }
+  if (config.flags.debug5) { INFOV(PSTR("\nConnecting\n")); }
   
   aClient = new AsyncClient();
   if (!aClient) //could not allocate client
@@ -77,35 +78,35 @@ void runAsyncClient()
   
   connectionTimeout = millis();
 
-  aClient->setRxTimeout(3);    // no RX data timeout for the connection in seconds
+  aClient->setRxTimeout(5);    // no RX data timeout for the connection in seconds
 
   aClient->onError([](void *arg, AsyncClient *client, err_t error) {
-    if (config.flags.debug2) { INFOV("Connect Error\n"); }
+    if (config.flags.debug5) { INFOV(PSTR("Connect Error\n")); }
     receivingData = false;
     if (client->connected()) { client->close(true); }
   });
 
   aClient->onTimeout([](void *arg, AsyncClient *client, uint32_t time) {
-    if (config.flags.debug2) { INFOV("Timeout\n"); }
+    if (config.flags.debug5) { INFOV(PSTR("Timeout\n")); }
     receivingData = false;
     if (client->connected()) { client->close(true); }
   });
 
   aClient->onDisconnect([](void *arg, AsyncClient *client) {
-    if (config.flags.debug2) { INFOV("Disconnected\n\n"); }
+    if (config.flags.debug5) { INFOV(PSTR("Disconnected\n\n")); }
     receivingData = false;
     delete client;
     aClient = NULL;
 
     if (message.messageLength > 0)
     {
-      if (config.flags.debug2) { INFOV("Parsing data\n"); }
+      if (config.flags.debug5) { INFOV(PSTR("Parsing data\n")); }
       processData = true;
     }
   });
 
   aClient->onConnect([](void *arg, AsyncClient *client) {
-    if (config.flags.debug2) { INFOV("Connected\n"); }
+    if (config.flags.debug5) { INFOV(PSTR("Connected\n")); }
     client->onError(NULL, NULL);
 
     static char url[250];
@@ -135,7 +136,7 @@ void runAsyncClient()
     // send the request
     if (client->space() > 32 && client->canSend()) {
       client->write(url);
-      if (config.flags.debug2) { INFOV("Request send to %s\n", IPAddress(client->getRemoteAddress()).toString().c_str()); }
+      if (config.flags.debug5) { INFOV(PSTR("Request send to %s\n"), IPAddress(client->getRemoteAddress()).toString().c_str()); }
     }
   });
 
@@ -151,9 +152,9 @@ void runAsyncClient()
     receivingDataTimeout = millis();
     
     // Search for content length
-    posContentLength = strstr(d, "Content-Length:");
+    posContentLength = strstr(d, "Content-Length:", len, 15);
     if (posContentLength != NULL) {
-      if (config.flags.debug2) { INFOV("Content-Length received\n"); }
+      if (config.flags.debug5) { INFOV(PSTR("Content-Length received\n")); }
       
       // If firstchunk is set, we clear all previous message
       if (firstChunk) { clearMessage(); }
@@ -169,30 +170,27 @@ void runAsyncClient()
         arrayPos++;
       }
       message.totalMessageLength = atoi(tmp);
-    } else { if (config.flags.debug2) { INFOV("Content-Length is null\n"); } }
+    }
 
     // Search for end of header
-    dataPayload = strstr(d, "\r\n\r\n");
-    //if (dataPayload != NULL && !firstChunk) {
+    dataPayload = strstr(d, "\r\n\r\n", len, 4);
     if (dataPayload != NULL) {
-      if (config.flags.debug2) { INFOV("End Header received\n"); }
+      uint16_t payloadPos = (uint16_t)(dataPayload - d + 4);
+      if (config.flags.debug5) { INFOV(PSTR("End Header received in position %d\n"), payloadPos); }
+
       // If firstchunk is set, we clear all previous message
-      if (firstChunk) { INFOV("End Header received twice, erasing previous message\n"); clearMessage(); }
-      
-      message.payloadStart = (uint16_t)(dataPayload - d + 4);
-      message.messageLength = (uint16_t)len - message.payloadStart;
-      
-      // If bad data is received, set the payload start as the total lenght of message
-      if (message.payloadStart > len) { 
-        message.payloadStart = (uint16_t)len;
-        message.messageLength = 0;
+      if (firstChunk && payloadPos < 256) { INFOV(PSTR("End Header received twice, erasing previous message\n")); clearMessage(); }
+
+      if (payloadPos < 256) {
+        message.payloadStart = payloadPos;
+        message.messageLength = (uint16_t)len - message.payloadStart;
       }
-    } else { if (config.flags.debug2) { INFOV("End Header is null or first chunk received previously\n"); } }
+    }
 
     // Proccess the first chunk
     if (dataPayload != NULL && !firstChunk)
     {
-      if (config.flags.debug2) { INFOV("First chunk\nLen: %d, payloadStart: %d, messageLength: %d\n", (uint16_t)len, message.payloadStart, message.messageLength); }
+      if (config.flags.debug5) { INFOV(PSTR("Received Data (Chunk number -> %d, Message Size: %d, Content-Length: %d, Data Size: %d, Payload Start: %d)\n"), chunkNumber, message.messageLength, message.totalMessageLength, (uint16_t)len, message.payloadStart); }
       
       firstChunk = true;
       arrayPos = 0;
@@ -205,8 +203,7 @@ void runAsyncClient()
 
     } else { // Proccess the next chunks
 
-      if (config.flags.debug2) { INFOV("Next chunk\n"); }
-      
+      chunkNumber++;
       arrayPos = message.messageLength;
       
       // If total message length is smaller than the buffer and the temp buffer + incoming data is smaller too, we proccess it.
@@ -223,15 +220,17 @@ void runAsyncClient()
         receivingData = false;
         client->close();
       }
+      if (config.flags.debug5) { INFOV(PSTR("\nReceived Data (Chunk number -> %d, Message Size: %d, Content-Length: %d)\n"), chunkNumber, message.messageLength, message.totalMessageLength); }
     }
 
-    if (config.flags.debug1) { INFOV("\nDatos Recibidos, message: %d, total: %d\n", message.messageLength, message.totalMessageLength); }
-    if (config.flags.debug3) { Serial.printf("Message:%s\n", d); }
+    if (config.flags.debug3) { Serial.printf(PSTR("\nMessage:\n%s\n"), d); }
 
     // If the message is fully received we close the connection
     if (message.messageLength == message.totalMessageLength)
     {
-      if (config.flags.debug2) { INFOV("Message fully received\n"); }
+      if (config.flags.debug5) { INFOV(PSTR("Message completed\n")); }
+      firstChunk = false;
+      chunkNumber = 1;
       client->close();
     }
   });
@@ -239,13 +238,13 @@ void runAsyncClient()
   if (config.wversion == SOLAX_V2_LOCAL) {
     if (!aClient->connect("5.8.8.8", 80))
     {
-      if (config.flags.debug2) { INFOV("Connect Fail\n"); }
+      if (config.flags.debug5) { INFOV(PSTR("Connect Fail\n")); }
       deleteClient();
     }
   } else {
-    if (!aClient->connect(String(config.sensor_ip).c_str(), 80))//80
+    if (!aClient->connect(String(config.sensor_ip).c_str(), 80))
     {
-      if (config.flags.debug2) { INFOV("Connect Fail\n"); }
+      if (config.flags.debug5) { INFOV(PSTR("Connect Fail\n")); }
       deleteClient();
     }
   }
@@ -256,13 +255,12 @@ void deleteClient(void)
   // If client already exists, we delete it.
   if (aClient)
   { 
-    Serial.printf("Cliente no conectado, eliminado cliente creado\n");
+    Serial.printf(PSTR("Client not connected, deleting current client\n"));
     receivingData = false;
     AsyncClient *client = aClient;
     client->abort();
     delete client;
     aClient = NULL;
-    Serial.printf("Cliente no conectado, despues de null\n");
   }
 }
 
@@ -272,6 +270,7 @@ void clearMessage(void)
   message.messageLength = 0;
   message.totalMessageLength = 0;
   firstChunk = false;
+  chunkNumber = 1;
   receivingDataTimeout = millis();
 }
 
@@ -303,4 +302,48 @@ void processingData(void)
   clearMessage();
   processData = false;
   receivingData = false;
+}
+
+// Function to implement strstr() function using KMP algorithm
+inline char* strstr(char* X, const char* Y, int m, int n)
+{
+	// Base Case 1: Y is NULL or empty
+	if (*Y == '\0' || n == 0)
+		return X;
+
+	// Base Case 2: X is NULL or X's length is less than that of Y's
+	if (*X == '\0' || n > m)
+		return NULL;
+
+	// next[i] stores the index of next best partial match
+	int next[n + 1];
+
+	for (int i = 0; i < n + 1; i++)
+		next[i] = 0;
+
+	for (int i = 1; i < n; i++)
+	{
+		int j = next[i + 1];
+
+		while (j > 0 && Y[j] != Y[i])
+			j = next[j];
+
+		if (j > 0 || Y[j] == Y[i])
+			next[i + 1] = j + 1;
+	}
+
+	for (int i = 0, j = 0; i < m; i++)
+	{
+		if (*(X + i) == *(Y + j))
+		{
+			if (++j == n)
+				return (X + i - j + 1);
+		}
+		else if (j > 0) {
+			j = next[j];
+			i--;	// // since i will be incremented in next iteration
+		}
+	}
+
+	return NULL;
 }

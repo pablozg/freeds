@@ -97,6 +97,14 @@ String workingModeString(void)
   {
     return "SolarEdge Modbus TCP";
   }
+  if (config.wversion == WIBEEE_MODBUS)
+  {
+    return "Wibeee Modbus TCP (En desarrollo)";
+  }
+  if (config.wversion == SCHNEIDER)
+  {
+    return "Schneider Modbus TCP (En desarrollo)";
+  }
   return String();
 }
 
@@ -135,6 +143,10 @@ String processorFreeDS(const String &var)
            String((config.wversion == HUAWEI_MODBUS) ? " selected='selected' " : " ") + ">Huawei Modbus TCP</option>" +
                                                                               "<option value='" + String(SOLAREDGE) + "'" +
            String((config.wversion == SOLAREDGE) ? " selected='selected' " : " ") + ">SolarEdge Modbus TCP</option>" +
+                                                                              "<option value='" + String(SCHNEIDER) + "'" +
+           String((config.wversion == SCHNEIDER) ? " selected='selected' " : " ") + ">Schneider Modbus TCP (En desarrollo)</option>" +
+                                                                              "<option value='" + String(WIBEEE_MODBUS) + "'" +
+           String((config.wversion == WIBEEE_MODBUS) ? " selected='selected' " : " ") + ">Wibeee Modbus TCP (En desarrollo)</option>" +
                                                                               "<option value='" + String(WIBEEE) + "'" +
            String((config.wversion == WIBEEE) ? " selected='selected' " : " ") + ">Wibeee</option>" +
                                                                               "<option value='" + String(SHELLY_EM) + "'" +                                                                   
@@ -198,7 +210,7 @@ String processorRed(const String &var)
   }
   if (var == "WIFI1")
   {
-    char tmp[50];
+    char tmp[80];
     String wifi = "<select id='wifi1' name='wifi1' class='form-control select2'><option disabled selected>Seleccione una red</option>";
                   for (int i = 0; i < 15; ++i) {
                     if (scanNetworks[i] == "") { break; }
@@ -213,7 +225,7 @@ String processorRed(const String &var)
   if (var == "PASS2") { return String(config.pass2); }
   if (var == "WIFI2")
   {
-    char tmp[50];
+    char tmp[80];
     String wifi = "<select id='wifi2' name='wifi2' class='form-control select2'><option disabled selected>Seleccione una red</option>";
                   for (int i = 0; i < 15; ++i) {
                     if (scanNetworks[i] == "") { break; }
@@ -323,6 +335,12 @@ String processorMqtt(const String &var)
                                            "<input id='meter' name='meter' type='text' class='form-control' maxlength='50' value='" +
              String(config.Meter_mqtt) + "'></div></div>";
     }
+    if (config.wversion == ICC_SOLAR)
+    {
+      return "<div class='row mg-t-2'><label class='col-sm-4 form-control-label language' key='SOCTOPIC'></label><div class='col-sm-8 mg-t-10 mg-sm-t-0'>"
+             "<input id='soctopic' name='soctopic' type='text' class='form-control' maxlength='50' value='" +
+             String(config.SoC_mqtt) + "'></div></div>";
+    }
   }
   if (var == "DOMOTICZ")
   {
@@ -367,10 +385,15 @@ String processorConfig(const String &var)
   {
     return config.flags.offGrid ? "checked" : "";
   }
-
-  if (var == "SOC")
+  if (var == "OFFGRIDMODE")
   {
-    return String(config.soc);
+    if (config.flags.offgridVoltage) {
+      return "<div class='row mg-t-2'><label class='col-sm-4 form-control-label language' key='OFFGRIDVOLTAGE'></label><div class='col-sm-8 mg-t-10 mg-sm-t-0'>"
+             "<input id='soc' name='soc' type='text' class='form-control' maxlength='6' value='" + String(config.batteryVoltage) + "'></div></div>";
+    } else {
+      return "<div class='row mg-t-2'><label class='col-sm-4 form-control-label language' key='OFFGRIDSOC'></label><div class='col-sm-8 mg-t-10 mg-sm-t-0'>"
+             "<input id='soc' name='soc' type='text' class='form-control' maxlength='3' value='" + String(config.soc) + "' onchange='checkSoCValue();'></div></div>";
+    }
   }
 
   if (var == "BATTWATTS")
@@ -655,7 +678,12 @@ String processorSalidas(const String &var)
   }
   if (var == "TIMERACTIVE")
   {
-    return (config.flags.timerEnabled && Flags.ntpTime) ? "checked" : "disabled=\"disabled\"";
+    if (Flags.ntpTime)
+    {
+      return config.flags.timerEnabled ? "checked" : "";  
+    } else {
+      return "disabled=\"disabled\"";
+    }
   }
   if (var == "TIMERSTART")
   {

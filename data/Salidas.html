@@ -69,9 +69,9 @@
                                 <output id="rangeVal" name="rangeVal">100</output>
                             </div>
                             <h6 class="collapse-header language" key="CONTROLPWM"></h6>
-                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)" key="pwmon"></a>
-                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(7)">PWM <span class="man_auto man_auto-inactive" id="labelauto">AUTO</span> / <span class="man_auto man_auto-inactive" id="labelman">MAN</span>
-                            </a>
+                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)"></a>
+                            <h6 class="collapse-header language" key="PWMMODE"></h6>
+                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(7)"></a>
                         </div>
                     </div>
                 </li>
@@ -182,6 +182,8 @@
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <select id='frecpwm' name='frecpwm' class='form-control select2'>
                                                                 <option value='10'>10 Hz</option>
+                                                                <option value='12'>12 Hz</option>
+                                                                <option value='25'>25 Hz</option>
                                                                 <option value='500'>500 Hz</option>
                                                                 <option value='1000'>1.0 Khz</option>
                                                                 <option value='1500'>1.5 Khz</option>
@@ -203,6 +205,7 @@
                                                             <input id='slavepwm' name='slavepwm' type="text" class="form-control" maxlength='3' value="%SLAVEPWM%">
                                                         </div>
                                                     </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-b-10 language" key="MANSOLARMODE"></h6>
                                                     <label class="custom-control custom-checkbox pb-3 pt-3">
                                                         <input id="potpwmactive" name="potpwmactive" type="checkbox"  class="custom-control-input" onchange="checkPWM();" %POTPWMACTIVE%>
                                                         <span class="custom-control-indicator"></span><span id='potpwmText'></span> 
@@ -213,6 +216,7 @@
                                                             <input id='potmanpwm' name='potmanpwm' type="text" class="form-control" maxlength='4' value="%POTMANPWM%">
                                                         </div>
                                                     </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-b-10 language" key="TIMER"></h6>
                                                      <label class="custom-control custom-checkbox pb-3 pt-3">
                                                         <input id="timeractive" name="timeractive" type="checkbox"  class="custom-control-input" onchange="checkPWM();" %TIMERACTIVE%>
                                                         <span class="custom-control-indicator"></span><span id='timeractiveText'></span> 
@@ -227,6 +231,7 @@
                                                             <input type="time" class="form-control" id="timerStop" name="timerStop" style="min-width: 105px" %TIMERSTOP%>
                                                         </div>
                                                     </div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-b-10 language" key="LOWCOST"></h6>
                                                     <label class="custom-control custom-checkbox pb-3 pt-3">
                                                         <input id="lowcostactive" name="lowcostactive" type="checkbox"  class="custom-control-input" onchange="checkPWM();" %LOWCOSTACTIVE%>
                                                         <span class="custom-control-indicator"></span><span id='lowcostText'></span> 

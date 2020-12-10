@@ -69,9 +69,9 @@
                                 <output id="rangeVal" name="rangeVal">100</output>
                             </div>
                             <h6 class="collapse-header language" key="CONTROLPWM"></h6>
-                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)" key="pwmon"></a>
-                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(7)">PWM <span class="man_auto man_auto-inactive" id="labelauto">AUTO</span> / <span class="man_auto man_auto-inactive" id="labelman">MAN</span>
-                            </a>
+                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)"></a>
+                            <h6 class="collapse-header language" key="PWMMODE"></h6>
+                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(7)"></a>
                         </div>
                     </div>
                 </li>
@@ -153,6 +153,33 @@
                                                 <br>
                                                 <br>
                                                 <button type="submit" class="btn btn-info language" id='Actualizar' key="UPDATE" disabled></button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                            <h1 class="h3 mb-0 text-gray-800 language" key="CONFIGUPDATE"></h1>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <div class="card shadow mb-4 card-size">
+                                    <div id='Ota' class="card-body">
+                                        <div class="col-xl-12">
+                                            <form method='POST' action='#' enctype='multipart/form-data' id='backup_form'>
+                                                <div class="form-group">
+                                                    <div class="input-group input-file-backup" name="Fichero"> <span class="input-group-btn"> <button class="btn btn-primary btn-choose language" type="button" key="SEARCH"></button> </span> 
+                                                        <input type="text" class="form-control mr-1 ml-1" style="border-radius: .5rem;"/> <span class="input-group-btn"> <button class="btn btn-warning btn-reset language" type="button" key="CLEAR"></button> </span>
+                                                    </div>
+                                                </div>
+                                                <div class='progress'>
+                                                    <div id='prgbar' class="progress-bar progress-bar-success progress-bar-striped progress-bar-animated active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <br>
+                                                <br>
+                                                <button type="submit" class="btn btn-info language" id='Restaurar' key="RESTORE" disabled></button>
+                                                <button type="button" onClick="location.href='/downloadBackup'" class="btn btn-success language" data-dismiss="modal" aria-label="Close" key="BACKUP"></button>
                                             </form>
                                         </div>
                                     </div>
