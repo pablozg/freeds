@@ -989,8 +989,8 @@ void setup()
     myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
     myPID.SetOutputLimits(0, config.maxPwmLowCost); // Falta Añadir esta linea al handle de configuración.
     // myPID.SetOutputLimits(0, 1023); // Falta Añadir esta linea al handle de configuración.
-    myPID.SetMode(AUTOMATIC);
     myPID.SetSampleTime(600);
+    config.flags.pwmMan ? myPID.SetMode(MANUAL) : myPID.SetMode(AUTOMATIC);
     config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
   }
 

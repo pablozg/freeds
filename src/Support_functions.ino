@@ -95,8 +95,8 @@ void every1000ms(void)
 {
   calcWattsToday(); // Calculate the imported / exported energy
   if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
-  // INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue, myPID.GetMode(), myPID.GetDirection());
-  INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue);
+  INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue, myPID.GetMode(), myPID.GetDirection());
+  // INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue);
 }
 
 String midString(String *str, String start, String finish){
@@ -637,7 +637,7 @@ void readClamp(void)
 
   if (config.flags.useClamp) {
     double amps = calcIrms(1484); // Calculate Irms only
-    if (amps > 0.30) {
+    if (amps > 0.45) {
       // inverter.gridv > 0 ? inverter.currentCalcWatts = amps * inverter.gridv : inverter.currentCalcWatts = amps * config.clampVoltage;
       inverter.currentCalcWatts = amps * config.clampVoltage;
     } else { inverter.currentCalcWatts = 0; }

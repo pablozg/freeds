@@ -71,10 +71,10 @@ void pwmControl()
           targetPwm = 0;
     }
 
-    if (!config.flags.useClamp) { invert_pwm = targetPwm; }
+    invert_pwm = targetPwm;
 
     relay_control_man(false);
-    // INFOV("2- Max Target: %d, Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n\n", maxTargetPwm, targetPwm, invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
+    INFOV("2- Max Target: %d, Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n\n", maxTargetPwm, targetPwm, invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
   }
 
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
