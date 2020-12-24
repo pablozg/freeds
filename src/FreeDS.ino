@@ -620,7 +620,7 @@ public:
 };
 
 // Declaration of default values
-void down_pwm(boolean = true, const char* = "PWM: disabling PWM\n");
+void down_pwm(const char* = "PWM: disabling PWM\n");
 
 ////////// WATCHDOG FUNCTIONS //////////
 
@@ -822,7 +822,7 @@ void setup()
   if (!EEPROM.begin(sizeof(config)))
   {
     Serial.printf("Failed to initialise EEPROM\nRestarting...\n");
-    down_pwm(false);
+    down_pwm();
     delay(1000);
     ESP.restart();
   }
@@ -992,7 +992,6 @@ void setup()
     myPID.SetMode(AUTOMATIC);
     myPID.SetSampleTime(600);
     config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
-    //config.flags.useClamp ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
   }
 
   // HTTP server
@@ -1033,6 +1032,7 @@ void loop()
     changeScreen();
 
     myPID.Compute();
+    // Falta solucionar problema del output en las lowcost con parche activado.
     if (config.flags.pwmEnabled && !Error.VariacionDatos && Flags.pwmIsWorking && myPID.GetMode() == 1) {
       targetPwm = invert_pwm = (uint16_t)PIDOutput;
       if (config.flags.dimmerLowCost && invert_pwm > 0 && invert_pwm < 210) { invert_pwm = 210; }

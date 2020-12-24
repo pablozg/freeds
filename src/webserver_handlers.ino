@@ -243,7 +243,7 @@ void handleRelay(AsyncWebServerRequest *request)
     config.R04PotOff = request->arg("r04potoff").toInt();
   } else {
     config.flags.pwmEnabled = false;
-    down_pwm(false, "PWM Down: Pwm Desactivated\n");
+    down_pwm("PWM Down: Pwm Desactivated\n");
   }
 
   config.attachedLoadWatts = request->arg("loadwatts").toInt();
@@ -1005,8 +1005,8 @@ void setWebConfig(void)
     }
 
     if (comando == "useClamp") {
-      if (value == 1) { config.flags.useClamp = true; myPID.SetControllerDirection(DIRECT); }
-      else { config.flags.useClamp = false; myPID.SetControllerDirection(REVERSE); }
+      if (value == 1) { config.flags.useClamp = true; }
+      else { config.flags.useClamp = false; }
       saveEEPROM();
     }
 
@@ -1141,7 +1141,7 @@ void setWebConfig(void)
         INFOV("Update Start: %s\n", filename.c_str());
         Flags.Updating = true;
         config.flags.pwmEnabled = false;
-        down_pwm(false, "PWM Down: Updating\n");
+        down_pwm("PWM Down: Updating\n");
         Tickers.disableAll();
         mqttClient.disconnect();
         Tickers.enable(0); // Oled

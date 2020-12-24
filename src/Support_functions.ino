@@ -245,7 +245,7 @@ void restartFunction(void)
   
   if (!Flags.firstInit)
   {
-    down_pwm(false, "PWM Down: Restarting\n");
+    down_pwm("PWM Down: Restarting\n");
   }
 
   saveEEPROM();
@@ -633,17 +633,17 @@ void bootTimer(void)
 
 void readClamp(void)
 {
+  PIDInput = inverter.wgrid;
+
   if (config.flags.useClamp) {
     double amps = calcIrms(1484); // Calculate Irms only
-    if (invert_pwm > 0) {
+    if (amps > 0.30) {
       // inverter.gridv > 0 ? inverter.currentCalcWatts = amps * inverter.gridv : inverter.currentCalcWatts = amps * config.clampVoltage;
       inverter.currentCalcWatts = amps * config.clampVoltage;
     } else { inverter.currentCalcWatts = 0; }
     // INFOV("Watts: %.03f Current: %.03f\n", inverter.currentCalcWatts, amps);
-    PIDInput = inverter.currentCalcWatts;
   } else {
-    inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;
-    PIDInput = inverter.wgrid;
+    inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;  
   }
 }
 

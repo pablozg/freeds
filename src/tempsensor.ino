@@ -80,22 +80,22 @@ void checkTemperature(void)
         switch(config.modoTemperatura) {
             case 1: // Auto
                 if (!config.flags.pwmMan && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false, "APAGADO TEMP AUTO\n"); } }
+                if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm("APAGADO TEMP AUTO\n"); } }
                 break;
             case 2: // Manual
                 if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false, "APAGADO TEMP MANUAL\n"); } }
+                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm("APAGADO TEMP MANUAL\n"); } }
                 break;
             case 3: // Auto y Manual
                 if (temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false, "APAGADO TEMP AUTO/MAN\n"); } }
+                if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm("APAGADO TEMP AUTO/MAN\n"); } }
                 break;
         }
     }
 
     if (((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) && config.modoTemperatura > 0 && config.termoSensorAddress[0] != 0x0)
     {
-        if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false, "APAGADO TEMP ERROR LECTURA\n"); }
+        if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm("APAGADO TEMP ERROR LECTURA\n"); }
     }
 }
 

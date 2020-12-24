@@ -34,7 +34,7 @@ void parseMasterFreeDs(char *json)
     } else {
       if (!config.flags.pwmMan && invert_pwm > 0) {
         Flags.pwmIsWorking = false;
-        down_pwm(false);
+        down_pwm();
       }
     }
 

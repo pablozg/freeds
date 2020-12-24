@@ -169,7 +169,7 @@ void WiFiEvent(WiFiEvent_t event)
     Tickers.disableAll();
     Tickers.enable(0); // Display
     Tickers.enable(3); // Wifi
-    if (invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; down_pwm(false, "PWM Down: STA DISCONNECTED\n"); } // PWM Shutdown
+    if (invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; down_pwm("PWM Down: STA DISCONNECTED\n"); } // PWM Shutdown
     break;
 
   case SYSTEM_EVENT_WIFI_READY:
@@ -411,7 +411,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // pwm control ON-OFF
       INFOV("Mqtt - PWM control: %s\n", (char)payload[0] == '1' ? "ON" : "OFF");
       if ((char)payload[0] == '1') { config.flags.pwmEnabled = true; }
-      else { config.flags.pwmEnabled = false; down_pwm(false, "PWM Dowm: Mqtt command received\n"); }
+      else { config.flags.pwmEnabled = false; down_pwm("PWM Dowm: Mqtt command received\n"); }
       saveEEPROM();
       return;
     }
