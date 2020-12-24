@@ -85,11 +85,18 @@ void setGetDataTime(void)
   Tickers.updatePeriod(4, config.getDataTime);
 }
 
+void every500ms(void)
+{
+  send_events(); // Send web events
+  readClamp(); // Read Current Clamp
+}
+
 void every1000ms(void)
 {
   calcWattsToday(); // Calculate the imported / exported energy
-  readClamp(); // Read Current Clamp
   if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
+  // INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue, myPID.GetMode(), myPID.GetDirection());
+  INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue);
 }
 
 String midString(String *str, String start, String finish){
@@ -238,7 +245,7 @@ void restartFunction(void)
   
   if (!Flags.firstInit)
   {
-    down_pwm(false);
+    down_pwm(false, "PWM Down: Restarting\n");
   }
 
   saveEEPROM();
@@ -561,6 +568,7 @@ void sendWeblogStreamTest(void)
     {
       webLogs.send(loggingMessage[counter], "weblog");
       memset(loggingMessage[counter], 0, 1024);
+      delay(3);
     }
   }
 
@@ -568,6 +576,7 @@ void sendWeblogStreamTest(void)
   for (int counter = 0; counter < logcount; counter++) {
     webLogs.send(loggingMessage[counter], "weblog");
     memset(loggingMessage[counter], 0, 1024);
+    delay(3);
   }
 
   logcount = 0;
@@ -616,56 +625,89 @@ float getFragmentation() {
   return 100 - ESP.getMaxAllocHeap() * 100.0 / ESP.getFreeHeap();
 }
 
+void bootTimer(void)
+{
+  xTimerStop(startTimer, 0);
+  Tickers.enable(5);
+}
 
-void readClamp(void) {
-
+void readClamp(void)
+{
   if (config.flags.useClamp) {
-    double amps = emon1.calcIrms(1480); // Calculate Irms only
-    if (amps > 0.60) {
-      inverter.currentCalcWatts = amps * GRID_VOLTAGE;
+    double amps = calcIrms(1484); // Calculate Irms only
+    if (invert_pwm > 0) {
+      // inverter.gridv > 0 ? inverter.currentCalcWatts = amps * inverter.gridv : inverter.currentCalcWatts = amps * config.clampVoltage;
+      inverter.currentCalcWatts = amps * config.clampVoltage;
     } else { inverter.currentCalcWatts = 0; }
-    //INFOV("Watts: %.02f Current: %.02f\n", inverter.currentCalcWatts, amps);
+    // INFOV("Watts: %.03f Current: %.03f\n", inverter.currentCalcWatts, amps);
+    PIDInput = inverter.currentCalcWatts;
   } else {
     inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;
+    PIDInput = inverter.wgrid;
+  }
+}
+
+void current(uint8_t _inPinI, double _ICAL)
+{
+  inPinI = _inPinI;
+  ICAL = _ICAL;
+  offsetI = ADC_COUNTS >> 1;
+}
+
+//--------------------------------------------------------------------------------------
+// 131ms to complete every call
+double calcIrms(unsigned int Number_of_Samples)
+{
+  uint16_t SupplyVoltage = 3300;
+  uint16_t reading = 0;
+
+  for (unsigned int n = 0; n < Number_of_Samples; n++)
+  {
+    reading = analogRead(inPinI);
+    if(reading < 1 || reading > 4095) reading = 0;
+
+    // sampleI = polySolve(reading);
+    sampleI = -0.000000000000016 * pow((double)reading,4) + 0.000000000118171 * pow((double)reading,3)- 0.000000301211691 * pow((double)reading,2)+ 0.001109019271794 * (double)reading + 0.034143524634089;
+
+    // Digital low pass filter extracts the 2.5 V or 1.65 V dc offset,
+    //  then subtract this - signal is now centered on 0 counts.
+    offsetI = (offsetI + (sampleI-offsetI) / ADC_COUNTS);
+    filteredI = sampleI - offsetI;
+
+    // Root-mean-square method current
+    // 1) square current values
+    sqI = filteredI * filteredI;
+    // 2) sum
+    sumI += sqI;
   }
 
+  // double I_RATIO = ICAL *((SupplyVoltage / 1000.0) / (ADC_COUNTS));
+  double I_RATIO = (ICAL * 1000) * ((SupplyVoltage / 1000.0) / (ADC_COUNTS));
+  Irms = I_RATIO * sqrt(sumI / Number_of_Samples);
+
+  //Reset accumulators
+  sumI = 0;
+  //--------------------------------------------------------------------------------------
+  if (Flags.showClampCurrent) { INFOV("Current -> %.02f\n\n", Irms); }
+  // INFOV("Tiempo proceso -> %ld ms\n", millis() - time);
+  return Irms;
 }
 
-void storeClampValues(void)
-{
-  double amps = 0;
-      
-  amps = emon1.calcIrms(1480); // Calculate Irms only
-  
-  if (amps > 0.60) {
-    config.clampValues[readClampPos] = amps * GRID_VOLTAGE;
-  } else { config.clampValues[readClampPos] = 0; }
-
-  INFOV("Reading values at %d%%: %.03f Watts\n", 5 * (readClampPos + 1), config.clampValues[readClampPos]);
-
-  readClampPos++;
-
-  if (readClampPos == 20) {
-  
-    // Disable pwm Output
-    down_pwm(false);
-
-    // Disable all timers and enable again the essentials timers
-    Tickers.enableAll();
-    Tickers.disable(2); // Mqtt
-    Tickers.disable(3); // Wifi
-    Tickers.disable(8); // Store Clamp Values
-
-    saveEEPROM();
-  } else { writeClampPwm(); }
+double polySolve(double x) {
+  return   2.202196968876e+02
+           +   3.561383996027e-01 * x
+           +   1.276218788985e-04 * pow(x, 2)
+           +  -3.470360275448e-07 * pow(x, 3)
+           +   2.082790802069e-10 * pow(x, 4)
+           +  -5.306931174991e-14 * pow(x, 5)
+           +   4.787659214703e-18 * pow(x, 6);
 }
 
-void writeClampPwm(void)
+void writeClampPwm(uint8_t step)
 {
-  invert_pwm = calculeTargetPwm(5 * (readClampPos + 1));
+  invert_pwm = calculeTargetPwm(2 * (step + 1));
   writePwmValue(invert_pwm);
-  calcPwmProgressBar();
-  INFOV("invert_pwm -> %d\n", invert_pwm);
+  // INFOV("invert_pwm -> %d\n", invert_pwm);
 }
 
 void writeConfigSpiffs(const char *filename)
@@ -815,8 +857,13 @@ void checkEEPROM(void) {
     strcpy(config.SoC_mqtt, "Inverter/BatterySOC");
     config.batteryVoltage = 51.0;
     config.flags.useClamp = false;
-    memset(config.clampValues, 0, sizeof config.clampValues);
+    config.PIDValues[0] = 0.05;
+    config.PIDValues[1] = 0.06;
+    config.PIDValues[2] = 0.03;
+    config.clampCalibration = 40.0;
+    config.clampVoltage = 230.0;
     strcpy(config.ntpServer, "pool.ntp.org");
+    config.pwmFrequency *= 10;
     config.eeinit = 0x17;
     INFOV(PSTR("EEPROM Settings upgraded from version %x to version %x\n"), actualVersion, config.eeinit);
     saveEEPROM();

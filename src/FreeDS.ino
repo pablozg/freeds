@@ -42,10 +42,11 @@
 #include <bitmap.h>
 #include <DNSServer.h>
 #include <esp32ModbusTCP.h>
-#include <EmonLib.h>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
+
+#include <PID_v1.h>
 
 extern "C"
 {
@@ -121,7 +122,7 @@ const char version[] PROGMEM = "1.0.7";
 
 const char *www_username = "admin";
 
-uint16_t invert_pwm = 0; // Hasta 1023 con 10 bits resolution
+uint16_t invert_pwm = 0; // Up 1023 with 10 bits resolution.
 uint16_t last_invert_pwm = 0;
 
 uint8_t pwmValue = 0;
@@ -174,7 +175,8 @@ union {
     uint32_t timerSet : 1;        // Bit 17
     uint32_t pwmIsWorking : 1;    // Bit 18
     uint32_t pwmManAuto : 1;      // Bit 19
-    uint32_t spare : 12;          // Bit 20 - 31
+    uint32_t showClampCurrent : 1;// Bit 20
+    uint32_t spare : 11;          // Bit 21 - 31
   };
 } Flags;
 
@@ -406,11 +408,17 @@ struct CONFIG
   // NTP Server
   char ntpServer[30];
 
+  // Calibration Value
+  float clampCalibration;
+
+  // Clamp Voltage
+  float clampVoltage;
+  
   // Store clampValues
-  float clampValues[20];
+  float PIDValues[3];
 
   // FREE MEMORY
-  uint8_t free[236];
+  uint8_t free[1048];
 } config;
 
 struct METER
@@ -521,12 +529,13 @@ HardwareSerial SerieEsp(2);   // RX, TX para esp-01
 HardwareSerial SerieMeter(1); // RX, TX para los Meter rs485/modbus
 DynamicJsonDocument root(3072); // 2048
 
-TickerScheduler Tickers(9);
+TickerScheduler Tickers(8);
 
 DNSServer dnsServer;
 
 TimerHandle_t relayOnTimer;
 TimerHandle_t relayOffTimer;
+TimerHandle_t startTimer;
 
 // Setup a oneWire instance to communicate with any OneWire devices
 OneWire oneWire(DS18B20);
@@ -539,14 +548,21 @@ float temperaturaTermo = -127.0;
 float temperaturaTriac = -127.0;
 float temperaturaCustom = -127.0;
 
-// Energy Monitor
-#define GRID_VOLTAGE 230.0 // TO BE ERASED WHEN WILL READ THE VOLTAGE
-#define emonTxV3
+// Energy Monitor (Functions from emonLib) https://github.com/openenergymonitor/EmonLib
+#define ADC_BITS    12
+#define ADC_COUNTS  (1<<ADC_BITS)
 
-EnergyMonitor emon1;
+uint8_t inPinI;
+double ICAL;
+double sampleI;
+double filteredI;
+double offsetI;
+double sqI, sumI, Irms;
 
-#define V_REF 1100  // ADC reference voltage
-esp_adc_cal_characteristics_t *adc_chars = new esp_adc_cal_characteristics_t;
+// PID Loop
+float Setpoint, PIDInput, PIDOutput;
+
+PID myPID(&PIDInput, &PIDOutput, &Setpoint, 0.2, 0.08, 0.04, DIRECT); //0.05 0.06 0.02
 
 //////////////////// CAPTIVE PORTAL ////////////////
 
@@ -685,7 +701,7 @@ void defaultValues()
   config.manualControlPWM = 50;
   config.autoControlPWM = 60;
   config.flags.pwmMan = false;
-  config.pwmFrequency = 3000;
+  config.pwmFrequency = 30000;
   config.oledBrightness = 255;
   config.baudiosMeter = 9600;
   config.idMeter = 1;
@@ -734,7 +750,11 @@ void defaultValues()
   config.maxWattsTariff = 3450;
   config.flags.showEnergyMeter = true;
   config.flags.useClamp = false;
-  memset(config.clampValues, 0, sizeof config.clampValues);
+  config.clampCalibration = 22.3;
+  config.clampVoltage = 230.0;
+  config.PIDValues[0] = 0.05;
+  config.PIDValues[1] = 0.06;
+  config.PIDValues[2] = 0.03;
   strcpy(config.tzConfig, "CET-1CEST,M3.5.0,M10.5.0/3");
   strcpy(config.ntpServer, "pool.ntp.org");
   strcpy(config.language, "es");
@@ -746,14 +766,14 @@ void defaultValues()
 void configureTickers(void)
 {
   Tickers.add(0, 400,  [&](void *) { data_display(); }, nullptr, true);                 // OLED loop
-  Tickers.add(1, 500,  [&](void *) { send_events(); }, nullptr, false);                 // Send Events to Webpage
+  // Tickers.add(1, 500,  [&](void *) { send_events(); }, nullptr, false);                 // Send Events to Webpage
+  Tickers.add(1, 500,  [&](void *) { every500ms(); }, nullptr, false);                  // 500ms functions loop
   Tickers.add(2, 5000, [&](void *) { connectToMqtt(); }, nullptr, false);               // Reconnect mqtt every 5 seconds
   Tickers.add(3, 5000, [&](void *) { connectToWifi(); }, nullptr, false);               // Reconnect Wifi  every 5 seconds
   Tickers.add(4, config.getDataTime, [&](void *) { getSensorData(); }, nullptr, false); // Sensor data adquisition time
   Tickers.add(5, config.pwmControlTime, [&](void *) { pwmControl(); }, nullptr, false); // Pwm Control loop
   Tickers.add(6, config.publishMqtt, [&](void *) { publishMqtt(); }, nullptr, false);   // Publish Mqtt messages
   Tickers.add(7, 1000, [&](void *) { every1000ms(); }, nullptr, false);                 // 1000ms functions loop
-  Tickers.add(8, 6000, [&](void *) { storeClampValues(); }, nullptr, false);            // Store Clamp Values
   Tickers.disableAll();
 }
 
@@ -771,12 +791,10 @@ void setup()
   // ENERGY MONITOR
   adc1_config_width(ADC_WIDTH_BIT_12);
   adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_11);
-  //esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, V_REF, adc_chars);
-  esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, V_REF, adc_chars);
   
-  analogReadResolution(12);
-
-  emon1.current(ADC_INPUT, 32.6); // 2000 Turns / 62 Ohms burden resistor SCT-013 30A/1V
+  // analogReadResolution(12);
+  // adcAttachPin(ADC_INPUT);
+  // analogSetClockDiv(255); // 1338mS
 
   Flags.data = 0; // All Bits to false
   Flags.RelayTurnOn = true;
@@ -820,9 +838,9 @@ void setup()
   } else { readLanguages(); }
 
   // Initialize channels
-  ledcSetup(2, config.pwmFrequency, 10); // Frecuencia según configuración, 10-bit resolution
   ledcAttachPin(pin_pwm, 2);
-  ledcWrite(2, invert_pwm);
+  ledcSetup(2, (double)config.pwmFrequency / 10.0, 10); // Frecuencia según configuración, 10-bit resolution
+  ledcWrite(2, 0); // turn off
 
   dac_output_enable(DAC_CHANNEL_2); // Salida Analógica /// DAC_CHANNEL_1 -> PIN 25 /// DAC_CHANNEL_2 -> PIN 26
 
@@ -847,6 +865,9 @@ void setup()
     saveEEPROM();
   }
 
+  // emon1.current(ADC_INPUT, config.clampCalibration); // 2000 Turns / 62 Ohms burden resistor SCT-013 30A/1V
+  current(ADC_INPUT, config.clampCalibration); // 2000 Turns / 62 Ohms burden resistor SCT-013 30A/1V
+
   // Si no está confgurada la wifi, creamos un Punto de acceso con el SSID FreeDS
   if (!config.flags.wifi)
   {
@@ -865,6 +886,7 @@ void setup()
     // Relay Timers
     relayOnTimer = xTimerCreate("relayOnTimer", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(enableRelay));
     relayOffTimer = xTimerCreate("relayOffTimer", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(disableRelay));
+    startTimer = xTimerCreate("startTimer", pdMS_TO_TICKS(45000), pdFALSE, (void *)0, reinterpret_cast<TimerCallbackFunction_t>(bootTimer));
 
     WiFi.onEvent(WiFiEvent);
 
@@ -959,6 +981,18 @@ void setup()
       setWebConfig();
       defineWebMonitorFields(config.wversion);
     }
+
+    // Esperamos 45 segundos a que se estabilicen las lecturas de la pinza antes de ejecutar la rutina de pwm.
+    xTimerStart(startTimer, 0);
+
+    // PID Config
+    myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
+    myPID.SetOutputLimits(0, config.maxPwmLowCost); // Falta Añadir esta linea al handle de configuración.
+    // myPID.SetOutputLimits(0, 1023); // Falta Añadir esta linea al handle de configuración.
+    myPID.SetMode(AUTOMATIC);
+    myPID.SetSampleTime(600);
+    config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
+    //config.flags.useClamp ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
   }
 
   // HTTP server
@@ -972,6 +1006,8 @@ void setup()
     display.drawString(64, 40, lang._CONFIGPAGE_);
     display.display();
   }
+  
+  // DEBUG
   memset(config.free, 255, sizeof config.free);
 }
 
@@ -995,6 +1031,15 @@ void loop()
   {
     Tickers.update(); // Actualiza todos los tareas Temporizadas
     changeScreen();
+
+    myPID.Compute();
+    if (config.flags.pwmEnabled && !Error.VariacionDatos && Flags.pwmIsWorking && myPID.GetMode() == 1) {
+      targetPwm = invert_pwm = (uint16_t)PIDOutput;
+      if (config.flags.dimmerLowCost && invert_pwm > 0 && invert_pwm < 210) { invert_pwm = 210; }
+      // if (config.flags.dimmerLowCost && invert_pwm > 0) { targetPwm = invert_pwm += 210; }
+      writePwmValue(invert_pwm);
+    }
+    
     if (config.flags.sensorTemperatura) { checkTemperature(); }
     
     long diffErrorRecepcionDatos = millis() - timers.ErrorRecepcionDatos ;
@@ -1002,7 +1047,8 @@ void loop()
 
     if (config.flags.debug4) { 
       if (millis() - timers.printDebug > 2000){
-        INFOV("\nError Recepción Datos: %s, Error Variación Datos: %s, Error Conexión Mqtt: %s\n", Error.RecepcionDatos ? "true" : "false", Error.VariacionDatos ? "true" : "false", Error.ConexionMqtt ? "true" : "false");
+        INFOV("\n");
+        INFOV("Error Recepción Datos: %s, Error Variación Datos: %s, Error Conexión Mqtt: %s\n", Error.RecepcionDatos ? "true" : "false", Error.VariacionDatos ? "true" : "false", Error.ConexionMqtt ? "true" : "false");
         INFOV("Timer Recepción Datos: %ld, Timer Variación Datos: %ld\n", millis() - timers.ErrorRecepcionDatos, millis() - timers.ErrorVariacionDatos);
         INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, invert_pwm: %d, targetPwm: %d, battery: %.02f\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, invert_pwm, targetPwm, inverter.batteryWatts);
         INFOV("Rele 1: %s, Rele 2: %s, Rele 3: %s, Rele 4:%s\n", digitalRead(PIN_RL1) ? "ON" : "OFF", digitalRead(PIN_RL2) ? "ON" : "OFF", digitalRead(PIN_RL3) ? "ON" : "OFF", digitalRead(PIN_RL4) ? "ON" : "OFF");
@@ -1051,6 +1097,6 @@ void loop()
       if (inverter.wsolar > config.potManPwm && Flags.pwmManAuto) {
         Flags.pwmManAuto = false;
       }
-    } 
+    }
   }
 } // End loop

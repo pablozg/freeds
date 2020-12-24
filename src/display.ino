@@ -268,7 +268,7 @@ void data_display(void)
           display.setTextAlignment(TEXT_ALIGN_LEFT);    
           display.drawString(0, 0,  ("IP: " + WiFi.localIP().toString()));
           display.drawString(0, 12, ("SSID: " + WiFi.SSID() + " (" + String(WifiGetRssiAsQuality((int8_t)WiFi.RSSI())) + "%)"));
-          display.drawString(0, 24, ("Frec. Pwm: " + String((float)config.pwmFrequency / 1000) + "Khz"));
+          display.drawString(0, 24, ("Frec. Pwm: " + String((float)config.pwmFrequency / 10000) + "Khz"));
           display.drawString(0, 36, ("PWM: " + String(pwmValue) + "% (" + String(invert_pwm) + ")"));
           display.drawString(0, 48, printUptimeOled());
           // if (Flags.ntpTime) {

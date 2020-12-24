@@ -127,8 +127,10 @@ void handleConfig(AsyncWebServerRequest *request)
 
   if (request->arg("changeGridSign") == "on") {
     config.flags.changeGridSign = true;
+    myPID.SetControllerDirection(DIRECT);
   } else {
     config.flags.changeGridSign = false;
+    myPID.SetControllerDirection(REVERSE);
   }
   
   if (request->hasArg("baudiosmeter")) {
@@ -241,7 +243,7 @@ void handleRelay(AsyncWebServerRequest *request)
     config.R04PotOff = request->arg("r04potoff").toInt();
   } else {
     config.flags.pwmEnabled = false;
-    down_pwm(true);
+    down_pwm(false, "PWM Down: Pwm Desactivated\n");
   }
 
   config.attachedLoadWatts = request->arg("loadwatts").toInt();
@@ -297,9 +299,9 @@ void handleRelay(AsyncWebServerRequest *request)
   request->arg("R03_man") == "on" ? config.relaysFlags.R03Man = true : config.relaysFlags.R03Man = false;
   request->arg("R04_man") == "on" ? config.relaysFlags.R04Man = true : config.relaysFlags.R04Man = false;
 
-  if (config.pwmFrequency != constrain(request->arg("frecpwm").toInt(), 10, 3000)){
-    config.pwmFrequency = constrain(request->arg("frecpwm").toInt(), 10, 3000);
-    ledcWriteTone(2, config.pwmFrequency);
+  if (config.pwmFrequency != constrain(request->arg("frecpwm").toInt(), 10, 30000)){
+    config.pwmFrequency = constrain(request->arg("frecpwm").toInt(), 10, 30000);
+    ledcWriteTone(2, (double)config.pwmFrequency / 10.0);
   }
 
   relay_control_man(false); // Control de relays
@@ -651,11 +653,6 @@ void setWebConfig(void)
     request->send(SPIFFS, "/weblog.html", "text/html", false, processorOta);
   });
 
-  server.on("/backup.html", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
-    checkAuth(request);
-    request->send(SPIFFS, "/backup.html", "text/html", false, processorOta);
-  });
-
   //////////// JAVASCRIPT EN LA MEMORIA SPPIFS ////////
   
   server.on("/sb-admin-2.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
@@ -810,6 +807,7 @@ void setWebConfig(void)
     memset(&inverter, 0, sizeof(inverter));
     memset(&meter, 0, sizeof(meter));
     Error.VariacionDatos = true;
+    Flags.pwmIsWorking = true;
     defineWebMonitorFields(config.wversion);
 
     AsyncWebServerResponse *response = request->beginResponse(200);
@@ -869,11 +867,14 @@ void setWebConfig(void)
       break;
     case 6: // Encender / Apagar PWM
       config.flags.pwmEnabled = !config.flags.pwmEnabled;
+      if (config.flags.pwmEnabled) { myPID.SetMode(AUTOMATIC); }
+      else { myPID.SetMode(MANUAL); PIDOutput = 0; invert_pwm = 0; writePwmValue(invert_pwm);}
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;
     case 7: // Encender / Apagar PWM Manual
       config.flags.pwmMan = !config.flags.pwmMan;
+      config.flags.pwmMan ? myPID.SetMode(0) : myPID.SetMode(1);
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;
@@ -1003,31 +1004,36 @@ void setWebConfig(void)
       saveEEPROM();
     }
 
-    if (comando == "calibration") {
-      emon1.current(ADC_INPUT, value);  
-      saveEEPROM();
-    }
-
     if (comando == "useClamp") {
-      if (value == 1) { config.flags.useClamp = true; }
-      else { config.flags.useClamp = false; }
+      if (value == 1) { config.flags.useClamp = true; myPID.SetControllerDirection(DIRECT); }
+      else { config.flags.useClamp = false; myPID.SetControllerDirection(REVERSE); }
       saveEEPROM();
     }
 
-    if (comando == "storeClampValues") {
-      // Disable pwm Output
-      down_pwm(false);
+    if (comando == "clampCalibration") {
+      if (payload != "clampCalibration") {
+        config.clampCalibration = payload.toFloat();
+        current(ADC_INPUT, config.clampCalibration);
+        saveEEPROM();
+        INFOV("Clamp calibration set to : %s\n",payload.c_str());
+      } else {
+        INFOV("Clamp calibration: %.02f\n", config.clampCalibration);
+      }  
+    }
 
-      // Start with a 5%
-      readClampPos = 0;
-      writeClampPwm();
-  
-      // Disable all timers and enable again the essentials timers
-      Tickers.disableAll();
-      Tickers.enable(0); // Oled
-      Tickers.enable(1); // Send Events
-      Tickers.enable(7); // Every 1000ms loop
-      Tickers.enable(8); // Store Clamp Values
+    if (comando == "clampVoltage") {
+      if (payload != "clampVoltage") {
+        config.clampVoltage = payload.toFloat();
+        saveEEPROM();
+        INFOV("Clamp Voltage set to : %s\n",payload.c_str());
+      } else {
+        INFOV("Clamp Voltage: %.02f\n", config.clampVoltage);
+      }
+    }
+
+    if (comando == "showClampCurrent") {
+      if (value == 1) { Flags.showClampCurrent = true; }
+      else { Flags.showClampCurrent = false; }
     }
 
     if (comando == "maxWattsTariff") {
@@ -1036,14 +1042,40 @@ void setWebConfig(void)
       saveEEPROM();
     }
 
-    if (comando == "writeConfig") {
-      writeConfigSpiffs("/config.bin");
+    if (comando == "tunePID") {
+       if (payload != "tunePID") {
+        char str[50];
+        uint8_t pos = 0;
+        strcpy(str, payload.c_str());
+        char * pch;
+        // INFOV("Payload: %s\n", str);
+        pch = strtok (str,";");
+        while (pch != NULL)
+        {
+          // INFOV("%s\n",pch);
+          config.PIDValues[pos] = atof(pch);
+          pos++;
+          pch = strtok (NULL, ";");
+        }
+        myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
+        INFOV("PID Values set to P%.05f, I%.05f, D%.05f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd());
+        saveEEPROM();
+       } else { INFOV("PID Values: P%.05f, I%.05f, D%.05f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd()); }
     }
 
-    if (comando == "readConfig") {
-      readConfigSpiffs();
+    if (comando == "SetControllerDirection") {
+      if (value == 1) { myPID.SetControllerDirection(REVERSE); }
+      else { myPID.SetControllerDirection(DIRECT); }
+      INFOV("Set direction to: %s\n", value == 1 ? "REVERSE" : "DIRECT");
     }
 
+    if (comando == "pwmFrec") {
+      if (value >= 0) { config.pwmFrequency = value; }
+      ledcSetup(2, (double)config.pwmFrequency / 10.0, 10); // Frecuencia según configuración, 10-bit resolution
+      INFOV("pwmFrequency: %.02f\n", (float)(config.pwmFrequency / 10.0));
+      saveEEPROM();
+    }
+    
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
     request->send(response);
@@ -1093,8 +1125,8 @@ void setWebConfig(void)
 
   server.on("/downloadBackup", HTTP_GET, [](AsyncWebServerRequest *request) {
     checkAuth(request);
-    char filename[30];
-    sprintf(filename, "/config_%s.bin", version);
+    char filename[50];
+    sprintf(filename, "/config_%s_%s.bin", config.hostServer, version);
     writeConfigSpiffs(filename);
     request->send(SPIFFS, filename, "application/octet-stream", true);
     SPIFFS.remove(filename);
@@ -1109,10 +1141,11 @@ void setWebConfig(void)
         INFOV("Update Start: %s\n", filename.c_str());
         Flags.Updating = true;
         config.flags.pwmEnabled = false;
-        down_pwm(false);
+        down_pwm(false, "PWM Down: Updating\n");
         Tickers.disableAll();
         mqttClient.disconnect();
-        Tickers.enable(0);
+        Tickers.enable(0); // Oled
+        Tickers.enable(1); // 500ms loop
         if (filename == "spiffs.bin") {
           SPIFFS.end();
           if(!Update.begin(UPDATE_SIZE_UNKNOWN, 100)) { Update.printError(Serial); }

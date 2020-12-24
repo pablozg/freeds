@@ -150,6 +150,7 @@ void WiFiEvent(WiFiEvent_t event)
 
     Tickers.enableAll();
     Tickers.disable(3); // Wifi
+    if (config.flags.useClamp) Tickers.disable(5); // PWM
     Tickers.disable(8); // Store Clamp Values
 
     if (!config.flags.mqtt || config.wversion == SOLAX_V2_LOCAL) {
@@ -168,7 +169,7 @@ void WiFiEvent(WiFiEvent_t event)
     Tickers.disableAll();
     Tickers.enable(0); // Display
     Tickers.enable(3); // Wifi
-    if (invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; down_pwm(false); } // PWM Shutdown
+    if (invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; down_pwm(false, "PWM Down: STA DISCONNECTED\n"); } // PWM Shutdown
     break;
 
   case SYSTEM_EVENT_WIFI_READY:
@@ -349,7 +350,6 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
           inverter.pv2v = (float)root["ENERGY"]["Pv2Voltage"]; // Tension string 2
           inverter.pw1 = (float)root["ENERGY"]["Pv1Power"];    // Potencia string 1
           inverter.pw2 = (float)root["ENERGY"]["Pv2Power"];    // Potencia string 2
-          //inverter.gridv = (float)root["ENERGY"]["Voltage"];   // Tension de red
           inverter.wtoday = (float)root["ENERGY"]["Today"];    // Potencia solar diaria
           inverter.wsolar = (float)root["ENERGY"]["Power"];    // Potencia solar actual
           inverter.temperature = (float)root["ENERGY"]["Temperature"];    // Temperatura Inversor
@@ -411,7 +411,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // pwm control ON-OFF
       INFOV("Mqtt - PWM control: %s\n", (char)payload[0] == '1' ? "ON" : "OFF");
       if ((char)payload[0] == '1') { config.flags.pwmEnabled = true; }
-      else { config.flags.pwmEnabled = false; down_pwm(true); }
+      else { config.flags.pwmEnabled = false; down_pwm(false, "PWM Dowm: Mqtt command received\n"); }
       saveEEPROM();
       return;
     }
@@ -440,7 +440,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // Pwm frequency
       int strData = atoi(payload);
       INFOV("Mqtt - PWM Frequency set to: %i\n", strData);
-      config.pwmFrequency = constrain(strData, 10, 3000);
+      config.pwmFrequency = constrain(strData, 10, 30000);
       saveEEPROM();
       return;
     }

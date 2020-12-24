@@ -25,6 +25,8 @@
 #define fastPwm 20 // 2 %
 #define downFactor 1.5 // (1.5% en lento, 4% en rápido)
 
+float targetEnergy; // Remove when debug is completed
+
 void pwmControl()
 { 
   if (config.flags.debug2) { INFOV("PWMCONTROL()\n"); }
@@ -49,67 +51,43 @@ void pwmControl()
     memset(&meter, 0, sizeof(meter));
   }
 
-  if (!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.VariacionDatos || Error.RecepcionDatos)))
-  {
-    down_pwm(true);
-  }
-
   //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
   {
-    uint16_t tariffOffset = config.maxWattsTariff * 0.06; // Se calcula un 3% del total contratado, unos 104W sobre 3450
+    static uint16_t tariffOffset = config.maxWattsTariff * 0.10; // Se calcula un 10% del total contratado, unos 345W sobre 3450W contratados.
     uint16_t maxTargetPwm = calculeTargetPwm(config.manualControlPWM);
-    // if (config.flags.dimmerLowCost) { 
-    //   maxTargetPwm = ((((config.maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210);
-    //   if (maxTargetPwm <= 210) { targetPwm = 0; }
-    // } else { maxTargetPwm = (1023 * config.manualControlPWM) / 100; }
 
     if (config.flags.changeGridSign ? inverter.wgrid < (config.maxWattsTariff - tariffOffset) : inverter.wgrid > -(config.maxWattsTariff - tariffOffset))
     {
-      if (targetPwm <= maxTargetPwm - 20) {
-        targetPwm += 20;
-      } else { targetPwm = maxTargetPwm;}
+      if (config.flags.useClamp) {
+        upPwmClamp();
+      } else {
+        if (targetPwm < maxTargetPwm) {
+          targetPwm += 8;
+        } else { targetPwm = maxTargetPwm; }
+      }
+      
+      if (config.flags.dimmerLowCost && targetPwm < 210)
+          targetPwm = 210;
     }
     
     if (config.flags.changeGridSign ? inverter.wgrid > config.maxWattsTariff : inverter.wgrid < -config.maxWattsTariff) {
-      if (targetPwm >= 25) {
-        targetPwm -= 25;
-      } else { targetPwm = 0;}
+      if (config.flags.useClamp) {
+        downPwmClamp();
+      } else {
+        if (targetPwm >= 8) {
+          targetPwm -= 8;
+        } else { targetPwm = 0; }
+      }
+
+      if (config.flags.dimmerLowCost && targetPwm < 210)
+          targetPwm = 0;
     }
-   
+
+    if (!config.flags.useClamp) { invert_pwm = targetPwm; }
+
     relay_control_man(false);
-
-    if (invert_pwm < targetPwm)
-    {
-      up_pwm("PWM MANUAL: SUBIENDO POTENCIA\n");
-    }
-    else if (invert_pwm > targetPwm)
-    {
-      if ((invert_pwm - targetPwm) > (fastPwm * downFactor)) {
-        invert_pwm -= (fastPwm * downFactor);
-      } else if ((invert_pwm - targetPwm) > (slowPwm * downFactor)) {
-        invert_pwm -= (slowPwm * downFactor);
-      } else if ((invert_pwm - targetPwm) >= 10) {
-        invert_pwm -= 10;
-      } else if ((invert_pwm - targetPwm) >= 5) {
-        invert_pwm -= 5;
-      } else if (invert_pwm >= 1) {
-        invert_pwm--;
-      }
-  
-      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
-
-      invert_pwm = constrain(invert_pwm, 0, maxPwm);
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug1) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
-      }
-    }
-    
-    writePwmValue(invert_pwm);
-
-    // INFOV("Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n", targetPwm, invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
+    // INFOV("2- Max Target: %d, Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n\n", maxTargetPwm, targetPwm, invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
   }
 
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
@@ -128,7 +106,8 @@ void pwmControl()
           config.flags.changeGridSign ? inverter.wgrid < config.pwmMax : inverter.wgrid > config.pwmMax
          ) 
       {
-        up_pwm("PWM: SUBIENDO POTENCIA\n");
+        // config.flags.useClamp ? upPwmClamp() : up_pwm("PWM: SUBIENDO POTENCIA\n");
+        config.flags.useClamp ? upPwmClamp() : calcTargetPID();
       }
     }
     else if (config.flags.offGrid ?
@@ -139,11 +118,12 @@ void pwmControl()
               (config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts
             )
     {
-      down_pwm(true, "PWM: BAJANDO POTENCIA\n");
+      // config.flags.useClamp ? downPwmClamp() : down_pwm(true, "PWM: BAJANDO POTENCIA\n");
+      config.flags.useClamp ? downPwmClamp() : calcTargetPID();
     }
   }
 
-  calcPwmProgressBar();
+  writePwmValue(invert_pwm);
 
   /////////////////////////////////////////////////////////////// SALIDAS POR PORCENTAJE ////////////////////////////////////////////////////////////////////////////////
 
@@ -368,7 +348,6 @@ void disableRelay(void)
 void calcPwmProgressBar()
 {
   // Arreglos necesarios para mostrar el % correcto en caso de usar el dimmer low cost afectado por el fallo del 20%
-
   if (config.flags.dimmerLowCost) {
     if (invert_pwm > 0) { pwmValue = round(((invert_pwm - 210) * 100.0) / (config.maxPwmLowCost - 210.0)); }
     else pwmValue = 0;
@@ -424,7 +403,7 @@ void up_pwm(const char *message) {
     if (config.flags.debug1) { INFOV(PSTR(message)); }
     last_invert_pwm = invert_pwm;
   }
-  writePwmValue(invert_pwm);
+  // writePwmValue(invert_pwm);
 }
 
 void down_pwm(boolean softDown, const char *message)
@@ -445,13 +424,16 @@ void down_pwm(boolean softDown, const char *message)
 
     if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
     invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
-    writePwmValue(invert_pwm);
+    // writePwmValue(invert_pwm);
   } else {
+    myPID.SetMode(MANUAL);
+    PIDOutput = 0;
     invert_pwm = 0;
     pwmValue = 0;
     ledcWrite(2, 0); // Hard shutdown
     dac_output_disable(DAC_CHANNEL_2);
     INFOV("PWM disabled\n");
+    calcPwmProgressBar();
   }
 
   if (invert_pwm != last_invert_pwm)
@@ -461,15 +443,28 @@ void down_pwm(boolean softDown, const char *message)
   }
 
   relay_control_man(!softDown);
-  calcPwmProgressBar();
+}
+
+void calcTargetPID(void)
+{
+  if (!config.flags.pwmMan && !Flags.pwmManAuto) { 
+    Setpoint = config.flags.changeGridSign ? config.pwmMin + ((config.pwmMax - config.pwmMin) / 2) : config.pwmMax + ((config.pwmMin - config.pwmMax) / 2);
+  }
 }
 
 void writePwmValue(uint16_t value)
 {
-  if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
+  // if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
+  if (config.flags.dimmerLowCost) {
+    if (value <= 210) 
+      value = 0;
+    if (value > 1023) 
+      value -= 1023;
+  } 
   
   ledcWrite(2, value);
   dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
+  calcPwmProgressBar();
 }
 
 uint16_t calculeTargetPwm(uint16_t targetValue)
@@ -478,9 +473,46 @@ uint16_t calculeTargetPwm(uint16_t targetValue)
 
   if (config.flags.dimmerLowCost) { 
     maxTargetPwm = ((((config.maxPwmLowCost - 210) * targetValue) / 100) + 210);
-    if (maxTargetPwm <= 210) { targetPwm = 0; }
+    if (maxTargetPwm <= 210) { maxTargetPwm = 0; }
   } else { maxTargetPwm = (1023 * targetValue) / 100; }
 
   return maxTargetPwm;
+}
+
+void upPwmClamp(void)
+{
+  uint16_t maxPwm;
+  static uint16_t tariffOffset = config.maxWattsTariff * 0.10; // Se calcula un 10% del total contratado, unos 345W sobre 3450W contratados.
+  
+  if (config.flags.pwmMan || Flags.pwmManAuto) {
+    targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts + ((config.maxWattsTariff - tariffOffset) - inverter.wgrid) : inverter.currentCalcWatts + ((config.maxWattsTariff - tariffOffset) + inverter.wgrid);
+  } else {
+    targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts + (-inverter.wgrid - ((config.pwmMin - config.pwmMax) / 3)) : inverter.currentCalcWatts + (inverter.wgrid - ((config.pwmMin - config.pwmMax) / 3)); // hasta ahora /2
+  }
+
+  // Si el pwm está al máximo salimos inmediatamente
+  if (config.flags.dimmerLowCost) { 
+    maxPwm = ((((config.maxPwmLowCost - 210) * 100) / 100) + 210);
+  } else { maxPwm = 1023; }
+  
+  if (invert_pwm >= maxPwm)
+    return;
+
+  Setpoint = targetEnergy;
+}
+
+void downPwmClamp(void)
+{ 
+  if (config.flags.pwmMan || Flags.pwmManAuto) {
+    targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts - (inverter.wgrid - config.maxWattsTariff) : inverter.currentCalcWatts - (-inverter.wgrid - config.maxWattsTariff);
+  } else {
+    targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts - (inverter.wgrid + ((config.pwmMin - config.pwmMax) * 0.8)) : inverter.currentCalcWatts + (inverter.wgrid - ((config.pwmMin - config.pwmMax) * 0.8));
+  }
+
+  // Si el pwm está a 0 salimos inmediatamente
+  if (invert_pwm == 0)
+    return;
+
+  Setpoint = targetEnergy;
 }
 

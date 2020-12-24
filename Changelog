@@ -1,7 +1,8 @@
 Versión 1.0.7
 
-	- Solucionado fallo usando el programador cuando el control por temperatura está activado.
-	- Solucionado fallo con el comando para reiniciar los contadores.
+	- Solucionado bug usando el programador cuando el control por temperatura está activado.
+	- Solucionado bug con el comando para reiniciar los contadores.
+	- Solucionado bug en el cambio de contraseña según su longitud.
 	- Cambio de posición del parametro "Parche derivador lowcost", para evitar confusiones (sugerido por F. Cadenas) y mejoras en el entorno web.
 	- Deshabilitada la opción de programador si no ha actualizado la hora correctamente.
 	- Añadida la posibilidad de cambiar el topic del SoC con el modo ICC Solar.
@@ -9,10 +10,10 @@ Versión 1.0.7
 	- Añadido comando por consola para cambiar entre Soc / Voltaje de batería como modo de funcionamiento en instalaciones aisladas. (offgridVoltage 1 / offgridVoltage 0)
 	- Añadido comando para configurar el servidor ntp (pool.ntp.org por defecto), uso: ntpServer ip / nombre_servidor (Ejemplo: ntpServer pool.ntp.org)
 	- Mejorada la estabilidad en la lectura de los datos de wibeee. (gracias a David y Felipe por las pruebas).
-	- Añadidas dos frecuencias para su uso con el ultra low cost (12 y 25 Hz).
+	- Añadidas dos frecuencias para su uso con el ultra low cost (12.5 y 25 Hz) y cambio de escala de frecuencia almacenada.
 	- Añadida opción para restaurar y descargar el fichero de configuración dentro de la página de Actualización.
+	- Tamaño de eeprom ampliado a 2048 bytes (2Kb)
 
-	- TODO: Permitir exportar la configuración en json y restaurarla posteriormente.
 	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado
 	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
   	- TODO: pinwatchdog o reinicio preventivo programable
