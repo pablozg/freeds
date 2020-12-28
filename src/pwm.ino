@@ -84,10 +84,10 @@ void pwmControl()
   {
     if (config.flags.offGrid ? // Modo Off-grid
         (config.flags.offgridVoltage ? // True
-          myPID.GetMode() == MANUAL && inverter.batteryWatts > Setpoint && meter.voltage >= config.batteryVoltage : // True
-          myPID.GetMode() == MANUAL && inverter.batteryWatts > Setpoint && inverter.batterySoC >= config.soc // False
+          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.batteryWatts < Setpoint : inverter.batteryWatts > Setpoint) && meter.voltage >= config.batteryVoltage : // True
+          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.batteryWatts < Setpoint : inverter.batteryWatts > Setpoint) && inverter.batterySoC >= config.soc // False
         ) : // Modo On-grid
-          myPID.GetMode() == MANUAL && inverter.wgrid > Setpoint && inverter.batteryWatts >= config.battWatts // False
+          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.wgrid < Setpoint : inverter.wgrid > Setpoint) && inverter.batteryWatts >= config.battWatts // False
        )
     {
         myPID.SetMode(AUTOMATIC);
