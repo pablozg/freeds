@@ -218,14 +218,16 @@ void handleConfig(AsyncWebServerRequest *request)
   fauxmo.enable(config.flags.alexaControl);
    
   saveEEPROM();
+
+  down_pwm(); // Reset PID to ensure use the new configuration
 }
 
 void handleRelay(AsyncWebServerRequest *request)
 {
   if (request->arg("pwmactive") == "on") {
     config.flags.pwmEnabled = true;
-    config.pwmMin = request->arg("pwmmin").toInt();
-    config.pwmMax = request->arg("pwmmax").toInt();
+    config.potTarget = request->arg("pottarget").toInt();
+    Setpoint = config.potTarget;
     
     config.R01Min = request->arg("r01min").toInt();
     config.R02Min = request->arg("r02min").toInt();
@@ -267,16 +269,18 @@ void handleRelay(AsyncWebServerRequest *request)
     Flags.pwmManAuto = false;
   }
 
-  if (request->arg("lowcostactive") == "on") {
-    config.flags.dimmerLowCost = true;
-  } else {
-    config.flags.dimmerLowCost = false;
-  }
-
   if (request->hasArg("maxpwmlowcost")) {
     config.maxPwmLowCost = constrain(request->arg("maxpwmlowcost").toInt(), 1024, 1232);
   }
   
+  if (request->arg("lowcostactive") == "on") {
+    config.flags.dimmerLowCost = true;
+    myPID.SetOutputLimits(0, config.maxPwmLowCost);
+  } else {
+    config.flags.dimmerLowCost = false;
+    myPID.SetOutputLimits(0, 1023);
+  }
+
   Flags.timerSet = false;
   if (request->arg("timeractive") == "on") {
     config.flags.timerEnabled = true;
@@ -354,7 +358,10 @@ const char *sendJsonWeb(void)
   jsonValues["pwm"] = pwmValue;
    
   dtostrfd(inverter.currentCalcWatts, 0, tmpString);
-  jsonValues["loadCalcWatts"] = tmpString;
+  if (config.flags.useClamp) { 
+    if (Flags.bootCompleted) { jsonValues["loadCalcWatts"] = tmpString; }
+    else { jsonValues["loadCalcWatts"] = 0; }
+  } else { jsonValues["loadCalcWatts"] = tmpString; }
 
   jsonValues["baudiosMeter"] = config.baudiosMeter;
   jsonValues["configwVersion"] = config.wversion;
@@ -368,6 +375,10 @@ const char *sendJsonWeb(void)
   // Inverter data
   if (webMonitorFields.wsolar) {
     dtostrfd(inverter.wsolar, 2, tmpString);
+    // Para Juan
+    // char tmpString2[100];
+    // sprintf(tmpString2, "%.02f (MPTT: %.02f AC-IN: %.02fW, AC-OUT: %.02fW)", inverter.wsolar + inverter.acIn + inverter.acOut, inverter.wsolar, inverter.acIn, inverter.acOut);
+    // jsonValues["wsolar"] = tmpString2;
     jsonValues["wsolar"] = tmpString;
   }
 
@@ -810,6 +821,9 @@ void setWebConfig(void)
     Flags.pwmIsWorking = true;
     defineWebMonitorFields(config.wversion);
 
+    myPID.SetMode(MANUAL);
+    down_pwm();
+
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
     request->send(response);
@@ -1063,6 +1077,13 @@ void setWebConfig(void)
        } else { INFOV("PID Values: P%.05f, I%.05f, D%.05f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd()); }
     }
 
+    if (comando == "useSolarAsMPTT") {
+      if (value == 1) { config.flags.useSolarAsMPTT = true; }
+      else { config.flags.useSolarAsMPTT = false; }
+      saveEEPROM();
+    }
+
+    /////////////////// DEBUG COMMANDS ///////////////////
     if (comando == "SetControllerDirection") {
       if (value == 1) { myPID.SetControllerDirection(REVERSE); }
       else { myPID.SetControllerDirection(DIRECT); }
@@ -1138,6 +1159,8 @@ void setWebConfig(void)
     if (!index) {
       /// Check if extension is .bin
       if (strcmp(get_filename_ext(filename.c_str()), "bin") == 0) {
+        memset(&inverter, 0, sizeof(inverter));
+        memset(&meter, 0, sizeof(meter));
         INFOV("Update Start: %s\n", filename.c_str());
         Flags.Updating = true;
         config.flags.pwmEnabled = false;

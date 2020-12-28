@@ -176,7 +176,8 @@ union {
     uint32_t pwmIsWorking : 1;    // Bit 18
     uint32_t pwmManAuto : 1;      // Bit 19
     uint32_t showClampCurrent : 1;// Bit 20
-    uint32_t spare : 11;          // Bit 21 - 31
+    uint32_t bootCompleted : 1;   // Bit 21
+    uint32_t spare : 10;          // Bit 22 - 31
   };
 } Flags;
 
@@ -226,7 +227,8 @@ typedef union {
     uint32_t offgridVoltage : 1;     // Bit 23
     uint32_t debug5 : 1;             // Bit 24
     uint32_t useClamp : 1;           // Bit 25
-    uint32_t spare : 6;              // Bit 26 - 31
+    uint32_t useSolarAsMPTT : 1;     // Bit 26
+    uint32_t spare : 5;              // Bit 27 - 31
   };
 } SysBitfield;
 
@@ -289,8 +291,8 @@ struct CONFIG
   char dns2[16];
 
   // SALIDAS RELÉS
-  int16_t pwmMin;
-  int16_t pwmMax;
+  int16_t potTarget;
+  int16_t free16_1;
  
   uint16_t R01Min;
   int16_t R01PotOn;
@@ -460,6 +462,8 @@ struct INVERTER
   float batterySoC;
   float loadWatts = 0;
   float currentCalcWatts = 0;
+  float acIn = 0;
+  float acOut = 0;
 } inverter;
 
 struct UPTIME
@@ -661,8 +665,7 @@ void defaultValues()
   strcpy(config.mask, "255.255.255.0");
   strcpy(config.dns1, "8.8.8.8");
   strcpy(config.dns2, "1.1.1.1");
-  config.pwmMin = 150;
-  config.pwmMax = 50;
+  config.potTarget = 150;
   config.flags.pwmEnabled = true;
   config.relaysFlags.R01Man = false;
   config.relaysFlags.R02Man = false;
@@ -766,7 +769,6 @@ void defaultValues()
 void configureTickers(void)
 {
   Tickers.add(0, 400,  [&](void *) { data_display(); }, nullptr, true);                 // OLED loop
-  // Tickers.add(1, 500,  [&](void *) { send_events(); }, nullptr, false);                 // Send Events to Webpage
   Tickers.add(1, 500,  [&](void *) { every500ms(); }, nullptr, false);                  // 500ms functions loop
   Tickers.add(2, 5000, [&](void *) { connectToMqtt(); }, nullptr, false);               // Reconnect mqtt every 5 seconds
   Tickers.add(3, 5000, [&](void *) { connectToWifi(); }, nullptr, false);               // Reconnect Wifi  every 5 seconds
@@ -792,10 +794,6 @@ void setup()
   adc1_config_width(ADC_WIDTH_BIT_12);
   adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_11);
   
-  // analogReadResolution(12);
-  // adcAttachPin(ADC_INPUT);
-  // analogSetClockDiv(255); // 1338mS
-
   Flags.data = 0; // All Bits to false
   Flags.RelayTurnOn = true;
 
@@ -865,7 +863,6 @@ void setup()
     saveEEPROM();
   }
 
-  // emon1.current(ADC_INPUT, config.clampCalibration); // 2000 Turns / 62 Ohms burden resistor SCT-013 30A/1V
   current(ADC_INPUT, config.clampCalibration); // 2000 Turns / 62 Ohms burden resistor SCT-013 30A/1V
 
   // Si no está confgurada la wifi, creamos un Punto de acceso con el SSID FreeDS
@@ -978,6 +975,7 @@ void setup()
       sensors.begin();
       sensors.setResolution(9);
       buildSensorArray();
+
       setWebConfig();
       defineWebMonitorFields(config.wversion);
     }
@@ -986,12 +984,12 @@ void setup()
     xTimerStart(startTimer, 0);
 
     // PID Config
-    myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
-    myPID.SetOutputLimits(0, config.maxPwmLowCost); // Falta Añadir esta linea al handle de configuración.
-    // myPID.SetOutputLimits(0, 1023); // Falta Añadir esta linea al handle de configuración.
-    myPID.SetSampleTime(600);
+    myPID.SetSampleTime(1000);
+    config.flags.dimmerLowCost ? myPID.SetOutputLimits(0, config.maxPwmLowCost) : myPID.SetOutputLimits(0, 1023); // Falta Añadir esta linea al handle de configuración.
     config.flags.pwmMan ? myPID.SetMode(MANUAL) : myPID.SetMode(AUTOMATIC);
     config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
+    myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
+    Setpoint = config.potTarget;
   }
 
   // HTTP server
@@ -1023,17 +1021,15 @@ void loop()
 
   updateUptime();
   
-  if (Flags.firstInit) { dnsServer.processNextRequest(); }
-  else { fauxmo.handle(); }
+  Flags.firstInit ? dnsServer.processNextRequest() : fauxmo.handle();
 
   if (config.flags.wifi && !Flags.firstInit)
   {
     Tickers.update(); // Actualiza todos los tareas Temporizadas
     changeScreen();
 
-    myPID.Compute();
     // Falta solucionar problema del output en las lowcost con parche activado.
-    if (config.flags.pwmEnabled && !Error.VariacionDatos && Flags.pwmIsWorking && myPID.GetMode() == 1) {
+    if (config.flags.pwmEnabled && !Error.VariacionDatos && Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC && myPID.Compute()) {
       targetPwm = invert_pwm = (uint16_t)PIDOutput;
       if (config.flags.dimmerLowCost && invert_pwm > 0 && invert_pwm < 210) { invert_pwm = 210; }
       // if (config.flags.dimmerLowCost && invert_pwm > 0) { targetPwm = invert_pwm += 210; }
@@ -1042,7 +1038,7 @@ void loop()
     
     if (config.flags.sensorTemperatura) { checkTemperature(); }
     
-    long diffErrorRecepcionDatos = millis() - timers.ErrorRecepcionDatos ;
+    long diffErrorRecepcionDatos = millis() - timers.ErrorRecepcionDatos;
     if ( diffErrorRecepcionDatos < 0) diffErrorRecepcionDatos = 0;
 
     if (config.flags.debug4) { 

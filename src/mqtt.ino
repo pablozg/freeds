@@ -150,7 +150,6 @@ void WiFiEvent(WiFiEvent_t event)
 
     Tickers.enableAll();
     Tickers.disable(3); // Wifi
-    if (config.flags.useClamp) Tickers.disable(5); // PWM
     Tickers.disable(8); // Store Clamp Values
 
     if (!config.flags.mqtt || config.wversion == SOLAX_V2_LOCAL) {

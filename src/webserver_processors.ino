@@ -640,13 +640,9 @@ String processorSalidas(const String &var)
   {
     return String(config.attachedLoadWatts);
   }
-  if (var == "PWMMIN")
+  if (var == "POTTARGET")
   {
-    return String(config.pwmMin);
-  }
-  if (var == "PWMMAX")
-  {
-    return String(config.pwmMax);
+    return String(config.potTarget);
   }
   if (var == "LOOPPWM")
   {

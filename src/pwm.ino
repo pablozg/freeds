@@ -20,8 +20,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-float targetEnergy; // Remove when debug is completed
-
 void pwmControl()
 { 
   if (config.flags.debug2) { INFOV("PWMCONTROL()\n"); }
@@ -45,6 +43,9 @@ void pwmControl()
     memset(&inverter, 0, sizeof(inverter));
     memset(&meter, 0, sizeof(meter));
   }
+
+  // if (!Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC) { Setpoint = 0; myPID.SetMode(MANUAL); }
+  if (!Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC) { down_pwm(); }
 
   //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
@@ -72,6 +73,7 @@ void pwmControl()
     }
 
     invert_pwm = targetPwm;
+    writePwmValue(invert_pwm);
 
     relay_control_man(false);
     INFOV("2- Max Target: %d, Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n\n", maxTargetPwm, targetPwm, invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
@@ -82,37 +84,27 @@ void pwmControl()
   {
     if (config.flags.offGrid ? // Modo Off-grid
         (config.flags.offgridVoltage ? // True
-          (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && meter.voltage >= config.batteryVoltage : // True
-          (config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMin : inverter.batteryWatts > config.pwmMin) && inverter.batterySoC >= config.soc // False
+          myPID.GetMode() == MANUAL && inverter.batteryWatts > Setpoint && meter.voltage >= config.batteryVoltage : // True
+          myPID.GetMode() == MANUAL && inverter.batteryWatts > Setpoint && inverter.batterySoC >= config.soc // False
         ) : // Modo On-grid
-        (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts // False
+          myPID.GetMode() == MANUAL && inverter.wgrid > Setpoint && inverter.batteryWatts >= config.battWatts // False
        )
     {
-      if (config.flags.offGrid ?
-          config.flags.changeGridSign ? inverter.batteryWatts < config.pwmMax : inverter.batteryWatts > config.pwmMax :
-          config.flags.changeGridSign ? inverter.wgrid < config.pwmMax : inverter.wgrid > config.pwmMax
-         ) 
-      {
-        
-        // Falta adaptar el código del objetivo a las configuraciones de aislada y baterías.
-        // Como idea pasando de manual a automatico el pid según se vayan cumpliendo las condiciones
-        // Crear función o condición para cuando se pase a manual el invert_pwm esté siempre a 0.
-        calcTargetPID();
-      }
+        myPID.SetMode(AUTOMATIC);
+        config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
+        Setpoint = config.potTarget;
     }
     else if (config.flags.offGrid ?
               (config.flags.offgridVoltage ?
-                (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || meter.voltage < (config.batteryVoltage - 0.10) : // True
-                (config.flags.changeGridSign ? inverter.batteryWatts > config.pwmMax : inverter.batteryWatts < config.pwmMax) || inverter.batterySoC < config.soc // False
+                myPID.GetMode() == AUTOMATIC && meter.voltage < (config.batteryVoltage - 0.10) : // True
+                myPID.GetMode() == AUTOMATIC && inverter.batterySoC < config.soc // False
               ) :
-              (config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts
+                myPID.GetMode() == AUTOMATIC && inverter.batteryWatts < config.battWatts
             )
     {
-      calcTargetPID();
+      down_pwm();
     }
   }
-
-  writePwmValue(invert_pwm);
 
   /////////////////////////////////////////////////////////////// SALIDAS POR PORCENTAJE ////////////////////////////////////////////////////////////////////////////////
 
@@ -379,13 +371,14 @@ void relay_control_man(boolean forceOFF)
 void down_pwm(const char *message)
 {
   myPID.SetMode(MANUAL);
-    PIDOutput = 0;
-    invert_pwm = 0;
-    pwmValue = 0;
-    ledcWrite(2, 0); // Hard shutdown
-    dac_output_disable(DAC_CHANNEL_2);
-    INFOV("PWM disabled\n");
-    calcPwmProgressBar();
+  PIDOutput = 0;
+  Setpoint = 0;
+  invert_pwm = 0;
+  pwmValue = 0;
+  ledcWrite(2, 0); // Hard shutdown
+  dac_output_disable(DAC_CHANNEL_2);
+  INFOV("PWM disabled\n");
+  calcPwmProgressBar();
 
   if (invert_pwm != last_invert_pwm)
   {
@@ -394,13 +387,6 @@ void down_pwm(const char *message)
   }
 
   relay_control_man(true);
-}
-
-void calcTargetPID(void)
-{
-  if (!config.flags.pwmMan && !Flags.pwmManAuto) { 
-    Setpoint = config.flags.changeGridSign ? config.pwmMin + ((config.pwmMax - config.pwmMin) / 2) : config.pwmMax + ((config.pwmMin - config.pwmMax) / 2);
-  }
 }
 
 void writePwmValue(uint16_t value)

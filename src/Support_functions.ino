@@ -628,12 +628,12 @@ float getFragmentation() {
 void bootTimer(void)
 {
   xTimerStop(startTimer, 0);
-  Tickers.enable(5);
+  Flags.bootCompleted = true;
 }
 
 void readClamp(void)
 {
-  PIDInput = inverter.wgrid;
+  PIDInput = config.flags.offGrid ? inverter.batteryWatts : inverter.wgrid;
 
   if (config.flags.useClamp) {
     double amps = calcIrms(1484); // Calculate Irms only
@@ -864,6 +864,8 @@ void checkEEPROM(void) {
     config.clampVoltage = 230.0;
     strcpy(config.ntpServer, "pool.ntp.org");
     config.pwmFrequency *= 10;
+    config.potTarget = 150;
+    config.flags.useSolarAsMPTT = false;
     config.eeinit = 0x17;
     INFOV(PSTR("EEPROM Settings upgraded from version %x to version %x\n"), actualVersion, config.eeinit);
     saveEEPROM();

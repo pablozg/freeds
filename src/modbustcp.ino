@@ -102,12 +102,14 @@ registerData smaRegistersIsland[] = { // Sunny Island
 };
 
 registerData victronRegisters[] = {
-    &inverter.wgrid, 100, 820, 1, S16FIX0,
     &meter.voltage, 100, 840, 1, U16FIX1,
     &meter.current, 100, 841, 1, S16FIX1,
     &inverter.batteryWatts, 100, 842, 1, S16FIX0,
     &inverter.batterySoC, 100, 843, 1, U16FIX0,
-    &inverter.wsolar, 100, 850, 1, U16FIX0
+    &inverter.acIn, 100, 811, 1, U16FIX0,
+    &inverter.acOut, 100, 808, 1, U16FIX0,
+    &inverter.wsolar, 100, 850, 1, U16FIX0,
+    &inverter.wgrid, 100, 820, 1, S16FIX0,
 };
 
 registerData froniusRegisters[] = {
@@ -509,8 +511,8 @@ void configModbusTcp(void)
 
         if (config.wversion == SMA_BOY && a->address == 30867 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == SMA_ISLAND && a->address == 30775 && !config.flags.changeGridSign) { inverter.batteryWatts *= -1.0; }
-        if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
-        if (config.wversion == HUAWEI_MODBUS && a->address == 37113 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; if (config.flags.useSolarAsMPTT) { inverter.batteryWatts += inverter.wsolar;} }
+        if (config.wversion == HUAWEI_MODBUS && a->address == 37113 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; if (config.flags.useSolarAsMPTT) { inverter.batteryWatts += inverter.wsolar;} }
         if (config.wversion == SOLAREDGE && a->address == 40206 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         Error.RecepcionDatos = false;
         timers.ErrorRecepcionDatos = millis();
