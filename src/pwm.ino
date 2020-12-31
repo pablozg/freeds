@@ -24,8 +24,7 @@ void pwmControl()
 { 
   if (config.flags.debug2) { INFOV("PWMCONTROL()\n"); }
 
-  if (config.flags.dimmerLowCost) { maxPwm = config.maxPwmLowCost; } 
-  else { maxPwm = 1023;}
+  config.flags.dimmerLowCost ? maxPwm = config.maxPwmLowCost : maxPwm = 1023;
 
   // Check pwm_output
   if ((inverter.wgrid_control != inverter.wgrid) || config.flags.offGrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
@@ -44,7 +43,6 @@ void pwmControl()
     memset(&meter, 0, sizeof(meter));
   }
 
-  // if (!Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC) { Setpoint = 0; myPID.SetMode(MANUAL); }
   if (!Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC) { down_pwm(); }
 
   //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
@@ -96,7 +94,7 @@ void pwmControl()
     }
     else if (config.flags.offGrid ?
               (config.flags.offgridVoltage ?
-                myPID.GetMode() == AUTOMATIC && meter.voltage < (config.batteryVoltage - 0.10) : // True
+                myPID.GetMode() == AUTOMATIC && meter.voltage < (config.batteryVoltage - config.voltageOffset) : // True
                 myPID.GetMode() == AUTOMATIC && inverter.batterySoC < config.soc // False
               ) :
                 myPID.GetMode() == AUTOMATIC && inverter.batteryWatts < config.battWatts
@@ -391,14 +389,8 @@ void down_pwm(const char *message)
 
 void writePwmValue(uint16_t value)
 {
-  // if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
-  if (config.flags.dimmerLowCost) {
-    if (value <= 210) 
-      value = 0;
-    if (value > 1023) 
-      value -= 1023;
-  } 
-  
+  if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
+    
   ledcWrite(2, value);
   dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
   calcPwmProgressBar();
@@ -415,41 +407,3 @@ uint16_t calculeTargetPwm(uint16_t targetValue)
 
   return maxTargetPwm;
 }
-
-// void upPwmClamp(void)
-// {
-//   uint16_t maxPwm;
-//   static uint16_t tariffOffset = config.maxWattsTariff * 0.10; // Se calcula un 10% del total contratado, unos 345W sobre 3450W contratados.
-  
-//   if (config.flags.pwmMan || Flags.pwmManAuto) {
-//     targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts + ((config.maxWattsTariff - tariffOffset) - inverter.wgrid) : inverter.currentCalcWatts + ((config.maxWattsTariff - tariffOffset) + inverter.wgrid);
-//   } else {
-//     targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts + (-inverter.wgrid - ((config.pwmMin - config.pwmMax) / 3)) : inverter.currentCalcWatts + (inverter.wgrid - ((config.pwmMin - config.pwmMax) / 3)); // hasta ahora /2
-//   }
-
-//   // Si el pwm está al máximo salimos inmediatamente
-//   if (config.flags.dimmerLowCost) { 
-//     maxPwm = ((((config.maxPwmLowCost - 210) * 100) / 100) + 210);
-//   } else { maxPwm = 1023; }
-  
-//   if (invert_pwm >= maxPwm)
-//     return;
-
-//   Setpoint = targetEnergy;
-// }
-
-// void downPwmClamp(void)
-// { 
-//   if (config.flags.pwmMan || Flags.pwmManAuto) {
-//     targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts - (inverter.wgrid - config.maxWattsTariff) : inverter.currentCalcWatts - (-inverter.wgrid - config.maxWattsTariff);
-//   } else {
-//     targetEnergy = config.flags.changeGridSign ? inverter.currentCalcWatts - (inverter.wgrid + ((config.pwmMin - config.pwmMax) * 0.8)) : inverter.currentCalcWatts + (inverter.wgrid - ((config.pwmMin - config.pwmMax) * 0.8));
-//   }
-
-//   // Si el pwm está a 0 salimos inmediatamente
-//   if (invert_pwm == 0)
-//     return;
-
-//   Setpoint = targetEnergy;
-// }
-

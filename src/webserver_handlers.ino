@@ -275,7 +275,7 @@ void handleRelay(AsyncWebServerRequest *request)
   
   if (request->arg("lowcostactive") == "on") {
     config.flags.dimmerLowCost = true;
-    myPID.SetOutputLimits(0, config.maxPwmLowCost);
+    myPID.SetOutputLimits(209, config.maxPwmLowCost);
   } else {
     config.flags.dimmerLowCost = false;
     myPID.SetOutputLimits(0, 1023);
@@ -375,11 +375,11 @@ const char *sendJsonWeb(void)
   // Inverter data
   if (webMonitorFields.wsolar) {
     dtostrfd(inverter.wsolar, 2, tmpString);
+    jsonValues["wsolar"] = tmpString;
     // Para Juan
     // char tmpString2[100];
     // sprintf(tmpString2, "%.02f (MPTT: %.02f AC-IN: %.02fW, AC-OUT: %.02fW)", inverter.wsolar + inverter.acIn + inverter.acOut, inverter.wsolar, inverter.acIn, inverter.acOut);
     // jsonValues["wsolar"] = tmpString2;
-    jsonValues["wsolar"] = tmpString;
   }
 
   if (webMonitorFields.wgrid) {
@@ -1016,6 +1016,16 @@ void setWebConfig(void)
       if (value == 1) { config.flags.offgridVoltage = true; }
       else { config.flags.offgridVoltage = false; }
       saveEEPROM();
+    }
+    
+    if (comando == "voltageOffset") {
+      if (payload != "voltageOffset") {
+        config.voltageOffset = payload.toFloat();
+        saveEEPROM();
+        INFOV("Voltage offset set to : %s\n",payload.c_str());
+      } else {
+        INFOV("Voltage offset: %.02f\n", config.voltageOffset);
+      }
     }
 
     if (comando == "useClamp") {

@@ -126,7 +126,6 @@ uint16_t invert_pwm = 0; // Up 1023 with 10 bits resolution.
 uint16_t last_invert_pwm = 0;
 
 uint8_t pwmValue = 0;
-uint8_t readClampPos = 0;
 
 uint8_t webMessageResponse = 0;
 boolean processData = false;
@@ -416,11 +415,14 @@ struct CONFIG
   // Clamp Voltage
   float clampVoltage;
   
-  // Store clampValues
+  // Store PIDValues
   float PIDValues[3];
 
+  // Battery Offset
+  float voltageOffset;
+
   // FREE MEMORY
-  uint8_t free[1048];
+  uint8_t free[1044];
 } config;
 
 struct METER
@@ -750,6 +752,7 @@ void defaultValues()
   config.soc = 100;
   config.battWatts = -60; // Sólo para ongrid
   config.batteryVoltage = 51.0;
+  config.voltageOffset = 0.30;
   config.maxWattsTariff = 3450;
   config.flags.showEnergyMeter = true;
   config.flags.useClamp = false;
@@ -985,7 +988,7 @@ void setup()
 
     // PID Config
     myPID.SetSampleTime(1000);
-    config.flags.dimmerLowCost ? myPID.SetOutputLimits(0, config.maxPwmLowCost) : myPID.SetOutputLimits(0, 1023); // Falta Añadir esta linea al handle de configuración.
+    config.flags.dimmerLowCost ? myPID.SetOutputLimits(209, config.maxPwmLowCost) : myPID.SetOutputLimits(0, 1023); // Falta Añadir esta linea al handle de configuración.
     config.flags.pwmMan ? myPID.SetMode(MANUAL) : myPID.SetMode(AUTOMATIC);
     config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
     myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
@@ -1028,11 +1031,9 @@ void loop()
     Tickers.update(); // Actualiza todos los tareas Temporizadas
     changeScreen();
 
-    // Falta solucionar problema del output en las lowcost con parche activado.
     if (config.flags.pwmEnabled && !Error.VariacionDatos && Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC && myPID.Compute()) {
       targetPwm = invert_pwm = (uint16_t)PIDOutput;
-      if (config.flags.dimmerLowCost && invert_pwm > 0 && invert_pwm < 210) { invert_pwm = 210; }
-      // if (config.flags.dimmerLowCost && invert_pwm > 0) { targetPwm = invert_pwm += 210; }
+      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
       writePwmValue(invert_pwm);
     }
     
