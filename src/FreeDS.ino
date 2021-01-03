@@ -123,7 +123,6 @@ const char version[] PROGMEM = "1.0.7";
 const char *www_username = "admin";
 
 uint16_t invert_pwm = 0; // Up 1023 with 10 bits resolution.
-uint16_t last_invert_pwm = 0;
 
 uint8_t pwmValue = 0;
 
@@ -343,7 +342,7 @@ struct CONFIG
 
   // TEMPORIZADORES
   unsigned long oledControlTime;
-  unsigned long pwmControlTime;
+  unsigned long freeTemp;
   unsigned long maxErrorTime;
   unsigned long getDataTime;
 
@@ -421,8 +420,11 @@ struct CONFIG
   // Battery Offset
   float voltageOffset;
 
+  // Phase to be used
+  uint8_t gridPhase;
+
   // FREE MEMORY
-  uint8_t free[1044];
+  uint8_t free[1043];
 } config;
 
 struct METER
@@ -517,7 +519,7 @@ int logcount = 0;
 char jsonResponse[768];
 
 // Variables Globales calculo PWM
-uint16_t maxPwm;
+// uint16_t maxPwm;
 uint16_t targetPwm;
 
 // Definiciones Conexiones
@@ -535,7 +537,7 @@ HardwareSerial SerieEsp(2);   // RX, TX para esp-01
 HardwareSerial SerieMeter(1); // RX, TX para los Meter rs485/modbus
 DynamicJsonDocument root(3072); // 2048
 
-TickerScheduler Tickers(8);
+TickerScheduler Tickers(7);
 
 DNSServer dnsServer;
 
@@ -626,7 +628,7 @@ public:
 };
 
 // Declaration of default values
-void down_pwm(const char* = "PWM: disabling PWM\n");
+void down_pwm(boolean = false, const char* = "PWM: disabling PWM\n");
 
 ////////// WATCHDOG FUNCTIONS //////////
 
@@ -699,7 +701,6 @@ void defaultValues()
   strcpy(config.password, "YWRtaW4=");
   config.flags.oledPower = true;
   config.flags.oledAutoOff = false;
-  config.pwmControlTime = 2000;
   config.oledControlTime = 30000;
   config.getDataTime = 1500;
   config.maxErrorTime = 20000;
@@ -751,6 +752,7 @@ void defaultValues()
   config.flags.offGrid = false;
   config.soc = 100;
   config.battWatts = -60; // Sólo para ongrid
+  config.flags.offgridVoltage = false;
   config.batteryVoltage = 51.0;
   config.voltageOffset = 0.30;
   config.maxWattsTariff = 3450;
@@ -761,6 +763,7 @@ void defaultValues()
   config.PIDValues[0] = 0.05;
   config.PIDValues[1] = 0.06;
   config.PIDValues[2] = 0.03;
+  config.gridPhase = 1;
   strcpy(config.tzConfig, "CET-1CEST,M3.5.0,M10.5.0/3");
   strcpy(config.ntpServer, "pool.ntp.org");
   strcpy(config.language, "es");
@@ -776,9 +779,8 @@ void configureTickers(void)
   Tickers.add(2, 5000, [&](void *) { connectToMqtt(); }, nullptr, false);               // Reconnect mqtt every 5 seconds
   Tickers.add(3, 5000, [&](void *) { connectToWifi(); }, nullptr, false);               // Reconnect Wifi  every 5 seconds
   Tickers.add(4, config.getDataTime, [&](void *) { getSensorData(); }, nullptr, false); // Sensor data adquisition time
-  Tickers.add(5, config.pwmControlTime, [&](void *) { pwmControl(); }, nullptr, false); // Pwm Control loop
-  Tickers.add(6, config.publishMqtt, [&](void *) { publishMqtt(); }, nullptr, false);   // Publish Mqtt messages
-  Tickers.add(7, 1000, [&](void *) { every1000ms(); }, nullptr, false);                 // 1000ms functions loop
+  Tickers.add(5, config.publishMqtt, [&](void *) { publishMqtt(); }, nullptr, false);   // Publish Mqtt messages
+  Tickers.add(6, 1000, [&](void *) { every1000ms(); }, nullptr, false);                 // 1000ms functions loop
   Tickers.disableAll();
 }
 
@@ -823,7 +825,7 @@ void setup()
   if (!EEPROM.begin(sizeof(config)))
   {
     Serial.printf("Failed to initialise EEPROM\nRestarting...\n");
-    down_pwm();
+    down_pwm(true);
     delay(1000);
     ESP.restart();
   }
@@ -1028,10 +1030,10 @@ void loop()
 
   if (config.flags.wifi && !Flags.firstInit)
   {
-    Tickers.update(); // Actualiza todos los tareas Temporizadas
+    Tickers.update(); // Actualiza todas los tareas Temporizadas
     changeScreen();
 
-    if (config.flags.pwmEnabled && !Error.VariacionDatos && Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC && myPID.Compute()) {
+    if (config.flags.pwmEnabled && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC && myPID.Compute()) {
       targetPwm = invert_pwm = (uint16_t)PIDOutput;
       if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
       writePwmValue(invert_pwm);
@@ -1039,9 +1041,6 @@ void loop()
     
     if (config.flags.sensorTemperatura) { checkTemperature(); }
     
-    long diffErrorRecepcionDatos = millis() - timers.ErrorRecepcionDatos;
-    if ( diffErrorRecepcionDatos < 0) diffErrorRecepcionDatos = 0;
-
     if (config.flags.debug4) { 
       if (millis() - timers.printDebug > 2000){
         INFOV("\n");
@@ -1052,14 +1051,6 @@ void loop()
         //INFOV("Error Temp 1: %ld, Error Temp 2: %ld, Error Temp 3: %ld", millis() - timers.ErrorLecturaTemperatura[0], millis() - timers.ErrorLecturaTemperatura[1], millis() - timers.ErrorLecturaTemperatura[2]);
         timers.printDebug = millis();
       }
-    }
-
-    if (diffErrorRecepcionDatos > config.maxErrorTime && !Error.RecepcionDatos)
-    {
-      if (config.flags.debug1) { INFOV("DATA ERROR: Error de comunicación, Diff: %ld, Errortime: %ld\n", diffErrorRecepcionDatos, config.maxErrorTime); }
-      memset(&inverter, 0, sizeof(inverter));
-      memset(&meter, 0, sizeof(meter));
-      Error.RecepcionDatos = true;
     }
 
     if (processData) { processingData(); }

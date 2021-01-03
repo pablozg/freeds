@@ -89,6 +89,7 @@ void every500ms(void)
 {
   send_events(); // Send web events
   readClamp(); // Read Current Clamp
+  pwmControl(); // Pwm Control Loop
   PIDInput = config.flags.offGrid ? inverter.batteryWatts : inverter.wgrid; // Update PIDInput
 }
 
@@ -96,7 +97,7 @@ void every1000ms(void)
 {
   calcWattsToday(); // Calculate the imported / exported energy
   if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
-  INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
+  // INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
   // INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue);
 }
 
@@ -246,7 +247,7 @@ void restartFunction(void)
   
   if (!Flags.firstInit)
   {
-    down_pwm("PWM Down: Restarting\n");
+    down_pwm(true, "PWM Down: Restarting\n");
   }
 
   saveEEPROM();
@@ -439,7 +440,7 @@ void defineWebMonitorFields(uint8_t version)
       webMonitorFields.data = 0x0177E000;
       break;
     case ICC_SOLAR: // Icc Solar
-      webMonitorFields.data = 0x0F77E000;
+      webMonitorFields.data = 0x0F77E006; // 0x0F77E000 
       break;
     case WIBEEE: // Wibee
     case WIBEEE_MODBUS: // Wibee Modbus
@@ -854,6 +855,7 @@ void checkEEPROM(void) {
   if(config.eeinit == 0x16)
   {
     strcpy(config.SoC_mqtt, "Inverter/BatterySOC");
+    config.flags.offgridVoltage = false;
     config.batteryVoltage = 51.0;
     config.voltageOffset = 0.30;
     config.flags.useClamp = false;
@@ -862,6 +864,7 @@ void checkEEPROM(void) {
     config.PIDValues[2] = 0.03;
     config.clampCalibration = 40.0;
     config.clampVoltage = 230.0;
+    config.gridPhase = 1;
     strcpy(config.ntpServer, "pool.ntp.org");
     config.pwmFrequency *= 10;
     config.potTarget = 150;

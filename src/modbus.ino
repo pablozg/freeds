@@ -92,7 +92,7 @@ void ddsu666(void)
 
       meter.read_state++;
 
-      Error.VariacionDatos = false;
+      // Error.VariacionDatos = false;
       Error.RecepcionDatos = false;
       timers.ErrorRecepcionDatos = millis();
       
@@ -214,7 +214,7 @@ void sdm120(void)
       
       meter.energyTotal = meter.importActive + meter.exportActive;      // 478.492 kWh import + export
 
-      Error.VariacionDatos = false;
+      // Error.VariacionDatos = false;
       Error.RecepcionDatos = false;
       timers.ErrorRecepcionDatos = millis();
     }
@@ -283,7 +283,7 @@ void dds2382(void)
                meter.importActive = (float)((buffer[23] << 24) + (buffer[24] << 16) + (buffer[25] << 8) + buffer[26]) / 100.0;  // 429496.729 kW
         }
       
-      Error.VariacionDatos = false;
+      // Error.VariacionDatos = false;
       Error.RecepcionDatos = false;
       timers.ErrorRecepcionDatos = millis();
     }
@@ -315,7 +315,7 @@ void mustSolar(void)
       inverter.wgrid = (float)((buffer[26] << 8) + buffer[27]) / 10.0;
       if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
       
-      Error.VariacionDatos = false;
+      // Error.VariacionDatos = false;
       Error.RecepcionDatos = false;
       timers.ErrorRecepcionDatos = millis();
     }

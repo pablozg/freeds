@@ -105,10 +105,10 @@ void handleConfigMqtt(AsyncWebServerRequest *request)
 
   if (config.flags.mqtt) {
     Tickers.enable(2);
-    Tickers.enable(6);
+    Tickers.enable(5);
   } else {
     Tickers.disable(2);
-    Tickers.disable(6);
+    Tickers.disable(5);
   }
 }
 
@@ -185,7 +185,6 @@ void handleConfig(AsyncWebServerRequest *request)
   if (request->arg("sensorModoManual") == "on") { config.modoTemperatura += 2; }
   if (request->arg("sensorTemp") == "on") {
     config.flags.sensorTemperatura = true;
-    Tickers.enable(7);
     config.temperaturaEncendido = constrain(request->arg("tempOn").toInt(), 0, 99);
     config.temperaturaApagado = constrain(request->arg("tempOff").toInt(), 0, 99);
     
@@ -245,7 +244,7 @@ void handleRelay(AsyncWebServerRequest *request)
     config.R04PotOff = request->arg("r04potoff").toInt();
   } else {
     config.flags.pwmEnabled = false;
-    down_pwm("PWM Down: Pwm Desactivated\n");
+    down_pwm(true, "PWM Down: Pwm Desactivated\n");
   }
 
   config.attachedLoadWatts = request->arg("loadwatts").toInt();
@@ -254,9 +253,7 @@ void handleRelay(AsyncWebServerRequest *request)
   if (request->hasArg("slavepwm")) {
     config.pwmSlaveOn = constrain(request->arg("slavepwm").toInt(), 0, 100);
   }
-  
-  config.pwmControlTime = constrain(request->arg("looppwm").toInt(), 500, 10000);
-  Tickers.updatePeriod(5, config.pwmControlTime);
+
   config.manualControlPWM = constrain(request->arg("manpwm").toInt(), 0, 100);
   config.autoControlPWM = constrain(request->arg("autopwm").toInt(), 0, 100);
   
@@ -821,7 +818,6 @@ void setWebConfig(void)
     Flags.pwmIsWorking = true;
     defineWebMonitorFields(config.wversion);
 
-    myPID.SetMode(MANUAL);
     down_pwm();
 
     AsyncWebServerResponse *response = request->beginResponse(200);
@@ -882,13 +878,13 @@ void setWebConfig(void)
     case 6: // Encender / Apagar PWM
       config.flags.pwmEnabled = !config.flags.pwmEnabled;
       if (config.flags.pwmEnabled) { myPID.SetMode(AUTOMATIC); }
-      else { myPID.SetMode(MANUAL); PIDOutput = 0; invert_pwm = 0; writePwmValue(invert_pwm);}
+      else { down_pwm(); }
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;
     case 7: // Encender / Apagar PWM Manual
       config.flags.pwmMan = !config.flags.pwmMan;
-      config.flags.pwmMan ? myPID.SetMode(0) : myPID.SetMode(1);
+      config.flags.pwmMan ? myPID.SetMode(MANUAL) : myPID.SetMode(AUTOMATIC);
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;
@@ -977,6 +973,12 @@ void setWebConfig(void)
       config.flags.flipScreen = !config.flags.flipScreen;
       if(config.flags.flipScreen) { display.flipScreenVertically(); }
       else { display.resetOrientation(); }
+      saveEEPROM();
+    }
+
+    if (comando == "gridPhase") {
+      if (value < 1 || value > 3) { value = 1; }
+      config.gridPhase = value; 
       saveEEPROM();
     }
 
@@ -1174,7 +1176,7 @@ void setWebConfig(void)
         INFOV("Update Start: %s\n", filename.c_str());
         Flags.Updating = true;
         config.flags.pwmEnabled = false;
-        down_pwm("PWM Down: Updating\n");
+        down_pwm(true, "PWM Down: Updating\n");
         Tickers.disableAll();
         mqttClient.disconnect();
         Tickers.enable(0); // Oled

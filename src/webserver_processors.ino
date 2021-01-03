@@ -644,10 +644,6 @@ String processorSalidas(const String &var)
   {
     return String(config.potTarget);
   }
-  if (var == "LOOPPWM")
-  {
-    return String(config.pwmControlTime);
-  }
   if (var == "LOWCOSTACTIVE")
   {
     return config.flags.dimmerLowCost ? "checked" : "";

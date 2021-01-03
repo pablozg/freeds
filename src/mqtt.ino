@@ -38,6 +38,8 @@ topicData topicRegisters[] = {
     &inverter.wtogrid, "wtogrid",
     &inverter.gridv, "gridv",
     &inverter.currentCalcWatts, "calcWatts",
+    &meter.voltage, "voltage",
+    &meter.current, "current",
     &temperaturaTermo, "tempTermo",
     &temperaturaTriac, "tempTriac",
     &temperaturaCustom, "tempCustom",
@@ -150,12 +152,11 @@ void WiFiEvent(WiFiEvent_t event)
 
     Tickers.enableAll();
     Tickers.disable(3); // Wifi
-    Tickers.disable(8); // Store Clamp Values
 
     if (!config.flags.mqtt || config.wversion == SOLAX_V2_LOCAL) {
       Serial.printf("Desactivando timer mqtt\n");
       Tickers.disable(2);
-      Tickers.disable(6);
+      Tickers.disable(5);
     }
     break;
 
@@ -168,7 +169,7 @@ void WiFiEvent(WiFiEvent_t event)
     Tickers.disableAll();
     Tickers.enable(0); // Display
     Tickers.enable(3); // Wifi
-    if (invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; down_pwm("PWM Down: STA DISCONNECTED\n"); } // PWM Shutdown
+    if (invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; down_pwm(true, "PWM Down: STA DISCONNECTED\n"); } // PWM Shutdown
     break;
 
   case SYSTEM_EVENT_WIFI_READY:
@@ -208,7 +209,7 @@ void onMqttConnect(bool sessionPresent)
 {
   INFOV("Connected to MQTT\n");
   Tickers.disable(2);
-  Tickers.enable(6);
+  Tickers.enable(5);
   Error.ConexionMqtt = false;
 
   static char tmpTopic[33];
@@ -363,8 +364,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       Error.RecepcionDatos = false;
 
       if (strcmp(topic, "Inverter/GridWatts") == 0) {
-        timers.ErrorVariacionDatos = millis();
-        Error.VariacionDatos = false;
+        // timers.ErrorVariacionDatos = millis();
+        // Error.VariacionDatos = false;
         inverter.wgrid = atof(payload);
         if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         return;
@@ -378,6 +379,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       if (strcmp(topic, "Inverter/MPPT2_Amps") == 0) { inverter.pv2c = atof(payload); return; }
       if (strcmp(topic, "Inverter/PvWattsTotal") == 0) { inverter.wsolar = atof(payload); return; }
       if (strcmp(topic, "Inverter/SolarKwUse") == 0) { inverter.wtoday = atof(payload); return; }
+      if (strcmp(topic, "Inverter/BatteryVolts") == 0) { meter.voltage = atof(payload); return; }
+      if (strcmp(topic, "Inverter/BatteryAmps") == 0) { meter.current = atof(payload); return; }
       if (strcmp(topic, "Inverter/BatteryWatts") == 0) { inverter.batteryWatts = atof(payload); return; }
       if (strcmp(topic, config.SoC_mqtt) == 0) { inverter.batterySoC = atof(payload); return; }
       if (strcmp(topic, "Inverter/LoadWatts") == 0) { inverter.loadWatts = atof(payload); return; }
@@ -410,7 +413,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // pwm control ON-OFF
       INFOV("Mqtt - PWM control: %s\n", (char)payload[0] == '1' ? "ON" : "OFF");
       if ((char)payload[0] == '1') { config.flags.pwmEnabled = true; }
-      else { config.flags.pwmEnabled = false; down_pwm("PWM Dowm: Mqtt command received\n"); }
+      else { config.flags.pwmEnabled = false; down_pwm(false, "PWM Dowm: Mqtt command received\n"); }
       saveEEPROM();
       return;
     }
@@ -497,6 +500,8 @@ void suscribeMqttMeter(void)
       mqttClient.subscribe("Inverter/MPPT2_Amps", 0);
       mqttClient.subscribe("Inverter/PvWattsTotal", 0);
       mqttClient.subscribe("Inverter/SolarKwUse", 0);
+      mqttClient.subscribe("Inverter/BatteryVolts", 0);
+      mqttClient.subscribe("Inverter/BatteryAmps", 0);
       mqttClient.subscribe("Inverter/BatteryWatts", 0);
       mqttClient.subscribe("Inverter/LoadWatts", 0);
       mqttClient.subscribe("Inverter/Temperature", 0);
@@ -518,6 +523,8 @@ void unSuscribeMqtt(void)
   mqttClient.unsubscribe("Inverter/MPPT2_Amps");
   mqttClient.unsubscribe("Inverter/PvWattsTotal");
   mqttClient.unsubscribe("Inverter/SolarKwUse");
+  mqttClient.unsubscribe("Inverter/BatteryVolts");
+  mqttClient.unsubscribe("Inverter/BatteryAmps");
   mqttClient.unsubscribe("Inverter/BatteryWatts");
   mqttClient.unsubscribe("Inverter/LoadWatts");
   mqttClient.unsubscribe("Inverter/Temperature");
@@ -551,8 +558,6 @@ void publishMqtt()
 
   if (config.flags.debug2) { INFOV("PUBLISHMQTT()\n"); }
 
-  // if (WiFi.isConnected() && config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !mqttClient.connected()) { Tickers.enable(2); }
-
   if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
   {
     static char tmpString[33];
@@ -570,11 +575,7 @@ void publishMqtt()
     sprintf(tmpString, "%d", pwmValue);
     publisher(tmpTopic, tmpString);
 
-    if (config.flags.pwmEnabled == false) { strcpy(tmpString, "OFF"); }
-    else {
-      if (config.flags.pwmMan) { strcpy(tmpString, "MAN"); }
-      else { strcpy(tmpString, "AUTO"); }
-    }
+    config.flags.pwmEnabled ? (config.flags.pwmMan ? strcpy(tmpString, "MAN") : strcpy(tmpString, "AUTO")) : strcpy(tmpString, "OFF");
     
     sprintf(tmpTopic, "%s/stat/pwm", config.hostServer);
     publisher(tmpTopic, tmpString);

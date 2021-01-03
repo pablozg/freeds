@@ -8,12 +8,19 @@ Versión 1.0.7
 	- Añadida la posibilidad de cambiar el topic del SoC con el modo ICC Solar.
 	- Implementación Wibee Modbus (falta comprobar funcionamiento según versión de firmware)
 	- Añadido comando por consola para cambiar entre Soc / Voltaje de batería como modo de funcionamiento en instalaciones aisladas. (offgridVoltage 1 / offgridVoltage 0)
+	- Añadido comando para controlar el offset del nivel de voltaje en batería. (voltageOffset para comprobar valor actual, voltageOffset valor (ej. 0.30) para establecerlo)
+	- Añadida la compatibilidad con pinza amperimétrica para la obtención de una lectura más real del consumo del termo, junto a los comandos:
+		- useClamp 1 / useClamp 0 para activar / desactivar el uso de la pinza
+		- clampCalibration / clampCalibration valor (ej. 20.3) para visualizar valor actual / establecer valor
+		- clampVoltage / clampVoltage voltaje (ej. 324.5) para visualizar valor actual / establecer valor para la obtención de la potencia actual (W = V * I)
+		- showClampCurrent 1 / showClampCurrent 0 para mostrar / ocultar la itensidad medida por la pinza amperimétrica, es útil para su calibracion mediante pinza externa.
 	- Añadido comando para configurar el servidor ntp (pool.ntp.org por defecto), uso: ntpServer ip / nombre_servidor (Ejemplo: ntpServer pool.ntp.org)
 	- Mejorada la estabilidad en la lectura de los datos de wibeee. (gracias a David y Felipe por las pruebas).
 	- Añadidas dos frecuencias para su uso con el ultra low cost (12.5 y 25 Hz) y cambio de escala de frecuencia almacenada.
 	- Añadida opción para restaurar y descargar el fichero de configuración dentro de la página de Actualización.
 	- Tamaño de eeprom ampliado a 2048 bytes (2Kb)
-	- Cambiado el control de potencia por un control PID (Gracias a Ciafe por "forzarme" a probar los PID con FreeDS y sus consejos)
+	- Cambiado el control de potencia por un control PID (Gracias a Ciafe por "forzarme" a probar los PID con FreeDS y sus consejos, asi como también a Bisha, Aeizoon y Lolo por sus pruebas)
+	- Añadido comando para el ajuste de los valors del PID (tunePID 0.05;0.06;0.03)
 
 	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado
 	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
