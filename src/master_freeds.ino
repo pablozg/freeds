@@ -34,7 +34,7 @@ void parseMasterFreeDs(char *json)
     } else {
       if (!config.flags.pwmMan && invert_pwm > 0) {
         Flags.pwmIsWorking = false;
-        down_pwm(true, "PWM: disabled by low % on master");
+        shutdownPwm(true, "PWM: disabled by low % on master");
       }
     }
 

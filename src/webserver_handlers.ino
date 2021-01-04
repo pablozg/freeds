@@ -18,7 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-void handleCnet(AsyncWebServerRequest *request)
+void handleNetConfig(AsyncWebServerRequest *request)
 {
   strcpy(config.ssid1, request->urlDecode(request->arg("wifi1")).c_str());
   strcpy(config.ssid2, request->urlDecode(request->arg("wifi2")).c_str());
@@ -56,7 +56,7 @@ void handleCnet(AsyncWebServerRequest *request)
   saveEEPROM();
 }
 
-void handleConfigMqtt(AsyncWebServerRequest *request)
+void handleMqttConfig(AsyncWebServerRequest *request)
 {
   config.flags.mqtt = false;
   unSuscribeMqtt();
@@ -218,10 +218,10 @@ void handleConfig(AsyncWebServerRequest *request)
    
   saveEEPROM();
 
-  down_pwm(); // Reset PID to ensure use the new configuration
+  shutdownPwm(); // Reset PID to ensure use the new configuration
 }
 
-void handleRelay(AsyncWebServerRequest *request)
+void handleControlConfig(AsyncWebServerRequest *request)
 {
   if (request->arg("pwmactive") == "on") {
     config.flags.pwmEnabled = true;
@@ -244,7 +244,7 @@ void handleRelay(AsyncWebServerRequest *request)
     config.R04PotOff = request->arg("r04potoff").toInt();
   } else {
     config.flags.pwmEnabled = false;
-    down_pwm(true, "PWM Down: Pwm Desactivated\n");
+    shutdownPwm(true, "PWM Down: Pwm Desactivated\n");
   }
 
   config.attachedLoadWatts = request->arg("loadwatts").toInt();
@@ -305,15 +305,15 @@ void handleRelay(AsyncWebServerRequest *request)
     ledcWriteTone(2, (double)config.pwmFrequency / 10.0);
   }
 
-  relay_control_man(false); // Control de relays
+  relayManualControl(false); // Control de relays
 
   saveEEPROM();
 }
 
 void rebootCause(void)
 {
-  verbose_print_reset_reason(0);
-  verbose_print_reset_reason(1);
+  verbosePrintResetReason(0);
+  verbosePrintResetReason(1);
 }
 
 const char *sendJsonWeb(void)
@@ -610,7 +610,7 @@ void checkAuth(AsyncWebServerRequest *request)
   free(decoded);
 }
 
-void send_events()
+void sendEvents()
 {
   events.send(printUptime(), "uptime");
   events.send(sendJsonWeb(), "jsonweb");
@@ -818,7 +818,7 @@ void setWebConfig(void)
     Flags.pwmIsWorking = true;
     defineWebMonitorFields(config.wversion);
 
-    down_pwm();
+    shutdownPwm();
 
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
@@ -878,7 +878,7 @@ void setWebConfig(void)
     case 6: // Encender / Apagar PWM
       config.flags.pwmEnabled = !config.flags.pwmEnabled;
       if (config.flags.pwmEnabled) { myPID.SetMode(AUTOMATIC); }
-      else { down_pwm(); }
+      else { shutdownPwm(); }
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;
@@ -892,7 +892,7 @@ void setWebConfig(void)
 
     if (button > 0 && button < 5)
     {
-      relay_control_man(false);
+      relayManualControl(false);
     }
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
@@ -1116,9 +1116,9 @@ void setWebConfig(void)
 
   ///////// RESPUESTAS A LAS PÁGINAS DE CONFIGURACIÓN ////////
 
-  server.on("/handleCnet", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/handleNetConfig", HTTP_POST, [](AsyncWebServerRequest *request) {
     checkAuth(request);
-    handleCnet(request);
+    handleNetConfig(request);
     webMessageResponse = 1;
     request->redirect("/");
     if (!config.flags.wifi)
@@ -1128,9 +1128,9 @@ void setWebConfig(void)
     }
   });
 
-  server.on("/handleConfigMqtt", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/handleMqttConfig", HTTP_POST, [](AsyncWebServerRequest *request) {
     checkAuth(request);
-    handleConfigMqtt(request);
+    handleMqttConfig(request);
     webMessageResponse = 1;
     request->redirect("/");
   });
@@ -1142,9 +1142,9 @@ void setWebConfig(void)
     request->redirect("/");
   });
 
-  server.on("/handleRelay", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server.on("/handleControlConfig", HTTP_POST, [](AsyncWebServerRequest *request) {
     checkAuth(request);
-    handleRelay(request);
+    handleControlConfig(request);
     webMessageResponse = 1;
     request->redirect("/");
   });
@@ -1176,7 +1176,7 @@ void setWebConfig(void)
         INFOV("Update Start: %s\n", filename.c_str());
         Flags.Updating = true;
         config.flags.pwmEnabled = false;
-        down_pwm(true, "PWM Down: Updating\n");
+        shutdownPwm(true, "PWM Down: Updating\n");
         Tickers.disableAll();
         mqttClient.disconnect();
         Tickers.enable(0); // Oled

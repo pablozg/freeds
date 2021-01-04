@@ -140,7 +140,7 @@ void parseJsonv2local(char *json)
 }
 
 // Fronius
-void parseJson_fronius(char *json)
+void parseJsonFronius(char *json)
 {
   if (config.flags.debug3) { INFOV("Size: %d, Json: %s\n", strlen(json), json); }
   DeserializationError error = deserializeJson(root, json);

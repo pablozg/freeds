@@ -519,7 +519,6 @@ int logcount = 0;
 char jsonResponse[768];
 
 // Variables Globales calculo PWM
-// uint16_t maxPwm;
 uint16_t targetPwm;
 
 // Definiciones Conexiones
@@ -567,10 +566,10 @@ double filteredI;
 double offsetI;
 double sqI, sumI, Irms;
 
-// PID Loop
+// PID Declaration
 float Setpoint, PIDInput, PIDOutput;
 
-PID myPID(&PIDInput, &PIDOutput, &Setpoint, 0.2, 0.08, 0.04, DIRECT); //0.05 0.06 0.02
+PID myPID(&PIDInput, &PIDOutput, &Setpoint, 0.05, 0.06, 0.03, DIRECT);
 
 //////////////////// CAPTIVE PORTAL ////////////////
 
@@ -628,7 +627,7 @@ public:
 };
 
 // Declaration of default values
-void down_pwm(boolean = false, const char* = "PWM: disabling PWM\n");
+void shutdownPwm(boolean = false, const char* = "PWM: disabling PWM\n");
 
 ////////// WATCHDOG FUNCTIONS //////////
 
@@ -717,8 +716,10 @@ void defaultValues()
   config.flags.serial = true;
   config.flags.debug1 = false;
   config.flags.debug2 = false;
-  config.flags.weblog = true;
+  config.flags.debug3 = false;
   config.flags.debug4 = false;
+  config.flags.debug5 = false;
+  config.flags.weblog = true;
   config.publishMqtt = 10000;
   config.flags.timerEnabled = false;
   config.timerStart = 500;
@@ -774,7 +775,7 @@ void defaultValues()
 
 void configureTickers(void)
 {
-  Tickers.add(0, 400,  [&](void *) { data_display(); }, nullptr, true);                 // OLED loop
+  Tickers.add(0, 400,  [&](void *) { showOledData(); }, nullptr, true);                 // OLED loop
   Tickers.add(1, 500,  [&](void *) { every500ms(); }, nullptr, false);                  // 500ms functions loop
   Tickers.add(2, 5000, [&](void *) { connectToMqtt(); }, nullptr, false);               // Reconnect mqtt every 5 seconds
   Tickers.add(3, 5000, [&](void *) { connectToWifi(); }, nullptr, false);               // Reconnect Wifi  every 5 seconds
@@ -805,8 +806,8 @@ void setup()
   Serial.begin(115200); // Se inicia la UART0 para debug1
   Serial.setDebugOutput(true);
   
-  verbose_print_reset_reason(0);
-  verbose_print_reset_reason(1);
+  verbosePrintResetReason(0);
+  verbosePrintResetReason(1);
   
   // Configuramos las salidas
   pinMode(PIN_RL1, OUTPUT);
@@ -825,7 +826,7 @@ void setup()
   if (!EEPROM.begin(sizeof(config)))
   {
     Serial.printf("Failed to initialise EEPROM\nRestarting...\n");
-    down_pwm(true);
+    shutdownPwm(true);
     delay(1000);
     ESP.restart();
   }
@@ -985,12 +986,12 @@ void setup()
       defineWebMonitorFields(config.wversion);
     }
 
-    // Esperamos 45 segundos a que se estabilicen las lecturas de la pinza antes de ejecutar la rutina de pwm.
+    // Esperamos 45 segundos a que se estabilicen las lecturas de la pinza antes de mostrarlas en la web.
     xTimerStart(startTimer, 0);
 
     // PID Config
     myPID.SetSampleTime(1000);
-    config.flags.dimmerLowCost ? myPID.SetOutputLimits(209, config.maxPwmLowCost) : myPID.SetOutputLimits(0, 1023); // Falta Añadir esta linea al handle de configuración.
+    config.flags.dimmerLowCost ? myPID.SetOutputLimits(209, config.maxPwmLowCost) : myPID.SetOutputLimits(0, 1023);
     config.flags.pwmMan ? myPID.SetMode(MANUAL) : myPID.SetMode(AUTOMATIC);
     config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
     myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);

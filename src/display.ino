@@ -20,9 +20,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-void data_display(void)
+void showOledData(void)
 {
-  //if (config.flags.debug1 == 4) { INFOV("DATA_DISPLAY()\n"); }
+  //if (config.flags.debug1 == 4) { INFOV("showOledData()\n"); }
 #ifdef OLED
   uint8_t wversion = 0;
 

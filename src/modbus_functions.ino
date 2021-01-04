@@ -60,7 +60,7 @@ void modbusSend(uint8_t device_address, uint8_t function_code, uint16_t start_ad
   SerieMeter.write(frame, sizeof(frame));
 }
 
-void modbusSend_Response(uint8_t device_address, uint8_t *response, uint8_t len)
+void modbusSendResponse(uint8_t device_address, uint8_t *response, uint8_t len)
 {
   mb_address = device_address;  // Save address for receipt check
   SerieMeter.flush();

@@ -296,7 +296,7 @@ void processingData(void)
       parseMasterFreeDs(message.message);
       break;
     case FRONIUS_API: // Fronius
-      parseJson_fronius(message.message);
+      parseJsonFronius(message.message);
       break;
   }
   clearMessage();

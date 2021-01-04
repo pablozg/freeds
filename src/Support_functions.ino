@@ -87,7 +87,7 @@ void setGetDataTime(void)
 
 void every500ms(void)
 {
-  send_events(); // Send web events
+  sendEvents(); // Send web events
   readClamp(); // Read Current Clamp
   pwmControl(); // Pwm Control Loop
   PIDInput = config.flags.offGrid ? inverter.batteryWatts : inverter.wgrid; // Update PIDInput
@@ -247,7 +247,7 @@ void restartFunction(void)
   
   if (!Flags.firstInit)
   {
-    down_pwm(true, "PWM Down: Restarting\n");
+    shutdownPwm(true, "PWM Down: Restarting\n");
   }
 
   saveEEPROM();
@@ -488,7 +488,7 @@ void defineWebMonitorFields(uint8_t version)
   }
 }
 
-void verbose_print_reset_reason(int cpu)
+void verbosePrintResetReason(int cpu)
 {
   const char * reason;
 
@@ -869,6 +869,12 @@ void checkEEPROM(void) {
     config.pwmFrequency *= 10;
     config.potTarget = 150;
     config.flags.useSolarAsMPTT = false;
+    config.flags.debug1 = false;
+    config.flags.debug2 = false;
+    config.flags.debug3 = false;
+    config.flags.debug4 = false;
+    config.flags.debug5 = false;
+    config.flags.weblog = true;
     config.eeinit = 0x17;
     INFOV(PSTR("EEPROM Settings upgraded from version %x to version %x\n"), actualVersion, config.eeinit);
     saveEEPROM();

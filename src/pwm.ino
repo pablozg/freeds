@@ -24,8 +24,8 @@ void pwmControl()
 { 
   if (config.flags.debug2) { INFOV("PWMCONTROL()\n"); }
 
-  // Check pwm_output
-  if ((inverter.wgrid_control != inverter.wgrid) || config.flags.offGrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
+  // En caso de recepción de lectura distinta a la almacenada la actualizamos con el nuevo valor
+  if ((inverter.wgrid_control != inverter.wgrid) || config.flags.offGrid)
   {
     inverter.wgrid_control = inverter.wgrid;
     // TODO: Filtrar los datos erroneos en ausencia de meter y ponerlos a 0.
@@ -33,7 +33,7 @@ void pwmControl()
     timers.ErrorVariacionDatos = millis();
   }
 
-  // Same data loop error
+  // Same data along error time
   if (((millis() - timers.ErrorVariacionDatos) > config.maxErrorTime) && !Error.VariacionDatos)
   {
     INFOV(PSTR("PWM: Apagando PWM por superar el tiempo máximo en la variación de los datos del consumo de Red\n"));
@@ -51,7 +51,7 @@ void pwmControl()
     Error.RecepcionDatos = true;
   }
 
-  if ((Error.RecepcionDatos || Error.VariacionDatos || !Flags.pwmIsWorking) && myPID.GetMode() == AUTOMATIC) { down_pwm(false, "PWM: Down by security reasons"); }
+  if ((Error.RecepcionDatos || Error.VariacionDatos || !Flags.pwmIsWorking) && myPID.GetMode() == AUTOMATIC) { shutdownPwm(true, "PWM: Down by security reasons\n"); }
 
   //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
@@ -80,12 +80,12 @@ void pwmControl()
 
     if (invert_pwm != targetPwm) { invert_pwm = targetPwm; writePwmValue(invert_pwm); }
 
-    // relay_control_man(false);
+    // relayManualControl(false);
     // INFOV("Manual- Max Target: %d, Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n\n", maxTargetPwm, targetPwm, invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
   }
 
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
-  if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && Flags.pwmIsWorking)
+  if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking)
   {
     if (config.flags.offGrid ? // Modo Off-grid
         (config.flags.offgridVoltage ? // True
@@ -95,9 +95,9 @@ void pwmControl()
           myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.wgrid < Setpoint : inverter.wgrid > Setpoint) && inverter.batteryWatts >= config.battWatts // False
        )
     {
-        myPID.SetMode(AUTOMATIC);
-        config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
-        Setpoint = config.potTarget;
+      myPID.SetMode(AUTOMATIC);
+      config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
+      Setpoint = config.potTarget;
     }
     else if (config.flags.offGrid ?
               (config.flags.offgridVoltage ?
@@ -107,7 +107,7 @@ void pwmControl()
                 myPID.GetMode() == AUTOMATIC && inverter.batteryWatts < config.battWatts
             )
     {
-      down_pwm(true);
+      shutdownPwm(false);
     }
   }
 
@@ -218,7 +218,6 @@ void pwmControl()
 
   if (!config.flags.pwmMan && config.flags.pwmEnabled && (pwmValue >= config.autoControlPWM))
   {
-    //if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (inverter.wgrid > config.R01PotOn))
     if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R01PotOn : inverter.wgrid > config.R01PotOn))
     {
       // Start relay1
@@ -341,10 +340,10 @@ void calcPwmProgressBar()
   }
 }
 
-void relay_control_man(boolean forceOFF)
+void relayManualControl(boolean forceOFF)
 {
 
-  if (config.flags.debug2) { INFOV("relay_control_man()\n"); }
+  if (config.flags.debug2) { INFOV("relayManualControl()\n"); }
 
   // if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && !Flags.Relay01Auto)
   //   digitalWrite(PIN_RL1, LOW);
@@ -372,7 +371,7 @@ void relay_control_man(boolean forceOFF)
 }
 
 // PWM Functions
-void down_pwm(boolean forceRelayOff, const char *message)
+void shutdownPwm(boolean forceRelayOff, const char *message)
 {
   if (config.flags.debug1) { INFOV(PSTR(message)); }
 
@@ -383,10 +382,9 @@ void down_pwm(boolean forceRelayOff, const char *message)
   pwmValue = 0;
   ledcWrite(2, 0); // Hard shutdown
   dac_output_disable(DAC_CHANNEL_2);
-  INFOV("PWM disabled\n");
   calcPwmProgressBar();
 
-  relay_control_man(forceRelayOff);
+  relayManualControl(forceRelayOff);
 }
 
 void writePwmValue(uint16_t value)
