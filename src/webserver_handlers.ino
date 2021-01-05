@@ -127,10 +127,8 @@ void handleConfig(AsyncWebServerRequest *request)
 
   if (request->arg("changeGridSign") == "on") {
     config.flags.changeGridSign = true;
-    myPID.SetControllerDirection(DIRECT);
   } else {
     config.flags.changeGridSign = false;
-    myPID.SetControllerDirection(REVERSE);
   }
   
   if (request->hasArg("baudiosmeter")) {
@@ -877,14 +875,21 @@ void setWebConfig(void)
       break;
     case 6: // Encender / Apagar PWM
       config.flags.pwmEnabled = !config.flags.pwmEnabled;
-      if (config.flags.pwmEnabled) { myPID.SetMode(AUTOMATIC); }
-      else { shutdownPwm(); }
+      if (!config.flags.pwmEnabled) { shutdownPwm(); }
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;
     case 7: // Encender / Apagar PWM Manual
       config.flags.pwmMan = !config.flags.pwmMan;
-      config.flags.pwmMan ? myPID.SetMode(MANUAL) : myPID.SetMode(AUTOMATIC);
+      if (config.flags.pwmMan) {
+        myPID.SetMode(MANUAL);
+        PIDOutput = 0;
+        Setpoint = 0;
+      } else {
+        myPID.SetMode(AUTOMATIC);
+        myPID.SetCurrentOutput(invert_pwm);
+        Setpoint = config.potTarget;
+      }
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;

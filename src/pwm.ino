@@ -89,14 +89,14 @@ void pwmControl()
   {
     if (config.flags.offGrid ? // Modo Off-grid
         (config.flags.offgridVoltage ? // True
-          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.batteryWatts < Setpoint : inverter.batteryWatts > Setpoint) && meter.voltage >= config.batteryVoltage : // True
-          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.batteryWatts < Setpoint : inverter.batteryWatts > Setpoint) && inverter.batterySoC >= config.soc // False
+          myPID.GetMode() == MANUAL && inverter.batteryWatts > config.potTarget && meter.voltage >= config.batteryVoltage : // True
+          myPID.GetMode() == MANUAL && inverter.batteryWatts > config.potTarget && inverter.batterySoC >= config.soc // False
         ) : // Modo On-grid
-          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.wgrid < Setpoint : inverter.wgrid > Setpoint) && inverter.batteryWatts >= config.battWatts // False
+          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.wgrid < config.potTarget : inverter.wgrid > config.potTarget) && inverter.batteryWatts >= config.battWatts // False
        )
     {
       myPID.SetMode(AUTOMATIC);
-      config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
+      config.flags.offGrid ? myPID.SetControllerDirection(REVERSE) : config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
       Setpoint = config.potTarget;
     }
     else if (config.flags.offGrid ?
@@ -378,6 +378,7 @@ void shutdownPwm(boolean forceRelayOff, const char *message)
   myPID.SetMode(MANUAL);
   PIDOutput = 0;
   Setpoint = 0;
+  targetPwm = 0;
   invert_pwm = 0;
   pwmValue = 0;
   ledcWrite(2, 0); // Hard shutdown

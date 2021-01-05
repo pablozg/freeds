@@ -97,7 +97,7 @@ void every1000ms(void)
 {
   calcWattsToday(); // Calculate the imported / exported energy
   if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
-  // INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
+  INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
   // INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue);
 }
 
