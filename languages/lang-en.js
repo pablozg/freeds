@@ -80,13 +80,12 @@ lang = {
     MQTTTOPIC2 : "R2 Topic:",
     MQTTTOPIC3 : "R3 Topic:",
     MQTTTOPIC4 : "R4 Topic:",
-    SOLAXTOPIC : "Solax Topic:",
+    SOLAXTOPIC : "PV Topic:",
     METERTOPIC : "Meter Topic:",
     IDXSCREEN : "IDX Screen:",
     CONFIGDIMMER : "PWM Dimmer Settings",
     LOADTEXT : "Connected Load (W):",
-    PWMUP : "Power to up (W):",
-    PWMDOWN : "Power to down (W):",
+    POTTARGET : "Target power (W):",
     LOOPPWM : "PWM calculation loop (ms):",
     FRECPWM : "PWM Frecuency:",
     LOWCOSTMAX : "Maximun power limit in lowcost diverter patch (1024 - 1232):",
@@ -173,5 +172,10 @@ lang = {
     pwmmodemanual : "MANUAL",
     pwmoffmonitor : "PWM (OFF):",
     OFFGRIDVOLTAGE : "Minimum Voltage mínimo of the batteries to divert:",
-    CHANGESIGN : "Sign Change"
+    CHANGESIGN : "Sign Change",
+    MANSOLARMODE : "Modo Manual según producción",
+    TIMER : "Programador Horario",
+    LOWCOST : "Parche Low-cost",
+    BACKUP: "Download config",
+    CONFIGUPDATE : "Restore config"
 };

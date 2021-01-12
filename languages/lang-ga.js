@@ -80,13 +80,12 @@ lang = {
     MQTTTOPIC2 : "R2 Topic:",
     MQTTTOPIC3 : "R3 Topic:",
     MQTTTOPIC4 : "R4 Topic:",
-    SOLAXTOPIC : "Tema Solax:",
+    SOLAXTOPIC : "Tema Solar:",
     METERTOPIC : "Tema Meter:",
     IDXSCREEN : "IDX Pantalla:",
     CONFIGDIMMER : "Configuración Dimmer PWM",
     LOADTEXT : "Potencia da carga conectada (W):",
-    PWMUP : "Potencia para aumentar derivación (W):",
-    PWMDOWN : "Potencia para reducir derivación (W):",
+    POTTARGET : "Potencia objetivo (W):",
     LOOPPWM : "Frecuencia cálculo PWM (ms):",
     FRECPWM : "Frecuencia PWM:",
     LOWCOSTMAX : "Límite máximo potencia parche lowcost (1024 - 1232):",
@@ -173,5 +172,10 @@ lang = {
     pwmmodemanual : "MANUAL",
     pwmoffmonitor : "PWM (OFF):",
     OFFGRIDVOLTAGE : "Voltaje mínimo de batería para derivar:",
-    CHANGESIGN : "Cambio de Sinal"
+    CHANGESIGN : "Cambio de Sinal",
+    MANSOLARMODE : "Modo Manual según producción",
+    TIMER : "Programador Horario",
+    LOWCOST : "Parche Low-cost",
+    BACKUP: "Descargar configuración",
+    CONFIGUPDATE : "Restaurar configuración"
 };

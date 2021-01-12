@@ -803,7 +803,7 @@ void setWebConfig(void)
 
     if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
       modbusIP.fromString((String)config.sensor_ip);
-      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= WIBEEE_MODBUS)) {
+      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= INGETEAM)) {
         modbustcp = new esp32ModbusTCP(modbusIP, 502);
       } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
       configModbusTcp();
@@ -881,15 +881,7 @@ void setWebConfig(void)
       break;
     case 7: // Encender / Apagar PWM Manual
       config.flags.pwmMan = !config.flags.pwmMan;
-      if (config.flags.pwmMan) {
-        myPID.SetMode(MANUAL);
-        PIDOutput = 0;
-        Setpoint = 0;
-      } else {
-        myPID.SetMode(AUTOMATIC);
-        myPID.SetCurrentOutput(invert_pwm);
-        Setpoint = config.potTarget;
-      }
+      config.flags.pwmMan ? changeToManual() : changeToAuto();
       Flags.pwmIsWorking = true;
       saveEEPROM();
       break;
@@ -1319,21 +1311,35 @@ void alexaStart(void)
   fauxmo.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {
              
     INFOV("[ALEXA] Device #%d (%s) state: %s value: %d\n", device_id, device_name, state ? "ON" : "OFF", value);
-    if (device_id == 0) {
-      config.flags.pwmEnabled = state;
-    } else if (device_id == 1) {
-      config.flags.pwmMan = state;
-      config.manualControlPWM = (uint8_t)((value * 100) / 254);
-    } else if (device_id == 2) {
-      if (config.flags.oledPower != state) {
-        config.flags.oledPower = state;
-        timers.OledAutoOff = millis();
-        turnOffOled();
-      }
-      if (config.oledBrightness != (uint8_t)((value * 100) / 254)) {
-        config.oledBrightness = (uint8_t)((value * 100) / 254);
-        Flags.setBrightness = true;
-      }
+
+    switch (device_id) {
+      case 0:
+        config.flags.pwmEnabled = state;
+        if (!config.flags.pwmEnabled) { shutdownPwm(); }
+        Flags.pwmIsWorking = true;
+        break;
+      
+      case 1:
+        config.flags.pwmMan = state;
+        config.manualControlPWM = (uint8_t)((value * 100) / 254);
+        config.flags.pwmMan ? changeToManual() : changeToAuto();
+        Flags.pwmIsWorking = true;
+        break;
+
+      case 2:
+        if (config.flags.oledPower != state) {
+          config.flags.oledPower = state;
+          timers.OledAutoOff = millis();
+          turnOffOled();
+        }
+        
+        if (config.oledBrightness != (uint8_t)((value * 100) / 254)) {
+          config.oledBrightness = (uint8_t)((value * 100) / 254);
+          Flags.setBrightness = true;
+        }
+        break;
     }
+
+    saveEEPROM();
   });
 }

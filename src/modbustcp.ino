@@ -68,7 +68,8 @@ enum valueType
     SOLAREDGEMETER,
     WIBEEEMODBUS,
     SCHNEIDERMODBUS1,
-    SCHNEIDERMODBUS2
+    SCHNEIDERMODBUS2,
+    INGETEAMMODBUS
 };
 
 struct registerData
@@ -141,6 +142,10 @@ registerData solaredgeRegisters[] = {
 
 registerData wibeeeRegisters[] = {
     &inverter.wgrid, 1, 0, 72, WIBEEEMODBUS
+};
+
+registerData ingeteamRegisters[] = {
+    &inverter.wgrid, 1, 30001, 69, INGETEAMMODBUS
 };
 
 registerData schneiderRegisters[] = { // Schneider
@@ -247,6 +252,86 @@ void parseSolarEdgeInverter(uint8_t *data)
   value = (data[40] << 8) | (data[41]);
   SF = (data[46] << 8) | (data[47]);
   inverter.temperature = value * pow(10, SF);
+}
+
+void parseIngeteamModbus(uint8_t *data)
+{
+  int16_t value = 0;
+  uint16_t uvalue = 0;
+
+
+  // Registro 18
+  uvalue = (data[36] << 8) | (data[37]);
+  meter.voltage = (float)uvalue / 10;
+
+  // Registro 19
+  value = (data[38] << 8) | (data[39]);
+  meter.current = (float)value / 100;
+
+  // Registro 20
+  value = (data[40] << 8) | (data[41]);
+  inverter.batteryWatts = (float)value / 100;
+
+  // Registro 21
+  uvalue = (data[42] << 8) | (data[43]);
+  inverter.batterySoC = (float)uvalue;
+
+  // Registro 32
+  uvalue = (data[64] << 8) | (data[65]);
+  inverter.pv1v = (float)uvalue;
+
+  // Registro 33
+  uvalue = (data[66] << 8) | (data[67]);
+  inverter.pv1c = (float)uvalue / 100;
+
+  // Registro 34
+  uvalue = (data[68] << 8) | (data[69]);
+  inverter.pw1 = (float)uvalue;
+
+  // Registro 35
+  uvalue = (data[70] << 8) | (data[71]);
+  inverter.pv2v = (float)uvalue;
+
+  // Registro 36
+  uvalue = (data[72] << 8) | (data[73]);
+  inverter.pv2c = (float)uvalue / 100;
+
+  // Registro 37
+  uvalue = (data[74] << 8) | (data[75]);
+  inverter.pw2 = (float)uvalue;
+  
+//   // Registro 0
+//   uvalue = (data[0] << 8) | (data[1]);
+//   inverter.wgrid = uvalue;
+  
+//   // Registro 2
+//   uvalue = (data[4] << 8) | (data[5]);
+//   inverter.wsolar = uvalue;
+  
+//   // Registro 24
+//   uvalue = (data[48] << 8) | (data[49]);
+//   meter.importActive = (float)uvalue / 100;
+  
+
+  
+//   // Registro 59
+//   uvalue = (data[118] << 8) | (data[119]);
+//   inverter.gridv = (float)uvalue / 100;
+  
+//   // Registro 62
+//   uvalue = (data[124] << 8) | (data[125]);
+//   meter.frequency = (float)uvalue / 100;
+  
+//   // Registro 66
+//   value = (data[132] << 8) | (data[133]);
+//   meter.powerFactor = (float)value / 100;
+  
+//   if (meter.powerFactor > 0) {
+//     if (!config.flags.changeGridSign) { inverter.wgrid *= -1; }
+//   } else {
+//     meter.powerFactor *= -1;
+//     if (config.flags.changeGridSign) { inverter.wgrid *= -1; }
+//   }  
 }
 
 void parseWibeeeModbus(uint8_t *data)
@@ -501,6 +586,7 @@ void configModbusTcp(void)
             case WIBEEEMODBUS: { parseWibeeeModbus(data); break; }
             case SCHNEIDERMODBUS1: { parseSchneiderModbus1(data); break; }
             case SCHNEIDERMODBUS2: { parseSchneiderModbus2(data); break; }
+            case INGETEAMMODBUS: { parseIngeteamModbus(data); break; }
         }
         
         if (config.wversion == FRONIUS_MODBUS) {
@@ -634,6 +720,19 @@ void schneiderModbus(void)
         } else {
             // Serial.printf("  error requesting address %d\n", schneiderRegisters[i].address);
             INFOV("  error requesting address %d\n", schneiderRegisters[i].address);
+        }
+    }
+}
+
+void ingeteamModbus(void)
+{
+    checkModbusConnection(502);
+
+    for (uint8_t i = 0; i < sizeOfArray(ingeteamRegisters); ++i) {
+        if (modbustcp->readHoldingRegisters(ingeteamRegisters[i].serverID, ingeteamRegisters[i].address, ingeteamRegisters[i].length, &(ingeteamRegisters[i])) > 0) {
+            //Serial.printf("  requested %d\n", ingeteamRegisters[i].address);
+        } else {
+            Serial.printf("  error requesting address %d\n", ingeteamRegisters[i].address);
         }
     }
 }

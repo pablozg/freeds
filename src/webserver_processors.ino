@@ -35,7 +35,7 @@ String workingModeString(void)
   }
   if (config.wversion == MQTT_BROKER)
   {
-    return "MQTT Broker";
+    return "MQTT Server (Tasmota Json)";
   }
   if (config.wversion == DDS238_METER)
   {
@@ -105,6 +105,10 @@ String workingModeString(void)
   {
     return "Schneider Modbus TCP (En desarrollo)";
   }
+  if (config.wversion == INGETEAM)
+  {
+    return "Ingeteam Modbus TCP (En desarrollo)";
+  }
   return String();
 }
 
@@ -122,7 +126,7 @@ String processorFreeDS(const String &var)
                                                                               "<option value='" + String(FRONIUS_API) + "'" +
            String((config.wversion == FRONIUS_API) ? " selected='selected' " : " ") + ">Fronius (API)</option>" +
                                                                               "<option value='" + String(MQTT_BROKER) + "'" +
-           String((config.wversion == MQTT_BROKER) ? " selected='selected' " : " ") + ">Solax MQTT (Tasmota)</option>"
+           String((config.wversion == MQTT_BROKER) ? " selected='selected' " : " ") + ">MQTT Server (Tasmota Json)</option>"
                                                                               "<option value='" + String(DDS238_METER) + "'" +
            String((config.wversion == DDS238_METER) ? " selected='selected' " : " ") + ">Meter DDS238-2(4) Modbus</option>"
                                                                               "<option value='" + String(DDSU666_METER) + "'" +
@@ -145,6 +149,8 @@ String processorFreeDS(const String &var)
            String((config.wversion == SOLAREDGE) ? " selected='selected' " : " ") + ">SolarEdge Modbus TCP</option>" +
                                                                               "<option value='" + String(SCHNEIDER) + "'" +
            String((config.wversion == SCHNEIDER) ? " selected='selected' " : " ") + ">Schneider Modbus TCP (En desarrollo)</option>" +
+                                                                              "<option value='" + String(INGETEAM) + "'" +
+           String((config.wversion == INGETEAM) ? " selected='selected' " : " ") + ">Ingeteam Modbus TCP (En desarrollo)</option>" +
                                                                               "<option value='" + String(WIBEEE_MODBUS) + "'" +
            String((config.wversion == WIBEEE_MODBUS) ? " selected='selected' " : " ") + ">Wibeee Modbus TCP (En desarrollo)</option>" +
                                                                               "<option value='" + String(WIBEEE) + "'" +

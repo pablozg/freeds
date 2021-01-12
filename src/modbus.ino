@@ -368,6 +368,9 @@ void readModbus(void)
     case WIBEEE_MODBUS:
       wibeeeModbus();
       break;
+    case INGETEAM:
+      ingeteamModbus();
+      break;
     case SCHNEIDER:
       schneiderModbus();
       break;

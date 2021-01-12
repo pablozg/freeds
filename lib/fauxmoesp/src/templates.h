@@ -2,7 +2,7 @@
 
 FAUXMO ESP
 
-Copyright (C) 2018-2020 by Xose Pérez <xose dot perez at gmail dot com>
+Copyright (C) 2018-2020 by Xose Pérez <xose dot perez at gmail dot com>, 2020-2021 by Paul Vint <paul@vintlabs.com>
 
 The MIT License (MIT)
 
@@ -34,15 +34,24 @@ PROGMEM const char FAUXMO_TCP_HEADERS[] =
     "Content-Length: %d\r\n"
     "Connection: close\r\n\r\n";
 
+PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
+    "{\"success\":{\"/lights/%d/state/on\":%s}},"
+    "{\"success\":{\"/lights/%d/state/bri\":%d}}"   // not needed?
+"]";
+
 PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE_DIMMABLE[] = "{"
     "\"type\":\"Dimmable light\","
     "\"name\":\"%s\","
-    "\"uniqueid\":\"%s-%d\","
+    "\"uniqueid\":\"%s\","
     "\"modelid\":\"LWB010\","
     "\"manufacturername\":\"Philips\","
     "\"productname\":\"E1\","
     "\"state\":{"
         "\"on\":%s,\"bri\":%d,\"alert\":\"none\",\"mode\":\"homeautomation\",\"reachable\": true"
+    "},"
+    "\"capabilities\":{"
+        "\"certified\":false,"
+        "\"streaming\":{\"renderer\":true,\"proxy\":false}"
     "},"
     "\"swversion\":\"5.105.0.21169\""
 "}";
@@ -50,12 +59,32 @@ PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE_DIMMABLE[] = "{"
 PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE_ONOFF[] = "{"
     "\"type\":\"Dimmable light\","
     "\"name\":\"%s\","
-    "\"uniqueid\":\"%s-%d\","
+    "\"uniqueid\":\"%s\","
     "\"modelid\":\"LWB010\","
     "\"manufacturername\":\"Philips\","
     "\"productname\":\"E1\","
     "\"state\":{"
         "\"on\":%s,\"alert\":\"none\",\"mode\":\"homeautomation\",\"reachable\": true"
+    "},"
+    "\"capabilities\":{"
+        "\"certified\":false,"
+        "\"streaming\":{\"renderer\":true,\"proxy\":false}"
+    "},"
+    "\"swversion\":\"5.105.0.21169\""
+"}";
+
+// Working with gen1 and gen3, ON/OFF/%, gen3 requires TCP port 80
+PROGMEM const char FAUXMO_DEVICE_JSON_TEMPLATE_COLOR[] = "{"
+    "\"type\":\"Extended color light\","
+    "\"name\":\"%s\","
+    "\"uniqueid\":\"%s\","
+    "\"modelid\":\"LCT007\","
+    "\"state\":{"
+        "\"on\":%s,\"bri\":%d,\"xy\":[0,0],\"reachable\": true"
+    "},"
+    "\"capabilities\":{"
+        "\"certified\":false,"
+        "\"streaming\":{\"renderer\":true,\"proxy\":false}"
     "},"
     "\"swversion\":\"5.105.0.21169\""
 "}";
@@ -67,7 +96,7 @@ PROGMEM const char FAUXMO_DESCRIPTION_TEMPLATE[] =
     "<URLBase>http://%d.%d.%d.%d:%d/</URLBase>"
     "<device>"
         "<deviceType>urn:schemas-upnp-org:device:Basic:1</deviceType>"
-        "<friendlyName>FreeDs (%d.%d.%d.%d:%d)</friendlyName>"
+        "<friendlyName>Philips hue (%d.%d.%d.%d:%d)</friendlyName>"
         "<manufacturer>Royal Philips Electronics</manufacturer>"
         "<manufacturerURL>http://www.philips.com</manufacturerURL>"
         "<modelDescription>Philips hue Personal Wireless Lighting</modelDescription>"
@@ -81,12 +110,12 @@ PROGMEM const char FAUXMO_DESCRIPTION_TEMPLATE[] =
 "</root>";
 
 PROGMEM const char FAUXMO_UDP_RESPONSE_TEMPLATE[] =
-  "HTTP/1.1 200 OK\r\n"
-  "CACHE-CONTROL: max-age=100\r\n"
-  "EXT:\r\n"
-  "LOCATION: http://%d.%d.%d.%d:%d/description.xml\r\n"
-  "SERVER: Linux/3.14.0 UPnP/1.0 IpBridge/1.24.0\r\n"
-  "hue-bridgeid: %s\r\n"
-  "ST: urn:schemas-upnp-org:device:basic:1\r\n"
-  "USN: 2f402f80-da50-11e1-9b23-%s::ssdp:all\r\n"
-  "\r\n";
+    "HTTP/1.1 200 OK\r\n"
+    "EXT:\r\n"
+    "CACHE-CONTROL: max-age=100\r\n" // SSDP_INTERVAL
+    "LOCATION: http://%d.%d.%d.%d:%d/description.xml\r\n"
+    "SERVER: FreeRTOS/6.0.5, UPnP/1.0, IpBridge/1.17.0\r\n" // _modelName, _modelNumber
+    "hue-bridgeid: %s\r\n"
+    "ST: urn:schemas-upnp-org:device:basic:1\r\n"  // _deviceType
+    "USN: uuid:2f402f80-da50-11e1-9b23-%s::upnp:rootdevice\r\n" // _uuid::_deviceType
+    "\r\n";

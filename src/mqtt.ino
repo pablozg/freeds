@@ -412,8 +412,9 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     if (strcmp(topic, tmpTopic) == 0)
     { // pwm control ON-OFF
       INFOV("Mqtt - PWM control: %s\n", (char)payload[0] == '1' ? "ON" : "OFF");
-      if ((char)payload[0] == '1') { config.flags.pwmEnabled = true; }
-      else { config.flags.pwmEnabled = false; shutdownPwm(false, "PWM Dowm: Mqtt command received\n"); }
+      config.flags.pwmEnabled = (char)payload[0] == '1' ? true : false;
+      if (!config.flags.pwmEnabled) { shutdownPwm(false, "PWM Dowm: Mqtt command received\n"); }
+      Flags.pwmIsWorking = true;
       saveEEPROM();
       return;
     }
@@ -423,6 +424,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // pwm control manual ON-OFF
       INFOV("Mqtt - PWM mode set to: %s\n", (char)payload[0] == '1' ? "MANUAL" : "AUTO");
       config.flags.pwmMan = (char)payload[0] == '1' ? true : false;
+      config.flags.pwmMan ? changeToManual() : changeToAuto();
       saveEEPROM();
       return;
     }

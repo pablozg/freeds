@@ -17,5 +17,6 @@
 #define SMA_ISLAND 17
 #define SCHNEIDER 18
 #define WIBEEE_MODBUS 19
-#define SOLAREDGE 20 // Debe ser el último de modbus
+#define INGETEAM 20
+#define SOLAREDGE 21 // Debe ser el último de modbus
 #define MUSTSOLAR 40

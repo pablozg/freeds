@@ -118,7 +118,7 @@ bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "1.0.7";
+const char version[] PROGMEM = "1.0.7 Beta";
 
 const char *www_username = "admin";
 
@@ -931,10 +931,13 @@ void setup()
       if (config.wversion == SOLAX_V2) { SerieEsp.printf("SSID: %s\n", config.ssid_esp01); }
 
       if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
+
         modbusIP.fromString((String)config.sensor_ip);
-        if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= WIBEEE_MODBUS)) {
+
+        if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= INGETEAM)) {
           modbustcp = new esp32ModbusTCP(modbusIP, 502);
         } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
+
         configModbusTcp();
       }
 

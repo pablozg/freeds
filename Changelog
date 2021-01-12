@@ -1,8 +1,10 @@
 Versión 1.0.7
 
 	- Solucionado bug usando el programador cuando el control por temperatura está activado.
+	- Solucionado bug usando el programador en la implemetación con PID.
 	- Solucionado bug con el comando para reiniciar los contadores.
 	- Solucionado bug en el cambio de contraseña según su longitud.
+	- Solucionado bug por el que freeDS no era detectado por Alexa.
 	- Cambio de posición del parametro "Parche derivador lowcost", para evitar confusiones (sugerido por F. Cadenas) y mejoras en el entorno web.
 	- Deshabilitada la opción de programador si no ha actualizado la hora correctamente.
 	- Añadida la posibilidad de cambiar el topic del SoC con el modo ICC Solar.

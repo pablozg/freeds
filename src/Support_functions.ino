@@ -45,6 +45,7 @@ void getSensorData(void)
       case HUAWEI_MODBUS: // Huawei
       case SOLAREDGE: // SolarEdge
       case WIBEEE_MODBUS: // Wibeee Modbus
+      case INGETEAM: // Ingeteam Modbus
       case SCHNEIDER:
       case MUSTSOLAR: // MustSolar
         readModbus();
@@ -77,6 +78,7 @@ void setGetDataTime(void)
     case VICTRON:
     case HUAWEI_MODBUS:
     case WIBEEE_MODBUS:
+    case INGETEAM:
     case SCHNEIDER:
     case SOLAREDGE:
       if (config.getDataTime < 1000) config.getDataTime = 1000;
@@ -97,8 +99,7 @@ void every1000ms(void)
 {
   calcWattsToday(); // Calculate the imported / exported energy
   if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
-  INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
-  // INFOV("I%.02f,O%.02f,T%.02f,G%.02f,P%d\n", PIDInput, PIDOutput, Setpoint, inverter.wgrid, pwmValue);
+  // INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
 }
 
 String midString(String *str, String start, String finish){
@@ -344,15 +345,15 @@ uint16_t getMin(uint16_t n)
 void checkTimer(void)
 {
   if (config.flags.timerEnabled && Flags.ntpTime) {
-    boolean changeToManual = false;
+    boolean flagChangeToManual = false;
   
     if (getHour(config.timerStart) <= getHour(config.timerStop)) {
       if (((timeinfo.tm_hour == getHour(config.timerStart) && timeinfo.tm_min >= getMin(config.timerStart)) || timeinfo.tm_hour > getHour(config.timerStart)) &&
           ((timeinfo.tm_hour == getHour(config.timerStop) && timeinfo.tm_min < getMin(config.timerStop)) || timeinfo.tm_hour < getHour(config.timerStop)) )
       {
-        changeToManual = true;
+        flagChangeToManual = true;
       } else {
-        changeToManual = false;
+        flagChangeToManual = false;
       }
     }
 
@@ -360,19 +361,20 @@ void checkTimer(void)
         if (((timeinfo.tm_hour == getHour(config.timerStart) && timeinfo.tm_min >= getMin(config.timerStart)) || timeinfo.tm_hour > getHour(config.timerStart)) &&
               timeinfo.tm_hour <= 23)
         {
-          changeToManual = true;
+          flagChangeToManual = true;
         } else if ((timeinfo.tm_hour == getHour(config.timerStop) && timeinfo.tm_min < getMin(config.timerStop)) || timeinfo.tm_hour < getHour(config.timerStop)) {
-          changeToManual = true;
+          flagChangeToManual = true;
         } else if ((timeinfo.tm_hour == getHour(config.timerStop) && timeinfo.tm_min > getMin(config.timerStop)) || timeinfo.tm_hour > getHour(config.timerStop))  {
-          changeToManual = false;
+          flagChangeToManual = false;
         }
     }
         
-    if (changeToManual) {
+    if (flagChangeToManual) {
       if (!Flags.timerSet) { 
         INFOV("Timer started\n");
         Flags.timerSet = true;
         config.flags.pwmMan = true;
+        changeToManual();
         if (config.modoTemperatura != 3) { Flags.pwmIsWorking = true; }
       }
     } else {
@@ -380,10 +382,25 @@ void checkTimer(void)
         INFOV("Timer stopped\n");
         Flags.timerSet = false;
         config.flags.pwmMan = false;
+        changeToAuto();
         if (config.modoTemperatura != 3) { Flags.pwmIsWorking = true; }
       }
     }
   }
+}
+
+void changeToManual(void)
+{
+  myPID.SetMode(MANUAL);
+  PIDOutput = 0;
+  Setpoint = 0;
+}
+
+void changeToAuto(void)
+{
+  myPID.SetMode(AUTOMATIC);
+  myPID.SetCurrentOutput(invert_pwm);
+  Setpoint = config.potTarget;
 }
 
 void calcWattsToday()
@@ -441,6 +458,9 @@ void defineWebMonitorFields(uint8_t version)
       break;
     case ICC_SOLAR: // Icc Solar
       webMonitorFields.data = 0x0F77E006; // 0x0F77E000 
+      break;
+    case INGETEAM: // Ingeteam
+      webMonitorFields.data = 0x0F77E006;
       break;
     case WIBEEE: // Wibee
     case WIBEEE_MODBUS: // Wibee Modbus
@@ -637,7 +657,7 @@ void readClamp(void)
 {
   if (config.flags.useClamp) {
     double amps = calcIrms(1484); // Calculate Irms only
-    if (amps > 0.45) {
+    if (amps > 0.50) {
       // inverter.gridv > 0 ? inverter.currentCalcWatts = amps * inverter.gridv : inverter.currentCalcWatts = amps * config.clampVoltage;
       inverter.currentCalcWatts = amps * config.clampVoltage;
     } else { inverter.currentCalcWatts = 0; }
@@ -655,6 +675,7 @@ void current(uint8_t _inPinI, double _ICAL)
 }
 
 //--------------------------------------------------------------------------------------
+// Based on Emonlib https://github.com/openenergymonitor/EmonLib
 // 131ms to complete every call
 double calcIrms(unsigned int Number_of_Samples)
 {
@@ -707,7 +728,6 @@ void writeClampPwm(uint8_t step)
 {
   invert_pwm = calculeTargetPwm(2 * (step + 1));
   writePwmValue(invert_pwm);
-  // INFOV("invert_pwm -> %d\n", invert_pwm);
 }
 
 void writeConfigSpiffs(const char *filename)
