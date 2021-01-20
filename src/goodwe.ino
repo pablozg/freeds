@@ -1,18 +1,17 @@
 void sendUDPRequest(void)
 {
-    //   inverterUDP.beginPacket("79.99.215.248", 8899);
-      inverterUDP.beginPacket(config.sensor_ip, 8899);
-      inverterUDP.write(0xAA);
-      inverterUDP.write(0x55);
-      inverterUDP.write(0xC0);
-      inverterUDP.write(0x7F);
-      inverterUDP.write(0x01);
-      inverterUDP.write(0x06);
-      inverterUDP.write(0x00);
-      inverterUDP.write(0x02);
-      inverterUDP.write(0x45);
-      inverterUDP.endPacket();
-    //   INFOV("MENSAJE UDP enviado\n");
+  inverterUDP.beginPacket(config.sensor_ip, 8899);
+  inverterUDP.write(0xAA);
+  inverterUDP.write(0x55);
+  inverterUDP.write(0xC0);
+  inverterUDP.write(0x7F);
+  inverterUDP.write(0x01);
+  inverterUDP.write(0x06);
+  inverterUDP.write(0x00);
+  inverterUDP.write(0x02);
+  inverterUDP.write(0x45);
+  inverterUDP.endPacket();
+  //   INFOV("MENSAJE UDP enviado\n");
 }
 
 void parseUDP(void)
