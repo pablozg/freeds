@@ -96,7 +96,7 @@ PROGMEM const char FAUXMO_DESCRIPTION_TEMPLATE[] =
     "<URLBase>http://%d.%d.%d.%d:%d/</URLBase>"
     "<device>"
         "<deviceType>urn:schemas-upnp-org:device:Basic:1</deviceType>"
-        "<friendlyName>Philips hue (%d.%d.%d.%d:%d)</friendlyName>"
+        "<friendlyName>FreeDS (%d.%d.%d.%d:%d)</friendlyName>"
         "<manufacturer>Royal Philips Electronics</manufacturer>"
         "<manufacturerURL>http://www.philips.com</manufacturerURL>"
         "<modelDescription>Philips hue Personal Wireless Lighting</modelDescription>"

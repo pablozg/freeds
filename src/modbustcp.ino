@@ -145,7 +145,7 @@ registerData wibeeeRegisters[] = {
 };
 
 registerData ingeteamRegisters[] = {
-    &inverter.wgrid, 1, 30001, 69, INGETEAMMODBUS
+    &inverter.wgrid, 1, 0, 69, INGETEAMMODBUS
 };
 
 registerData schneiderRegisters[] = { // Schneider
@@ -259,79 +259,76 @@ void parseIngeteamModbus(uint8_t *data)
   int16_t value = 0;
   uint16_t uvalue = 0;
 
+//   for (int i = 0; i < 69; i++) {
+//       Serial.printf("Registro %d: %02X %02X\n", i + 1, data[(2 * i)], data[(2 * i) + 1]);
+//   }
 
   // Registro 18
-  uvalue = (data[36] << 8) | (data[37]);
+  uvalue = (data[34] << 8) | (data[35]);
   meter.voltage = (float)uvalue / 10;
 
   // Registro 19
-  value = (data[38] << 8) | (data[39]);
+  value = (data[36] << 8) | (data[37]);
   meter.current = (float)value / 100;
 
   // Registro 20
-  value = (data[40] << 8) | (data[41]);
+  value = (data[38] << 8) | (data[39]);
   inverter.batteryWatts = (float)value / 100;
 
   // Registro 21
-  uvalue = (data[42] << 8) | (data[43]);
+  uvalue = (data[40] << 8) | (data[41]);
   inverter.batterySoC = (float)uvalue;
 
   // Registro 32
-  uvalue = (data[64] << 8) | (data[65]);
+  uvalue = (data[62] << 8) | (data[63]);
   inverter.pv1v = (float)uvalue;
 
   // Registro 33
-  uvalue = (data[66] << 8) | (data[67]);
+  uvalue = (data[64] << 8) | (data[65]);
   inverter.pv1c = (float)uvalue / 100;
 
   // Registro 34
-  uvalue = (data[68] << 8) | (data[69]);
+  uvalue = (data[66] << 8) | (data[67]);
   inverter.pw1 = (float)uvalue;
 
   // Registro 35
-  uvalue = (data[70] << 8) | (data[71]);
+  uvalue = (data[68] << 8) | (data[69]);
   inverter.pv2v = (float)uvalue;
 
   // Registro 36
-  uvalue = (data[72] << 8) | (data[73]);
-  inverter.pv2c = (float)uvalue / 100;
+  uvalue = (data[70] << 8) | (data[71]);
+  inverter.pv2c = (float)uvalue / 100.0;
 
   // Registro 37
-  uvalue = (data[74] << 8) | (data[75]);
+  uvalue = (data[72] << 8) | (data[73]);
   inverter.pw2 = (float)uvalue;
-  
-//   // Registro 0
-//   uvalue = (data[0] << 8) | (data[1]);
-//   inverter.wgrid = uvalue;
-  
-//   // Registro 2
-//   uvalue = (data[4] << 8) | (data[5]);
-//   inverter.wsolar = uvalue;
-  
-//   // Registro 24
-//   uvalue = (data[48] << 8) | (data[49]);
-//   meter.importActive = (float)uvalue / 100;
-  
 
+  inverter.wsolar = inverter.pw1 + inverter.pw2;
+
+  // Registro 38
+  value = (data[74] << 8) | (data[75]);
+  inverter.loadWatts = (float)value;
+
+  // Registro 49
+  uvalue = (data[96] << 8) | (data[97]);
+  inverter.gridv = (float)uvalue;
   
-//   // Registro 59
-//   uvalue = (data[118] << 8) | (data[119]);
-//   inverter.gridv = (float)uvalue / 100;
+  // Registro 50
+
+  // Registro 51
+  uvalue = (data[100] << 8) | (data[101]);
+  meter.frequency = (float)uvalue / 100.0;
   
-//   // Registro 62
-//   uvalue = (data[124] << 8) | (data[125]);
-//   meter.frequency = (float)uvalue / 100;
-  
-//   // Registro 66
-//   value = (data[132] << 8) | (data[133]);
-//   meter.powerFactor = (float)value / 100;
-  
-//   if (meter.powerFactor > 0) {
-//     if (!config.flags.changeGridSign) { inverter.wgrid *= -1; }
-//   } else {
-//     meter.powerFactor *= -1;
-//     if (config.flags.changeGridSign) { inverter.wgrid *= -1; }
-//   }  
+  // Registro 52
+  value = (data[102] << 8) | (data[103]);
+  inverter.wgrid = value;
+
+  config.flags.changeGridSign ? inverter.wgrid *= -1 : inverter.wgrid *= 1;
+
+   // Registro 58
+  value = (data[114] << 8) | (data[115]);
+  inverter.temperature = value / 10.0;
+ 
 }
 
 void parseWibeeeModbus(uint8_t *data)
@@ -729,8 +726,8 @@ void ingeteamModbus(void)
     checkModbusConnection(502);
 
     for (uint8_t i = 0; i < sizeOfArray(ingeteamRegisters); ++i) {
-        if (modbustcp->readHoldingRegisters(ingeteamRegisters[i].serverID, ingeteamRegisters[i].address, ingeteamRegisters[i].length, &(ingeteamRegisters[i])) > 0) {
-            //Serial.printf("  requested %d\n", ingeteamRegisters[i].address);
+        if (modbustcp->readInputRegisters(ingeteamRegisters[i].serverID, ingeteamRegisters[i].address, ingeteamRegisters[i].length, &(ingeteamRegisters[i])) > 0) {
+            // Serial.printf("  requested %d\n", ingeteamRegisters[i].address);
         } else {
             Serial.printf("  error requesting address %d\n", ingeteamRegisters[i].address);
         }

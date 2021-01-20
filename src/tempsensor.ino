@@ -80,7 +80,7 @@ void checkTemperature(void)
         switch(config.modoTemperatura) {
             case 1: // Auto
                 if (!config.flags.pwmMan && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP AUTO\n"); } }
+                if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0 || (myPID.GetMode() == PID::AUTOMATIC)) { Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP AUTO\n"); } }
                 break;
             case 2: // Manual
                 if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
@@ -88,7 +88,7 @@ void checkTemperature(void)
                 break;
             case 3: // Auto y Manual
                 if (temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
-                if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP AUTO/MAN\n"); } }
+                if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0 || (myPID.GetMode() == PID::AUTOMATIC)) { Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP AUTO/MAN\n"); } }
                 break;
         }
     }

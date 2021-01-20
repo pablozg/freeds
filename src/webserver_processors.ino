@@ -49,6 +49,10 @@ String workingModeString(void)
   {
     return "Meter SDM120 / SDM220 Modbus";
   }
+  if (config.wversion == GOODWE)
+  {
+    return "GoodWe (En desarrollo)";
+  }
   if (config.wversion == MUSTSOLAR)
   {
     return "MustSolar Modbus (En desarrollo)";
@@ -133,6 +137,8 @@ String processorFreeDS(const String &var)
            String((config.wversion == DDSU666_METER) ? " selected='selected' " : " ") + ">Meter DDSU666 Modbus</option>"
                                                                               "<option value='" + String(SDM_METER) + "'" +
            String((config.wversion == SDM_METER) ? " selected='selected' " : " ") + ">Meter SDM120 / SDM220 Modbus</option>"
+                                                                              "<option value='"+ String(GOODWE) + "'" +
+           String((config.wversion == GOODWE) ? " selected='selected' " : " ") + ">Goodwe (En desarrollo)</option>"
                                                                               "<option value='"+ String(MUSTSOLAR) + "'" +
            String((config.wversion == MUSTSOLAR) ? " selected='selected' " : " ") + ">MustSolar Modbus (En desarrollo)</option>"
                                                                               "<option value='" + String(SMA_BOY) + "'" +
@@ -436,7 +442,7 @@ String processorConfig(const String &var)
              wifi += "</select></div>";
       return wifi;
     }
-    if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE))
+    if (config.wversion >= MODBUS_TCP && config.wversion <= (MODBUS_TCP + MODE_STEP - 1))
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>IP Modbus TCP:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
@@ -466,14 +472,14 @@ String processorConfig(const String &var)
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
              String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
     }
-    // MQTT
-    if (config.wversion == MQTT_BROKER)
+    if (config.wversion == GOODWE)
     {
-      return "<label id='labelModo' class='col-sm-4 form-control-label'>MQTT Broker:</label>"
+      return "<label id='labelModo' class='col-sm-4 form-control-label'>IP GoodWe:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
-             String(config.MQTT_broker) + "\" name=\"wifis\" disabled /></div>";
+             String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
     }
-    if (config.wversion == ICC_SOLAR)
+    // MQTT
+    if (config.wversion >= MQTT_MODE && config.wversion <= (MQTT_MODE + MODE_STEP - 1))
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>MQTT Broker:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +

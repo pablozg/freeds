@@ -148,6 +148,9 @@ void showOledData(void)
             case MUSTSOLAR:
               display.drawString(69, 0, "MSTS");
               break;
+            case GOODWE:
+              display.drawString(69, 0, "GDWE");
+              break;
             case SMA_BOY:
               display.drawString(69, 0, "SMAB");
               break;

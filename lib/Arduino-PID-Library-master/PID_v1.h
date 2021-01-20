@@ -6,23 +6,20 @@ class PID
 {
   public:
 
-  // Constants used in some of the functions below
-  #define AUTOMATIC	1
-  #define MANUAL	0
-  #define DIRECT  0
-  #define REVERSE  1
-  #define P_ON_M 0
-  #define P_ON_E 1
-
+  // Parameter types for some of the functions below
+  enum mode_t { MANUAL = 0, AUTOMATIC = 1 };
+  enum direction_t { DIRECT = 0, REVERSE = 1 };
+  enum proportional_t { P_ON_M = 0, P_ON_E = 1 };
+  
   // commonly used functions **************************************************************************
   PID(float*, float*, float*,           // * constructor.  links the PID to the Input, Output, and 
-      float, float, float, int, int);   //   Setpoint.  Initial tuning parameters are also set here.
+      float, float, float, proportional_t, direction_t);   //   Setpoint.  Initial tuning parameters are also set here.
                                         //   (overload for specifying proportional mode)
 
   PID(float*, float*, float*,           // * constructor.  links the PID to the Input, Output, and 
-      float, float, float, int);        //   Setpoint.  Initial tuning parameters are also set here
+      float, float, float, direction_t);        //   Setpoint.  Initial tuning parameters are also set here
 
-  void SetMode(int Mode);               // * sets PID to either Manual (0) or Auto (non-0)
+  void SetMode(mode_t);                 // * sets PID to either Manual (0) or Auto (non-0)
 
   bool Compute();                       // * performs the PID calculation.  it should be
                                         //   called every time loop() cycles. ON/OFF and
@@ -40,11 +37,11 @@ class PID
                   float);         	    //   constructor, this function gives the user the option
                                         //   of changing tunings during runtime for Adaptive control
   void SetTunings(float, float,         // * overload for specifying proportional mode
-                  float, int);    
+                  float, proportional_t);    
 
   void SetCurrentOutput(float);     	  
 
-	void SetControllerDirection(int);	    // * Sets the Direction, or "Action" of the controller. DIRECT
+	void SetControllerDirection(direction_t); // * Sets the Direction, or "Action" of the controller. DIRECT
                                         //   means the output will increase when error is positive. REVERSE
                                         //   means the opposite.  it's very unlikely that this will be needed
                                         //   once it is set in the constructor.
@@ -72,8 +69,8 @@ class PID
   float ki;                             // * (I)ntegral Tuning Parameter
   float kd;                             // * (D)erivative Tuning Parameter
 
-	int controllerDirection;
-	int pOn;
+	direction_t controllerDirection;
+	proportional_t pOn;
 
   float *myInput;                       // * Pointers to the Input, Output, and Setpoint variables
   float *myOutput;                      //   This creates a hard link between the variables and the 

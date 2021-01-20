@@ -72,10 +72,6 @@ THE SOFTWARE.
 #include <MD5Builder.h>
 #include "templates.h"
 
-#define ONOFF 0
-#define DIMMABLE 1
-#define COLOR 2
-
 typedef std::function<void(unsigned char, const char *, bool, unsigned char)> TSetStateCallback;
 
 typedef struct {
@@ -89,6 +85,8 @@ typedef struct {
 class fauxmoESP {
 
     public:
+
+        enum deviceType_t { ONOFF = 0, DIMMABLE = 1, COLOR = 2 };
 
         ~fauxmoESP();
 

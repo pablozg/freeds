@@ -228,7 +228,7 @@ void onMqttConnect(bool sessionPresent)
     mqttClient.subscribe(tmpTopic, 0);
   }
 
-  if (config.wversion == MQTT_BROKER || config.wversion == ICC_SOLAR) { suscribeMqttMeter(); }
+  if (config.wversion >= MQTT_MODE && config.wversion <= (MQTT_MODE + MODE_STEP - 1)) { suscribeMqttMeter(); }
 
   if (config.flags.domoticz) { mqttClient.subscribe("domoticz/out", 0); }
 }

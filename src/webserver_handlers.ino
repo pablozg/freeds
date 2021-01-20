@@ -146,8 +146,8 @@ void handleConfig(AsyncWebServerRequest *request)
     {
       strcpy(config.ssid_esp01, request->urlDecode(request->arg("wifis")).c_str());
       SerieEsp.printf("SSID: %s\n", config.ssid_esp01);
-    }
-    if (config.wversion == SOLAX_V1 || (config.wversion >= SMA_BOY && config.wversion <= SLAVE_MODE) || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE))
+    } 
+    else if (config.wversion >= SOLAX_V2_LOCAL && config.wversion <= MODE_WIDTH)
     {
       strcpy(config.sensor_ip, request->urlDecode(request->arg("wifis")).c_str());
       modbustcp = NULL;
@@ -801,12 +801,19 @@ void setWebConfig(void)
 
     modbustcp = NULL;
 
-    if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
+    if (config.wversion >= MODBUS_TCP && config.wversion <= (MODBUS_TCP + MODE_STEP - 1))
+    {
       modbusIP.fromString((String)config.sensor_ip);
-      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= INGETEAM)) {
-        modbustcp = new esp32ModbusTCP(modbusIP, 502);
-      } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
+
+      if (config.wversion == SOLAREDGE) {
+        modbustcp = new esp32ModbusTCP(modbusIP, 1502);
+      } else { modbustcp = new esp32ModbusTCP(modbusIP, 502); }
       configModbusTcp();
+    }
+
+    if (config.wversion == GOODWE) {
+      inverterUDP.begin(localUdpPort);
+      INFOV("Now listening at IP %s, UDP port %d\n", WiFi.localIP().toString().c_str(), localUdpPort);
     }
     
     saveEEPROM();
@@ -925,6 +932,7 @@ void setWebConfig(void)
         config.flags.debug3 = false;
         config.flags.debug4 = false;
         config.flags.debug5 = false;
+        config.flags.debugPID = false;
         break;
       case 1:
         config.flags.debug1 = true; 
@@ -940,6 +948,9 @@ void setWebConfig(void)
         break;
       case 5:
         config.flags.debug5 = true;
+        break;
+      case 6:
+        config.flags.debugPID = true;
         break;
       }
       saveEEPROM();
@@ -1080,7 +1091,7 @@ void setWebConfig(void)
           pos++;
           pch = strtok (NULL, ";");
         }
-        myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
+        myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], PID::P_ON_M);
         INFOV("PID Values set to P%.05f, I%.05f, D%.05f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd());
         saveEEPROM();
        } else { INFOV("PID Values: P%.05f, I%.05f, D%.05f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd()); }
@@ -1094,8 +1105,8 @@ void setWebConfig(void)
 
     /////////////////// DEBUG COMMANDS ///////////////////
     if (comando == "SetControllerDirection") {
-      if (value == 1) { myPID.SetControllerDirection(REVERSE); }
-      else { myPID.SetControllerDirection(DIRECT); }
+      if (value == 1) { myPID.SetControllerDirection(PID::REVERSE); }
+      else { myPID.SetControllerDirection(PID::DIRECT); }
       INFOV("Set direction to: %s\n", value == 1 ? "REVERSE" : "DIRECT");
     }
 
@@ -1105,7 +1116,7 @@ void setWebConfig(void)
       INFOV("pwmFrequency: %.02f\n", (float)(config.pwmFrequency / 10.0));
       saveEEPROM();
     }
-    
+
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
     request->send(response);
@@ -1295,17 +1306,17 @@ void alexaStart(void)
 
   // PWM ON/OFF
   sprintf(tmp, "Derivador %02X%02X", mac[4], mac[5]);
-  fauxmo.addDevice(tmp, ONOFF);
+  fauxmo.addDevice(tmp, fauxmoESP::ONOFF);
   fauxmo.setState(tmp, config.flags.pwmEnabled, 0);
 
   // Modo Auto/Manual y valor de modo manual
   sprintf(tmp, "Derivador Manual %02X%02X", mac[4], mac[5]);
-  fauxmo.addDevice(tmp, DIMMABLE);
+  fauxmo.addDevice(tmp, fauxmoESP::DIMMABLE);
   fauxmo.setState(tmp, config.flags.pwmMan, (uint8_t)((config.manualControlPWM * 254) / 100));
 
   // Pantalla Derivador
   sprintf(tmp, "Derivador Oled %02X%02X", mac[4], mac[5]);
-  fauxmo.addDevice(tmp, DIMMABLE);
+  fauxmo.addDevice(tmp, fauxmoESP::DIMMABLE);
   fauxmo.setState(tmp, config.flags.oledPower, (uint8_t)((config.oledBrightness * 254) / 100));
   
   fauxmo.onSetState([](unsigned char device_id, const char * device_name, bool state, unsigned char value) {

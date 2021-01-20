@@ -50,6 +50,9 @@ void getSensorData(void)
       case MUSTSOLAR: // MustSolar
         readModbus();
         break;
+      case GOODWE: // MustSolar
+        sendUDPRequest();
+        break;
     }
   }
 }
@@ -81,6 +84,7 @@ void setGetDataTime(void)
     case INGETEAM:
     case SCHNEIDER:
     case SOLAREDGE:
+    case GOODWE:
       if (config.getDataTime < 1000) config.getDataTime = 1000;
       break;
   }
@@ -99,7 +103,9 @@ void every1000ms(void)
 {
   calcWattsToday(); // Calculate the imported / exported energy
   if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
-  // INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
+  if (config.flags.debugPID) {
+    INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
+  }
 }
 
 String midString(String *str, String start, String finish){
@@ -391,14 +397,14 @@ void checkTimer(void)
 
 void changeToManual(void)
 {
-  myPID.SetMode(MANUAL);
+  myPID.SetMode(PID::MANUAL);
   PIDOutput = 0;
   Setpoint = 0;
 }
 
 void changeToAuto(void)
 {
-  myPID.SetMode(AUTOMATIC);
+  myPID.SetMode(PID::AUTOMATIC);
   myPID.SetCurrentOutput(invert_pwm);
   Setpoint = config.potTarget;
 }
@@ -460,6 +466,9 @@ void defineWebMonitorFields(uint8_t version)
       webMonitorFields.data = 0x0F77E006; // 0x0F77E000 
       break;
     case INGETEAM: // Ingeteam
+      webMonitorFields.data = 0x0F77E006;
+      break;
+    case GOODWE: // GoodWe
       webMonitorFields.data = 0x0F77E006;
       break;
     case WIBEEE: // Wibee

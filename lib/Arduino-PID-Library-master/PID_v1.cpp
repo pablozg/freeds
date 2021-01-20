@@ -19,7 +19,7 @@
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
 PID::PID(float* Input, float* Output, float* Setpoint,
-        float Kp, float Ki, float Kd, int POn, int ControllerDirection)
+        float Kp, float Ki, float Kd, proportional_t POn, direction_t ControllerDirection)
 {
    myOutput = Output;
    myInput = Input;
@@ -43,7 +43,7 @@ PID::PID(float* Input, float* Output, float* Setpoint,
  ***************************************************************************/
 
 PID::PID(float* Input, float* Output, float* Setpoint,
-        float Kp, float Ki, float Kd, int ControllerDirection)
+        float Kp, float Ki, float Kd, direction_t ControllerDirection)
     :PID::PID(Input, Output, Setpoint, Kp, Ki, Kd, P_ON_E, ControllerDirection)
 {
 
@@ -68,21 +68,23 @@ bool PID::Compute()
       float input = *myInput;
       float error = *mySetpoint - input;
       float dInput = (input - lastInput);
-      outputSum+= (ki * error);
+      float output;
 
-      /*Add Proportional on Measurement, if P_ON_M is specified*/
-      if (!pOnE) outputSum -= kp * dInput;
+      /*Compute integral*/
+      outputSum += (ki * error);
+
+      /*Compute proportional*/    
+      if (pOnE) { output = kp * error; } /*Add Proportional on Error, if P_ON_E is specified*/
+      else { outputSum -= kp * dInput; output = 0; }  /*Add Proportional on Measurement, if P_ON_M is specified*/
 
       if (outputSum > outMax) outputSum = outMax;
       else if (outputSum < outMin) outputSum = outMin;
 
-      /*Add Proportional on Error, if P_ON_E is specified*/
-      float output;
-      if (pOnE) output = kp * error;
-      else output = 0;
+      /*Compute derivative*/
+      output -= kd * dInput;
 
-      /*Compute Rest of PID Output*/
-      output += outputSum - kd * dInput;
+      /*Merge*/
+      output += outputSum; 
 
       if (output > outMax) output = outMax;
       else if(output < outMin) output = outMin;
@@ -102,7 +104,7 @@ bool PID::Compute()
  * it's called automatically from the constructor, but tunings can also
  * be adjusted on the fly during normal operation
  ******************************************************************************/
-void PID::SetTunings(float Kp, float Ki, float Kd, int POn)
+void PID::SetTunings(float Kp, float Ki, float Kd, proportional_t POn)
 {
    if (Kp < 0 || Ki < 0 || Kd < 0) return;
 
@@ -175,7 +177,7 @@ void PID::SetOutputLimits(float Min, float Max)
  * when the transition from manual to auto occurs, the controller is
  * automatically initialized
  ******************************************************************************/
-void PID::SetMode(int Mode)
+void PID::SetMode(mode_t Mode)
 {
     bool newAuto = (Mode == AUTOMATIC);
     
@@ -218,7 +220,7 @@ void PID::SetCurrentOutput(float CurrentOutput)
  * know which one, because otherwise we may increase the output when we should
  * be decreasing.  This is called from the constructor.
  ******************************************************************************/
-void PID::SetControllerDirection(int Direction)
+void PID::SetControllerDirection(direction_t Direction)
 {
    if (inAuto && Direction != controllerDirection)
    {

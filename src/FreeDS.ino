@@ -29,6 +29,7 @@
 #include <Wire.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
+#include <WiFiUdp.h>
 #include <EEPROM.h>
 #include <TickerScheduler.h>
 #include <HardwareSerial.h>
@@ -118,7 +119,7 @@ bool ButtonLongPress = false;
 
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "1.0.7 Beta";
+const char version[] PROGMEM = "1.0.7 Beta Rev. B";
 
 const char *www_username = "admin";
 
@@ -226,7 +227,8 @@ typedef union {
     uint32_t debug5 : 1;             // Bit 24
     uint32_t useClamp : 1;           // Bit 25
     uint32_t useSolarAsMPTT : 1;     // Bit 26
-    uint32_t spare : 5;              // Bit 27 - 31
+    uint32_t spare : 4;              // Bit 27 - 30
+    uint32_t debugPID : 1;              // Bit 31
   };
 } SysBitfield;
 
@@ -569,7 +571,12 @@ double sqI, sumI, Irms;
 // PID Declaration
 float Setpoint, PIDInput, PIDOutput;
 
-PID myPID(&PIDInput, &PIDOutput, &Setpoint, 0.05, 0.06, 0.03, DIRECT);
+PID myPID(&PIDInput, &PIDOutput, &Setpoint, 0.05, 0.06, 0.03, PID::DIRECT); // Probando 0.05 0.05 0.04
+
+// GoodWe UDP Config
+WiFiUDP inverterUDP;
+unsigned int localUdpPort = 8899;  // local port to listen on
+uint8_t incomingPacket[512];  // buffer for incoming packets
 
 //////////////////// CAPTIVE PORTAL ////////////////
 
@@ -668,7 +675,7 @@ void defaultValues()
   strcpy(config.mask, "255.255.255.0");
   strcpy(config.dns1, "8.8.8.8");
   strcpy(config.dns2, "1.1.1.1");
-  config.potTarget = 150;
+  config.potTarget = 60;
   config.flags.pwmEnabled = true;
   config.relaysFlags.R01Man = false;
   config.relaysFlags.R02Man = false;
@@ -930,13 +937,13 @@ void setup()
       
       if (config.wversion == SOLAX_V2) { SerieEsp.printf("SSID: %s\n", config.ssid_esp01); }
 
-      if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= SOLAREDGE)) {
-
+      if (config.wversion >= MODBUS_TCP && config.wversion <= (MODBUS_TCP + MODE_STEP - 1))
+      {
         modbusIP.fromString((String)config.sensor_ip);
 
-        if (config.wversion == SMA_BOY || (config.wversion >= VICTRON && config.wversion <= INGETEAM)) {
-          modbustcp = new esp32ModbusTCP(modbusIP, 502);
-        } else { modbustcp = new esp32ModbusTCP(modbusIP, 1502); }
+        if (config.wversion == SOLAREDGE) {
+          modbustcp = new esp32ModbusTCP(modbusIP, 1502);
+        } else { modbustcp = new esp32ModbusTCP(modbusIP, 502); }
 
         configModbusTcp();
       }
@@ -995,10 +1002,16 @@ void setup()
     // PID Config
     myPID.SetSampleTime(1000);
     config.flags.dimmerLowCost ? myPID.SetOutputLimits(209, config.maxPwmLowCost) : myPID.SetOutputLimits(0, 1023);
-    config.flags.pwmMan ? myPID.SetMode(MANUAL) : myPID.SetMode(AUTOMATIC);
-    config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
-    myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], P_ON_M);
+    config.flags.pwmMan ? myPID.SetMode(PID::MANUAL) : myPID.SetMode(PID::AUTOMATIC);
+    config.flags.changeGridSign ? myPID.SetControllerDirection(PID::DIRECT) : myPID.SetControllerDirection(PID::REVERSE);
+    myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], PID::P_ON_M);
     Setpoint = config.potTarget;
+
+    // GOODWE UDP SETUP
+    if (config.wversion == GOODWE) {
+      inverterUDP.begin(localUdpPort);
+      INFOV("Now listening at IP %s, UDP port %d\n", WiFi.localIP().toString().c_str(), localUdpPort);
+    }
   }
 
   // HTTP server
@@ -1029,15 +1042,21 @@ void loop()
   /////////////////////////////////////
 
   updateUptime();
-  
+
   Flags.firstInit ? dnsServer.processNextRequest() : fauxmo.handle();
 
   if (config.flags.wifi && !Flags.firstInit)
   {
     Tickers.update(); // Actualiza todas los tareas Temporizadas
-    changeScreen();
 
-    if (config.flags.pwmEnabled && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking && myPID.GetMode() == AUTOMATIC && myPID.Compute()) {
+    if (processData) { processingData(); }
+    
+    changeScreen();
+    
+    if (config.wversion == GOODWE) { parseUDP(); }
+
+    // PID Check Loop
+    if (config.flags.pwmEnabled && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking && myPID.GetMode() == PID::AUTOMATIC && myPID.Compute()) {
       targetPwm = invert_pwm = (uint16_t)PIDOutput;
       if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
       writePwmValue(invert_pwm);
@@ -1056,8 +1075,6 @@ void loop()
         timers.printDebug = millis();
       }
     }
-
-    if (processData) { processingData(); }
     
     if (config.wversion != SOLAX_V2_LOCAL && Flags.ntpTime) {
       checkTimer();

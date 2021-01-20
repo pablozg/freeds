@@ -51,7 +51,7 @@ void pwmControl()
     Error.RecepcionDatos = true;
   }
 
-  if ((Error.RecepcionDatos || Error.VariacionDatos || !Flags.pwmIsWorking) && myPID.GetMode() == AUTOMATIC) { shutdownPwm(true, "PWM: Down by security reasons\n"); }
+  if ((Error.RecepcionDatos || Error.VariacionDatos || !Flags.pwmIsWorking) && myPID.GetMode() == PID::AUTOMATIC) { shutdownPwm(true, "PWM: Down by security reasons\n"); }
 
   //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
@@ -87,24 +87,25 @@ void pwmControl()
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
   if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking)
   {
+    // INFOV("invert_pwm: %s, wgrid: %s, comparacion: %s, , comparacion_sin_signo: %s\n", invert_pwm == 0 ? "true" : "false", inverter.wgrid < config.potTarget ? "true" : "false", (invert_pwm == 0 && (config.flags.changeGridSign ? inverter.wgrid > config.potTarget : inverter.wgrid < config.potTarget)) ? "true" : "false", (invert_pwm == 0 && inverter.wgrid < config.potTarget) ? "true" : "false");
     if (config.flags.offGrid ? // Modo Off-grid
         (config.flags.offgridVoltage ? // True
-          myPID.GetMode() == MANUAL && inverter.batteryWatts > config.potTarget && meter.voltage >= config.batteryVoltage : // True
-          myPID.GetMode() == MANUAL && inverter.batteryWatts > config.potTarget && inverter.batterySoC >= config.soc // False
+          (myPID.GetMode() == PID::MANUAL && inverter.batteryWatts > config.potTarget && meter.voltage >= config.batteryVoltage) : // True
+          (myPID.GetMode() == PID::MANUAL && inverter.batteryWatts > config.potTarget && inverter.batterySoC >= config.soc) // False
         ) : // Modo On-grid
-          myPID.GetMode() == MANUAL && (config.flags.changeGridSign ? inverter.wgrid < config.potTarget : inverter.wgrid > config.potTarget) && inverter.batteryWatts >= config.battWatts // False
+          (myPID.GetMode() == PID::MANUAL && (config.flags.changeGridSign ? inverter.wgrid < config.potTarget : inverter.wgrid > config.potTarget) && inverter.batteryWatts >= config.battWatts) // False
        )
     {
-      myPID.SetMode(AUTOMATIC);
-      config.flags.offGrid ? myPID.SetControllerDirection(REVERSE) : config.flags.changeGridSign ? myPID.SetControllerDirection(DIRECT) : myPID.SetControllerDirection(REVERSE);
+      myPID.SetMode(PID::AUTOMATIC);
+      config.flags.offGrid ? myPID.SetControllerDirection(PID::REVERSE) : config.flags.changeGridSign ? myPID.SetControllerDirection(PID::DIRECT) : myPID.SetControllerDirection(PID::REVERSE);
       Setpoint = config.potTarget;
     }
     else if (config.flags.offGrid ?
               (config.flags.offgridVoltage ?
-                myPID.GetMode() == AUTOMATIC && meter.voltage < (config.batteryVoltage - config.voltageOffset) : // True
-                myPID.GetMode() == AUTOMATIC && inverter.batterySoC < config.soc // False
+                myPID.GetMode() == PID::AUTOMATIC && (meter.voltage < (config.batteryVoltage - config.voltageOffset) || (invert_pwm == 0 && inverter.batteryWatts < config.potTarget)): // True
+                myPID.GetMode() == PID::AUTOMATIC && (inverter.batterySoC < config.soc || (invert_pwm == 0 && inverter.batteryWatts < config.potTarget)) // False
               ) :
-                myPID.GetMode() == AUTOMATIC && inverter.batteryWatts < config.battWatts
+                myPID.GetMode() == PID::AUTOMATIC && (inverter.batteryWatts < config.battWatts || (invert_pwm == 0 && (config.flags.changeGridSign ? inverter.wgrid > config.potTarget : inverter.wgrid < config.potTarget)))
             )
     {
       shutdownPwm(false);
@@ -375,7 +376,7 @@ void shutdownPwm(boolean forceRelayOff, const char *message)
 {
   if (config.flags.debug1) { INFOV(PSTR(message)); }
 
-  myPID.SetMode(MANUAL);
+  myPID.SetMode(PID::MANUAL);
   PIDOutput = 0;
   Setpoint = 0;
   targetPwm = 0;

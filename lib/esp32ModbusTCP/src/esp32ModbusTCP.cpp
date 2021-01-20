@@ -143,6 +143,12 @@ uint16_t esp32ModbusTCP::writeHoldingRegister(uint8_t serverId, uint16_t address
   return 0;
 }
 
+uint16_t esp32ModbusTCP::readInputRegisters(uint8_t serverId, uint16_t address, uint16_t numberRegisters, void* arg) {
+  ModbusRequest* request = new ModbusRequest04(serverId, address, numberRegisters);
+  if (request) return _addToQueue(request, arg);
+  return 0;
+}
+
 uint16_t esp32ModbusTCP::_addToQueue(ModbusRequest* request, void* arg) {
   if (xSemaphoreTake(_semaphore, 1000) == pdTRUE) {
     if (_toSend.size() == MODBUS_MAX_QUEUE_SIZE) {

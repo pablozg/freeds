@@ -72,6 +72,7 @@ class esp32ModbusTCP {
   uint16_t writeHoldingRegister(uint16_t address, uint16_t data, void* arg = nullptr);
   uint16_t readHoldingRegisters(uint8_t serverId, uint16_t address, uint16_t numberRegisters, void* arg = nullptr);
   uint16_t writeHoldingRegister(uint8_t serverId, uint16_t address, uint16_t data, void* arg = nullptr);
+  uint16_t readInputRegisters(uint8_t serverId, uint16_t address, uint16_t numberRegisters, void* arg = nullptr);
 
  private:
   uint16_t _addToQueue(ModbusRequest* request, void* arg);
