@@ -1,18 +1,146 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <title>FreeDS</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <meta name="description" content="FreeDS - Derivador de energía solar excedente">
         <meta name="author" content="(C) 2020 Pablo Zerón">
+        <link as="style" rel="stylesheet preload prefetch" href="freeds.min.css" type="text/css" crossorigin="anonymous"/>
+<!--        <link rel="preload" as="font" href="/webfonts/freeds.woff" type="font/woff" crossorigin="anonymous">-->
         <link rel='icon' type='image/vnd.microsoft.icon' href='favicon.ico'>
-        <title>FreeDS</title>
-        <link href="all.min.css" rel="stylesheet" type="text/css">
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+        <link href="nunito.min.css" rel="stylesheet" type="text/css">
         <link href="sb-admin-2.min.css" rel="stylesheet">
         <script src="jquery-3.5.1.min.js"></script>
         <script src="bootstrap.bundle.min.js"></script>
+        <script src="gauge.min.js"></script>
         <script src="freeds.min.js"></script>
+        <style>
+            #canvas-solar {
+                position: absolute; top: 0.1em; left: -1em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-bat {
+                position: absolute; top: 0.1em; left: 5em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-inverter {
+                position: absolute; top: 5.25em; left: 2em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-freeds {
+                position: absolute; top: 15em; left: 5.8em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-grid {
+                position: absolute; top: 10em; left: -1em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-house {
+                position: absolute; top: 10em; left: 5em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-temperaturas {
+                position: absolute; top: 14.6em; left: 0em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-termo {
+                position: absolute; top: 15.6em; left: -0.4em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-triac {
+                position: absolute; top: 15.6em; left: 1.7em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            #canvas-custom {
+                position: absolute; top: 15.6em; left: 3.8em;
+                text-align: center; font-size: 2em; font-weight: bold;
+                color: black; font-family: 'Amaranth', sans-serif;
+                margin-left: auto; margin-right: auto;
+                display: inline-block; border: 0px solid blue;
+            }
+
+            .monitorUI {
+                min-width: 24em !important;
+            }
+
+            #uiContainerRow {
+                position: relative !important;
+                padding-top: 35em !important;
+                margin: auto !important;
+                width: 24em;
+            }
+
+            .arrow {
+                position: absolute;
+                border: solid #36e412;
+                border-width: 0 3px 3px 0;
+                display: none;
+                padding: 3px;
+                transform: rotate(-45deg);
+            }
+
+
+            .arrow_solar {
+                transform: rotate(-0deg);
+            }
+
+            .arrow_battery {
+                transform: rotate(-90deg);
+            }
+
+            .arrow_inverter {
+                transform: rotate(-0deg);
+            }
+
+            .arrow_gridToInverter {
+                transform: rotate(-270deg);
+            }
+
+            .arrow_gridToHome {
+                transform: rotate(-45deg);
+            }
+
+            .arrow_houseToFreeDS {
+                transform: rotate(45deg);
+            }            
+        </style>
     </head>
     <body>
         <div id="wrapper">
@@ -26,38 +154,40 @@
                 <hr class="sidebar-divider my-1">
                 <li class="nav-item">
                     <a class="nav-link" href="/">
-                        <i class="fas fa-home"></i>
+<!--                        <i class="freeds-home"></i>-->
+                        <i class="freeds-home"></i>
                         <span class="m-l-20 language" key="MONITOR"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Red.html">
-                        <i class="fas fa-wifi"></i>
+<!--                        <i class="freeds-wifi"></i>-->
+                        <i class="freeds-wifi"></i>
                         <span class="language" key="LANSETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Mqtt.html">
-                        <i class="fas fa-sliders-h"></i>
+                        <i class="freeds-sliders-h"></i>
                         <span class="language" key="MQTTSETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Config.html">
-                        <i class="fas fa-sliders-h"></i>
+                        <i class="freeds-sliders-h"></i>
                         <span class="language" key="SETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Salidas.html">
-                        <i class="fas fa-plug"></i>
+                        <i class="freeds-plug"></i>
                         <span class="language" key="RELAYS"></span>
                     </a>
                 </li>
                 <hr class="sidebar-divider my-1">
                 <li class="nav-item">
                     <a id='panelControl' class="nav-link" href="#" data-toggle="collapse" data-target="#collapseControl" aria-expanded="true" aria-controls="collapseControl">
-                        <i class="fas fa-lightbulb"></i>
+                        <i class="freeds-lightbulb"></i>
                         <span class="language" key="CONTROLPANEL"></span>
                     </a>
                     <div id="collapseControl" class="collapse" aria-labelledby="headingControl" data-parent="#accordionSidebar">
@@ -78,19 +208,19 @@
                 <hr class="sidebar-divider my-1">
                 <li class="nav-item">
                     <a class="nav-link" onclick="$('#modalRestart').modal();" href='#'>
-                        <i class="fas fa-sync-alt"></i>
+                        <i class="freeds-sync-alt"></i>
                         <span class="language" key="RESTART"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Ota.html">
-                        <i class="fas fa-download"></i>
+                        <i class="freeds-download"></i>
                         <span class="language" key="UPDATE"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="weblog.html">
-                        <i class="fas fa-desktop"></i>
+                        <i class="freeds-desktop"></i>
                         <span class="language" key="CONSOLE"></span>
                     </a>
                 </li>
@@ -123,7 +253,7 @@
                 <div id="content">
                     <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
                         <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-                            <i class="fa fa-bars"></i>
+                            <i class="freeds-bars"></i>
                         </button>
                         <div style="align-content: left" id="temperatura"></div>
                         <ul class="navbar-nav ml-auto">
@@ -139,86 +269,118 @@
                         <div class="row">
                             <div class="col">
                                 <div class="card shadow mb-4 card-size">
-                                    <div id='Monitor' class="card-body">
+                                    <div id='uiMonitor' class="card-body">
                                         <div class="container" id="containerRow">
-                                            <div id="solarRow"></div>
-                                            <div id="gridRow"></div>
-                                            <div id="initRow"></div>
-                                            <div id="pwmRow" class="row pt-3" style="min-height: 1.8rem">
-                                                <div id='pwmtext' class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">PWM:</div>
-                                                <div class="col-7 col-sm-8 align-self-center">
-                                                    <div id="pwm" class="align-self-center tx-gray-700"></div>
+                                            <ul class="nav nav-pills nav-fill mb-3" id="pills-tab" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <a class="nav-link active" id="pills-graphics-tab" data-toggle="pill" href="#pills-graphics" role="tab" aria-controls="pills-graphics" aria-selected="true">Resumen</a>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <a class="nav-link" id="pills-details-tab" data-toggle="pill" href="#pills-details" role="tab" aria-controls="pills-details" aria-selected="false">Detalles</a>
+                                                </li>
+                                            </ul>
+                                            <div class="tab-content" id="pills-tabContent">
+                                                <div class="tab-pane fade show active" id="pills-graphics" role="tabpanel" aria-labelledby="pills-graphics-tab">
+                                                    <div id="uiContainerRow">
+                                                        <div class="arrow arrow_solar" id="arrow_solar"></div>
+                                                        <div class="arrow arrow_battery" id="arrow_battery"></div>
+                                                        <div class="arrow arrow_inverter" id="arrow_inverter"></div>
+                                                        <div class="arrow arrow_gridToInverter" id="arrow_gridToInverter"></div>
+                                                        <div class="arrow arrow_gridToHome" id="arrow_gridToHome"></div>
+                                                        <div class="arrow arrow_houseToFreeDS" id="arrow_houseToFreeDS"></div>
+                                                        <canvas width=195 height=140 id="canvas-solar"></canvas>
+                                                        <canvas width=195 height=140 id="canvas-bat"></canvas>
+                                                        <canvas width=195 height=140 id="canvas-inverter"></canvas>
+                                                        <canvas width=140 height=85 id="canvas-freeds"></canvas>
+                                                        <canvas width=195 height=140 id="canvas-grid"></canvas>
+                                                        <canvas width=195 height=140 id="canvas-house"></canvas>
+                                                        <canvas width=200 height=95 id="canvas-temperaturas"></canvas>
+                                                        <canvas width=90 height=55 id="canvas-termo"></canvas>
+                                                        <canvas width=90 height=55 id="canvas-triac"></canvas>
+                                                        <canvas width=90 height=55 id="canvas-custom"></canvas>
+                                                    </div>
+                                                </div>
+                                                <div class="tab-pane fade" id="pills-details" role="tabpanel" aria-labelledby="pills-details-tab">
+                                                    <div id="solarRow"></div>
+                                                    <div id="gridRow"></div>
+                                                    <div id="initRow"></div>
+                                                    <div id="pwmRow" class="row pt-3" style="min-height: 1.8rem">
+                                                        <div id='pwmtext' class="col-5 col-sm-3 align-self-center tx-gray-900 tx-semibold">PWM:</div>
+                                                        <div class="col-7 col-sm-8 align-self-center">
+                                                            <div id="pwm" class="align-self-center tx-gray-700"></div>
+                                                        </div>
+                                                    </div>                                                    
                                                 </div>
                                             </div>
-                                        </div>
-                                        <h6 class="tx-gray-800 text-center tx-uppercase tx-bold tx-14 mg-b-10 mg-t-30 language" key="RELAYS"></h6>
-                                        <div class="row mg-t-10 text-center">
-                                            <div class="col ml-md-auto offset-md-16 mg-t-10 mg-sm-t-0">
-                                                <a id="Relay1" onclick="return tooglebuttons(1)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
-                                                    <div>
-                                                        <i class="fa fa-bolt mg-l-1">1</i>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                            <div class="col mg-t-10 mg-sm-t-0">
-                                                <a id="Relay2" onclick="return tooglebuttons(2)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
-                                                    <div>
-                                                        <i class="fa fa-bolt mg-l-1">2</i>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                            <div class="col mg-t-10 mg-sm-t-0">
-                                                <a id="Relay3" onclick="return tooglebuttons(3)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
-                                                    <div>
-                                                        <i class="fa fa-bolt mg-l-1">3</i>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                            <div class="col mg-t-10 mg-sm-t-0">
-                                                <a id="Relay4" onclick="return tooglebuttons(4)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
-                                                    <div>
-                                                        <i class="fa fa-bolt mg-l-1">4</i>
-                                                    </div>
-                                                </a>
+
+                                            <h6 class="tx-gray-800 text-center tx-uppercase tx-bold tx-14 mg-b-10 mg-t-30 language monitorUI" key="RELAYS"></h6>
+                                            <div class="row mg-t-10 text-center">
+                                                <div class="col ml-md-auto offset-md-16 mg-t-10 mg-sm-t-0">
+                                                    <a id="Relay1" onclick="return tooglebuttons(1)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
+                                                        <div>
+                                                            <i class="freeds-bolt mg-l-1">1</i>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="col mg-t-10 mg-sm-t-0">
+                                                    <a id="Relay2" onclick="return tooglebuttons(2)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
+                                                        <div>
+                                                            <i class="freeds-bolt mg-l-1">2</i>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="col mg-t-10 mg-sm-t-0">
+                                                    <a id="Relay3" onclick="return tooglebuttons(3)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
+                                                        <div>
+                                                            <i class="freeds-bolt mg-l-1">3</i>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                <div class="col mg-t-10 mg-sm-t-0">
+                                                    <a id="Relay4" onclick="return tooglebuttons(4)" style="color: black;" data-toggle="tooltip" data-placement="top" class="btn btn-outline-success btn-icon rounded-circle">
+                                                        <div>
+                                                            <i class="freeds-bolt mg-l-1">4</i>
+                                                        </div>
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="sticky-footer bg-white">
+                        <form action="https://www.paypal.com/donate" method="post" target="_top">
+                            <input type="hidden" name="hosted_button_id" value="T3JE5XHDKDJN8" />
+                            <input type="image" src="https://www.paypalobjects.com/en_US/ES/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+                        </form>
+                        <br>
+                        <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
+                        <div>(C) 2020 Pablo Zerón, betatester: Aeizoon, Diseño pcb: Amcalo</div>
+                        <small>
+                            <div>Inspirado en openDS+ de Iqas</div>
+                            <div>Fecha compilación: %FECHA_COMPILACION%</div>
+                            <div id='uptime_small'></div>
+                        </small>
+                    </footer>
+                </div>
+            </div>
+            <script src="sb-admin-2.min.js"></script>
+            <!--     VENTANAS MODALES     -->
+            <div id="modalRestart" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-sm" role="document">
+                    <div class="modal-content text-center">
+                        <div class="modal-body">
+                            <i class="freeds-exclamation-triangle freeds-2x"></i>                    
+                            <h4 class="tx-danger tx-semibold pt-2 pb-2 language" key="WARNING"></h4>
+                            <p class="mg-b-20 mg-x-20 language" key="RESTARTTEXT"></p>
+                            <button type="button" onClick="location.href='/reboot'" class="btn btn-success language" data-dismiss="modal" aria-label="Close" key="RESTART"></button>
+                            <button type="button" class="btn btn-danger language" data-dismiss="modal" aria-label="Close" key="CLOSE"></button>
                         </div>
                     </div>
                 </div>
-                <footer class="sticky-footer bg-white">
-                    <form action="https://www.paypal.com/donate" method="post" target="_top">
-                        <input type="hidden" name="hosted_button_id" value="T3JE5XHDKDJN8" />
-                        <input type="image" src="https://www.paypalobjects.com/en_US/ES/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
-                    </form>
-                    <br>
-                    <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
-                    <div>(C) 2020 Pablo Zerón, betatester: Aeizoon, Diseño pcb: Amcalo</div>
-                    <small>
-                        <div>Inspirado en openDS+ de Iqas</div>
-                        <div>Fecha compilación: %FECHA_COMPILACION%</div>
-                        <div id='uptime_small'></div>
-                    </small>
-                </footer>
             </div>
-        </div>
-        <script src="sb-admin-2.min.js"></script>
-        <!--     VENTANAS MODALES     -->
-        <div id="modalRestart" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-sm" role="document">
-                <div class="modal-content text-center">
-                    <div class="modal-body">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>                    
-                        <h4 class="tx-danger tx-semibold pt-2 pb-2 language" key="WARNING"></h4>
-                        <p class="mg-b-20 mg-x-20 language" key="RESTARTTEXT"></p>
-                        <button type="button" onClick="location.href='/reboot'" class="btn btn-success language" data-dismiss="modal" aria-label="Close" key="RESTART"></button>
-                        <button type="button" class="btn btn-danger language" data-dismiss="modal" aria-label="Close" key="CLOSE"></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </body>
-</html>
+            </body>
+        </html>

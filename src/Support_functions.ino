@@ -71,7 +71,7 @@ void setGetDataTime(void)
       if (config.getDataTime < 1000) config.getDataTime = 1000;
       break;
     case SLAVE_MODE:
-      if (config.getDataTime < 500) config.getDataTime = 500;
+      if (config.getDataTime < 1000) config.getDataTime = 1000;
       break;
     case FRONIUS_MODBUS:
       if (config.getDataTime < 250) config.getDataTime = 250;
@@ -104,7 +104,7 @@ void every1000ms(void)
   calcWattsToday(); // Calculate the imported / exported energy
   if (config.flags.sensorTemperatura) { calcDallasTemperature(); } // Read temp sensors
   if (config.flags.debugPID) {
-    INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, invert_pwm, pwmValue, myPID.GetMode(), myPID.GetDirection());
+    INFOV("I%.02f,O%.02f,T%.02f,PWM%d,P%d,MODE:%d,DIRECTION:%d\n", PIDInput, PIDOutput, Setpoint, pwm.invert_pwm, pwm.pwmValue, myPID.GetMode(), myPID.GetDirection());
   }
 }
 
@@ -164,22 +164,22 @@ void changeScreen(void)
   if (digitalRead(0) == LOW)
   {
 
-    if (ButtonState == false && (millis() - lastDebounceTime) > debounceDelay)
+    if (button.ButtonState == false && (millis() - button.lastDebounceTime) > button.debounceDelay)
     {
-      ButtonState = true;
-      lastDebounceTime = millis();
+      button.ButtonState = true;
+      button.lastDebounceTime = millis();
     }
 
     // Cambio de modo de trabajo
-    if (((millis() - lastDebounceTime) > 2000) && ButtonLongPress == false)
+    if (((millis() - button.lastDebounceTime) > 2000) && button.ButtonLongPress == false)
     {
-      ButtonLongPress = true;
-      workingMode++;
-      if (workingMode > 2)
+      button.ButtonLongPress = true;
+      slave.workingMode++;
+      if (slave.workingMode > 2)
       {
-        workingMode = 0;
+        slave.workingMode = 0;
       }
-      switch (workingMode)
+      switch (slave.workingMode)
       {
       case 0: // AUTO
         config.flags.pwmEnabled = true;
@@ -200,13 +200,13 @@ void changeScreen(void)
     }
 
     // // Apagar y encender la pantalla
-    // if (((millis() - lastDebounceTime) > 5000) && ButtonLongPress == false)
+    // if (((millis() - button.lastDebounceTime) > 5000) && button.ButtonLongPress == false)
     // {
-    //   ButtonLongPress = true;
+    //   button.ButtonLongPress = true;
     //   turnOffOled();
     // }
 
-    if ((millis() - lastDebounceTime) > 10000)
+    if ((millis() - button.lastDebounceTime) > 10000)
     {
       defaultValues();
       restartFunction();
@@ -214,16 +214,16 @@ void changeScreen(void)
   }
   else
   {
-    if (ButtonState == true)
+    if (button.ButtonState == true)
     {
-      if (ButtonLongPress == true)
+      if (button.ButtonLongPress == true)
       {
-        ButtonLongPress = false;
-        ButtonState = false;
+        button.ButtonLongPress = false;
+        button.ButtonState = false;
       }
       else
       {
-        ButtonState = false;
+        button.ButtonState = false;
         timers.OledAutoOff = millis();
         if (config.flags.oledAutoOff && !config.flags.oledPower)
         {
@@ -232,10 +232,10 @@ void changeScreen(void)
         }
         else
         {
-          screen++;
-          if (screen > MAX_SCREENS)
+          button.screen++;
+          if (button.screen > MAX_SCREENS)
           {
-            screen = 0;
+            button.screen = 0;
           }
         }
       }
@@ -405,7 +405,7 @@ void changeToManual(void)
 void changeToAuto(void)
 {
   myPID.SetMode(PID::AUTOMATIC);
-  myPID.SetCurrentOutput(invert_pwm);
+  myPID.SetCurrentOutput(pwm.invert_pwm);
   Setpoint = config.potTarget;
 }
 
@@ -451,13 +451,13 @@ void defineWebMonitorFields(uint8_t version)
   switch (version)
   {
     case SOLAX_V2: // Solax v2
-      webMonitorFields.data = 0x0177E000;
+      webMonitorFields.data = 0x07FFE006;
       break;
     case SOLAX_V2_LOCAL: // Solax v2 local mode
-      webMonitorFields.data = 0x0177E000;
+      webMonitorFields.data = 0x07FFE006;
       break;
     case SOLAX_V1: // Solax v1
-      webMonitorFields.data = 0x0177E000;
+      webMonitorFields.data = 0x07FFE006; // 0x0177E000
       break;
     case MQTT_BROKER: // Mqtt
       webMonitorFields.data = 0x0177E000;
@@ -497,10 +497,10 @@ void defineWebMonitorFields(uint8_t version)
       webMonitorFields.data = 0x07000006;
       break;
     case VICTRON: // Victron
-      webMonitorFields.data = 0x06500006;
+      webMonitorFields.data = 0x0E500006; // 0x06500006 
       break;
     case FRONIUS_MODBUS: // Fronius Modbus
-      webMonitorFields.data = 0x0057E006;
+      webMonitorFields.data = 0x0077E006; // 0x0057E006 
       break;
     case HUAWEI_MODBUS: // Huawei
       webMonitorFields.data = 0x0377E000;
@@ -579,14 +579,14 @@ void verbosePrintResetReason(int cpu)
 
 void addLog(char *data)
 {
-  if (logcount > (LOGGINGSIZE - 1)) { logcount = 0; }
+  if (logMessage.logcount > (LOGGINGSIZE - 1)) { logMessage.logcount = 0; }
   
   if (Flags.ntpTime) {
-    sprintf(loggingMessage[logcount], "%02d:%02d:%02d - %s\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, data);
+    sprintf(logMessage.loggingMessage[logMessage.logcount], "%02d:%02d:%02d - %s\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, data);
   } else {
-    sprintf(loggingMessage[logcount], "%02d:%02d:%02d - %s\n", uptime.Hour, uptime.Minute, uptime.Second, data);
+    sprintf(logMessage.loggingMessage[logMessage.logcount], "%02d:%02d:%02d - %s\n", uptime.Hour, uptime.Minute, uptime.Second, data);
   }
-  logcount++;
+  logMessage.logcount++;
 
   if (Flags.weblogConnected) sendWeblogStreamTest();
 }
@@ -594,23 +594,23 @@ void addLog(char *data)
 void sendWeblogStreamTest(void)
 {
   // Print old messages
-  if (strcmp(loggingMessage[logcount], "") != 0 && logcount > 1) {
-    for (int counter = logcount; counter < LOGGINGSIZE; counter++)
+  if (strcmp(logMessage.loggingMessage[logMessage.logcount], "") != 0 && logMessage.logcount > 1) {
+    for (int counter = logMessage.logcount; counter < LOGGINGSIZE; counter++)
     {
-      webLogs.send(loggingMessage[counter], "weblog");
-      memset(loggingMessage[counter], 0, 1024);
+      webLogs.send(logMessage.loggingMessage[counter], "weblog");
+      memset(logMessage.loggingMessage[counter], 0, 1024);
       delay(3);
     }
   }
 
   // Print new messages
-  for (int counter = 0; counter < logcount; counter++) {
-    webLogs.send(loggingMessage[counter], "weblog");
-    memset(loggingMessage[counter], 0, 1024);
+  for (int counter = 0; counter < logMessage.logcount; counter++) {
+    webLogs.send(logMessage.loggingMessage[counter], "weblog");
+    memset(logMessage.loggingMessage[counter], 0, 1024);
     delay(3);
   }
 
-  logcount = 0;
+  logMessage.logcount = 0;
 }
 
 // int INFOV(const char * __restrict format, ...)
@@ -672,7 +672,7 @@ void readClamp(void)
     } else { inverter.currentCalcWatts = 0; }
     // INFOV("Watts: %.03f Current: %.03f\n", inverter.currentCalcWatts, amps);
   } else {
-    inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;  
+    inverter.currentCalcWatts = sq( sin( (pwm.pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;  
   }
 }
 
@@ -735,12 +735,14 @@ double polySolve(double x) {
 
 void writeClampPwm(uint8_t step)
 {
-  invert_pwm = calculeTargetPwm(2 * (step + 1));
-  writePwmValue(invert_pwm);
+  pwm.invert_pwm = calculeTargetPwm(2 * (step + 1));
+  writePwmValue(pwm.invert_pwm);
 }
 
 void writeConfigSpiffs(const char *filename)
 {
+  INFOV("SPIFFS Total: %zu, SPIFFS Used: %zu\n", SPIFFS.totalBytes(), SPIFFS.usedBytes());
+  
   File myFile = SPIFFS.open(filename, FILE_WRITE);
   if(!myFile){
     INFOV("There was an error opening the file for writing\n");
@@ -762,6 +764,19 @@ void readConfigSpiffs(void)
   INFOV("Read %d bytes\n", myFile.size());
   myFile.close();
   SPIFFS.remove("/config.bin");
+}
+
+void listSpiffsFiles(void)
+{
+  File root = SPIFFS.open("/");
+ 
+  File file = root.openNextFile();
+ 
+  while(file)
+  {
+    INFOV("FILE: %s\n", file.name());
+    file = root.openNextFile();
+  }
 }
 
 bool readLanguages(void) {
@@ -896,14 +911,17 @@ void checkEEPROM(void) {
     config.gridPhase = 1;
     strcpy(config.ntpServer, "pool.ntp.org");
     config.pwmFrequency *= 10;
-    config.potTarget = 150;
+    config.potTarget = 60;
     config.flags.useSolarAsMPTT = false;
+    config.flags.useBMV = false;
     config.flags.debug1 = false;
     config.flags.debug2 = false;
     config.flags.debug3 = false;
     config.flags.debug4 = false;
     config.flags.debug5 = false;
+    config.flags.debugPID = false;
     config.flags.weblog = true;
+    config.solaxVersion = 2;
     config.eeinit = 0x17;
     INFOV(PSTR("EEPROM Settings upgraded from version %x to version %x\n"), actualVersion, config.eeinit);
     saveEEPROM();

@@ -189,13 +189,13 @@ void handleConfig(AsyncWebServerRequest *request)
     int8_t idx = 0;
     if (request->hasArg("termoaddrs")) {
       idx = request->arg("termoaddrs").toInt() - 1;
-     if (idx >= 0) { memcpy(config.termoSensorAddress, tempSensorAddress[idx], sizeof config.termoSensorAddress); }
+     if (idx >= 0) { memcpy(config.termoSensorAddress, temperature.tempSensorAddress[idx], sizeof config.termoSensorAddress); }
       if (idx < 0) { memset(config.termoSensorAddress, 0, sizeof config.termoSensorAddress); }
     }
     
     if (request->hasArg("triacaddrs")) {
       idx = request->arg("triacaddrs").toInt() - 1; 
-      if (idx >= 0) { memcpy(config.triacSensorAddress, tempSensorAddress[idx], sizeof config.triacSensorAddress); }
+      if (idx >= 0) { memcpy(config.triacSensorAddress, temperature.tempSensorAddress[idx], sizeof config.triacSensorAddress); }
       if (idx < 0) { memset(config.triacSensorAddress, 0, sizeof config.triacSensorAddress); }
     }
 
@@ -203,7 +203,7 @@ void handleConfig(AsyncWebServerRequest *request)
 
     if (request->hasArg("customaddrs")) {
       idx = request->arg("customaddrs").toInt() - 1; 
-      if (idx >= 0) { memcpy(config.customSensorAddress, tempSensorAddress[idx], sizeof config.customSensorAddress); }
+      if (idx >= 0) { memcpy(config.customSensorAddress, temperature.tempSensorAddress[idx], sizeof config.customSensorAddress); }
       if (idx < 0) { memset(config.customSensorAddress, 0, sizeof config.customSensorAddress); }
     }
     
@@ -329,7 +329,7 @@ const char *sendJsonWeb(void)
     error |= 0x04;
   if (Error.VariacionDatos)
     error |= 0x08;
-  if (!config.flags.mqtt && config.wversion == MQTT_BROKER)
+  if (!config.flags.mqtt && (config.wversion >= MQTT_MODE && config.wversion <= (MQTT_MODE + MODE_STEP - 1)))
     error |= 0x10;
   if (config.flags.sensorTemperatura && Error.temperaturaTermo)
     error |= 0x20;
@@ -350,9 +350,10 @@ const char *sendJsonWeb(void)
   jsonValues["SenTemp"] = config.flags.sensorTemperatura;
   jsonValues["Msg"] = webMessageResponse;
   jsonValues["pwmfrec"] = config.pwmFrequency;
-  jsonValues["pwm"] = pwmValue;
+  jsonValues["pwm"] = pwm.pwmValue;
    
   dtostrfd(inverter.currentCalcWatts, 0, tmpString);
+  
   if (config.flags.useClamp) { 
     if (Flags.bootCompleted) { jsonValues["loadCalcWatts"] = tmpString; }
     else { jsonValues["loadCalcWatts"] = 0; }
@@ -362,21 +363,30 @@ const char *sendJsonWeb(void)
   jsonValues["configwVersion"] = config.wversion;
 
   if (config.wversion == SLAVE_MODE) {
-    jsonValues["wversion"] = masterMode;
+    jsonValues["wversion"] = slave.masterMode;
   } else {
     jsonValues["wversion"] = config.wversion;
   }
 
+  jsonValues["invertedSign"] = config.flags.changeGridSign ? true : false;
+
   // Inverter data
   if (webMonitorFields.wsolar) {
-    dtostrfd(inverter.wsolar, 2, tmpString);
-    jsonValues["wsolar"] = tmpString;
-    // Para Juan
-    // char tmpString2[100];
-    // sprintf(tmpString2, "%.02f (MPTT: %.02f AC-IN: %.02fW, AC-OUT: %.02fW)", inverter.wsolar + inverter.acIn + inverter.acOut, inverter.wsolar, inverter.acIn, inverter.acOut);
-    // jsonValues["wsolar"] = tmpString2;
-  }
 
+    switch (config.wversion)
+    {
+      case VICTRON:
+        if (config.flags.useSolarAsMPTT) { dtostrfd((inverter.wsolar + inverter.acIn + inverter.acOut), 2, tmpString); }
+        else { dtostrfd(inverter.wsolar, 2, tmpString); }
+        break;
+      
+      default:
+        dtostrfd(inverter.wsolar, 2, tmpString);
+        break;
+    }
+
+    jsonValues["wsolar"] = tmpString;
+  }
   if (webMonitorFields.wgrid) {
     dtostrfd(inverter.wgrid, 2, tmpString);
     jsonValues["wgrid"] = tmpString;
@@ -394,7 +404,17 @@ const char *sendJsonWeb(void)
     jsonValues["invSoC"] = tmpString;
   }
   if (webMonitorFields.loadWatts) {
-    dtostrfd(inverter.loadWatts, 2, tmpString);
+    switch (config.wversion)
+    {
+      case INGETEAM:
+        config.flags.changeGridSign ? dtostrfd(inverter.loadWatts + inverter.wgrid, 2, tmpString) : dtostrfd(inverter.loadWatts - inverter.wgrid, 2, tmpString);
+        break;
+      
+      default:
+        dtostrfd(inverter.loadWatts, 2, tmpString);
+        break;
+    }
+    
     jsonValues["wload"] = tmpString;
   }
   if (webMonitorFields.wtoday) {
@@ -475,13 +495,13 @@ const char *sendJsonWeb(void)
   }
 
   // Temperatures
-  dtostrfd(temperaturaTermo, 1, tmpString);
+  dtostrfd(temperature.temperaturaTermo, 1, tmpString);
   jsonValues["tempTermo"] = tmpString;
   
-  dtostrfd(temperaturaTriac, 1, tmpString);
+  dtostrfd(temperature.temperaturaTriac, 1, tmpString);
   jsonValues["tempTriac"] = tmpString;
 
-  dtostrfd(temperaturaCustom, 1, tmpString);
+  dtostrfd(temperature.temperaturaCustom, 1, tmpString);
   jsonValues["tempCustom"] = tmpString;
 
   jsonValues["customSensor"] = config.nombreSensor;
@@ -496,7 +516,8 @@ const char *sendMasterData(void)
   DynamicJsonDocument jsonValues(768);
   
   jsonValues["wversion"] = config.wversion;
-  jsonValues["PwmMaster"] = pwmValue;
+  jsonValues["PwmMaster"] = pwm.pwmValue;
+  jsonValues["tempShutdown"] = Flags.tempShutdown; 
   
   char tmpString[33];
 
@@ -507,7 +528,7 @@ const char *sendMasterData(void)
   }
 
   if (webMonitorFields.wgrid) {
-    dtostrfd(inverter.wgrid, 2, tmpString);
+    config.flags.changeGridSign ? dtostrfd((inverter.wgrid * -1.0), 2, tmpString) : dtostrfd(inverter.wgrid, 2, tmpString);
     jsonValues["wgrid"] = tmpString;
   }
   if (webMonitorFields.temperature) {
@@ -659,6 +680,11 @@ void setWebConfig(void)
     request->send(SPIFFS, "/weblog.html", "text/html", false, processorOta);
   });
 
+  server.on("/ui.html", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    checkAuth(request);
+    request->send(SPIFFS, "/ui.html", "text/html", false, processorOta);
+  });
+
   //////////// JAVASCRIPT EN LA MEMORIA SPPIFS ////////
   
   server.on("/sb-admin-2.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
@@ -684,6 +710,13 @@ void setWebConfig(void)
 
   server.on("/freeds.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
     AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/freeds.min.js.jgz", "application/javascript");
+    response->addHeader("Content-Encoding", "gzip");
+    response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
+    request->send(response);
+  });
+
+  server.on("/gauge.min.js", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/gauge.min.js.jgz", "application/javascript");
     response->addHeader("Content-Encoding", "gzip");
     response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
     request->send(response);
@@ -735,8 +768,15 @@ void setWebConfig(void)
     request->send(response);
   });
 
-  server.on("/all.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
-    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/all.min.css.jgz", "text/css");
+  server.on("/freeds.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/freeds.min.css.jgz", "text/css");
+    response->addHeader("Content-Encoding", "gzip");
+    response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
+    request->send(response);
+  });
+
+  server.on("/nunito.min.css", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/nunito.min.css.jgz", "text/css");
     response->addHeader("Content-Encoding", "gzip");
     response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
     request->send(response);
@@ -744,21 +784,27 @@ void setWebConfig(void)
 
   //////////// FUENTES EN LA MEMORIA SPPIFS ////////
 
-  server.on("/fa-solid-900.woff", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
-    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/fa-solid-900.woff", "text/plain");
+  server.on("/webfonts/freeds.woff", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/webfonts/freeds.woff", "text/plain");
     response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
     request->send(response);
   });
 
-  server.on("/fa-solid-900.woff2", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
-    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/fa-solid-900.woff2", "text/plain");
+  server.on("/webfonts/freeds.eot", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/webfonts/freeds.eot", "text/plain");
     response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
     request->send(response);
   });
 
-  server.on("/fa-solid-900.ttf", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
-    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/fa-solid-900.ttf.jgz", "text/plain");
+  server.on("/webfonts/freeds.ttf", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/webfonts/freeds.ttf.jgz", "text/plain");
     response->addHeader("Content-Encoding", "gzip");
+    response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
+    request->send(response);
+  });
+
+  server.on("/webfonts/nunito.woff2", HTTP_GET, [](AsyncWebServerRequest *request) { // GET
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/webfonts/nunito.woff2", "text/plain");
     response->addHeader("Cache-Control", "max-age=86400, must-revalidate");
     request->send(response);
   });
@@ -791,10 +837,10 @@ void setWebConfig(void)
     config.wversion = request->arg("data").toInt();
     processData = false;
 
-    if (config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !mqttClient.connected()) { Tickers.enable(2); }
+    if (config.flags.mqtt && strcmp("5.8.8.8", config.sensor_ip) != 0 && !mqttClient.connected()) { Tickers.enable(2); }
     if (config.flags.mqtt && mqttClient.connected()) {
-       if (config.wversion != SOLAX_V2_LOCAL) { unSuscribeMqtt(); }
-       if (config.wversion == MQTT_BROKER) { suscribeMqttMeter(); }
+       if (strcmp("5.8.8.8", config.sensor_ip) != 0) { unSuscribeMqtt(); }
+       if (config.wversion >= MQTT_MODE && config.wversion <= (MQTT_MODE + MODE_STEP - 1)) { suscribeMqttMeter(); }
     }
     
     setGetDataTime();
@@ -997,13 +1043,16 @@ void setWebConfig(void)
     }
 
     if (comando == "solaxVersion") {
+      if (value < 2 || value > 3) { value = 2; }
+      config.solaxVersion = value;
       SerieEsp.printf("DATAVERSION: %d\n", value);
+      saveEEPROM();
     }
 
     if (comando == "tzConfig") {
       if (payload != "tzConfig") {
         strcpy(config.tzConfig, payload.c_str());
-        if (config.wversion != SOLAX_V2_LOCAL) { configTzTime(config.tzConfig, config.ntpServer); updateLocalTime(); }
+        if (strcmp("5.8.8.8", config.sensor_ip) != 0) { configTzTime(config.tzConfig, config.ntpServer); updateLocalTime(); }
         INFOV("Payload: %s\n",payload.c_str());
         saveEEPROM();
       } else {
@@ -1014,7 +1063,7 @@ void setWebConfig(void)
     if (comando == "ntpServer") {
       if (payload != "ntpServer") {
         strcpy(config.ntpServer, payload.c_str());
-        if (config.wversion != SOLAX_V2_LOCAL) { configTzTime(config.tzConfig, config.ntpServer); updateLocalTime(); }
+        if (strcmp("5.8.8.8", config.sensor_ip) != 0) { configTzTime(config.tzConfig, config.ntpServer); updateLocalTime(); }
         INFOV("Payload: %s\n",payload.c_str());
         saveEEPROM();
       } else {
@@ -1092,14 +1141,20 @@ void setWebConfig(void)
           pch = strtok (NULL, ";");
         }
         myPID.SetTunings(config.PIDValues[0], config.PIDValues[1], config.PIDValues[2], PID::P_ON_M);
-        INFOV("PID Values set to P%.05f, I%.05f, D%.05f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd());
+        INFOV("PID Values set to P%.02f, I%.02f, D%.02f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd());
         saveEEPROM();
-       } else { INFOV("PID Values: P%.05f, I%.05f, D%.05f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd()); }
+       } else { INFOV("PID Values: P%.02f, I%.02f, D%.02f\n", myPID.GetKp(), myPID.GetKi(), myPID.GetKd()); }
     }
 
     if (comando == "useSolarAsMPTT") {
       if (value == 1) { config.flags.useSolarAsMPTT = true; }
       else { config.flags.useSolarAsMPTT = false; }
+      saveEEPROM();
+    }
+
+    if (comando == "useBMV") {
+      if (value == 1) { config.flags.useBMV = true; }
+      else { config.flags.useBMV = false; }
       saveEEPROM();
     }
 
@@ -1116,6 +1171,10 @@ void setWebConfig(void)
       INFOV("pwmFrequency: %.02f\n", (float)(config.pwmFrequency / 10.0));
       saveEEPROM();
     }
+
+    if (comando == "listFiles") { listSpiffsFiles(); }
+    if (comando == "writeSpiffs") { writeConfigSpiffs("config.bin"); }
+    if (comando == "readSpiffs") { readConfigSpiffs(); }
 
     AsyncWebServerResponse *response = request->beginResponse(200);
     response->addHeader("Connection", "close");
@@ -1166,6 +1225,15 @@ void setWebConfig(void)
 
   server.on("/downloadBackup", HTTP_GET, [](AsyncWebServerRequest *request) {
     checkAuth(request);
+    INFOV("Backup file request\n");
+       
+    // AsyncWebServerResponse *response = request->beginResponse(200, "application/octet-stream", buffer);
+    // char buf[80];
+    // sprintf(buf, "attachment; filename=\"%s\"", filename);
+    // response->addHeader("Content-Disposition", buf);
+    // response->addHeader("Connection", "close");
+    // request->send(response);
+    
     char filename[50];
     sprintf(filename, "/config_%s_%s.bin", config.hostServer, version);
     writeConfigSpiffs(filename);
@@ -1188,7 +1256,7 @@ void setWebConfig(void)
         Tickers.disableAll();
         mqttClient.disconnect();
         Tickers.enable(0); // Oled
-        Tickers.enable(1); // 500ms loop
+        // Tickers.enable(1); // 500ms loop
         if (filename == "spiffs.bin") {
           SPIFFS.end();
           if(!Update.begin(UPDATE_SIZE_UNKNOWN, 100)) { Update.printError(Serial); }

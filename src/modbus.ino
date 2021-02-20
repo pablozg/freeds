@@ -120,7 +120,7 @@ void sdm120(void)
     uint32_t error = modbusReceiveBuffer(buffer, 80); 
 
     if (error) {
-      INFOV("SDM120 error: %i\n", error);
+      INFOV("SDM120/220/230 error: %i\n", error);
     } else {
       float value;
 
@@ -153,7 +153,7 @@ void sdm120(void)
       ((uint8_t*)&value)[2] = buffer[28];
       ((uint8_t*)&value)[1] = buffer[29];
       ((uint8_t*)&value)[0] = buffer[30];
-      inverter.wgrid = meter.activePower = value;    
+      inverter.wgrid = meter.activePower = value;
       if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; meter.activePower *= -1.0; }
 
       ((uint8_t*)&value)[3] = buffer[39];   // Get float values

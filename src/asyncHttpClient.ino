@@ -114,7 +114,11 @@ void runAsyncClient()
     switch (config.wversion)
     {
       case SOLAX_V2_LOCAL: // Solax v2 local mode
-        strcpy(url, "POST /?optType=ReadRealTimeData HTTP/1.1\r\nHost: 5.8.8.8\r\nConnection: close\r\nContent-Length: 0\r\nAccept: /*/\r\nContent-Type: application/x-www-form-urlencoded\r\nX-Requested-With: com.solaxcloud.starter\r\n\r\n");
+        // strcpy(url, "POST /?optType=ReadRealTimeData HTTP/1.1\r\nHost: 5.8.8.8\r\nConnection: close\r\nContent-Length: 0\r\nAccept: /*/\r\nContent-Type: application/x-www-form-urlencoded\r\nX-Requested-With: com.solaxcloud.starter\r\n\r\n");
+        // strcpy(url, "POST /?optType=ReadRealTimeData&pwd=admin HTTP/1.1\r\nHost: 5.8.8.8\r\nConnection: close\r\nContent-Length: 0\r\nAccept: /*/\r\nContent-Type: application/x-www-form-urlencoded\r\nX-Requested-With: com.solaxcloud.starter\r\n\r\n");
+        
+        sprintf(url, "POST /?optType=ReadRealTimeData&pwd=admin HTTP/1.1\r\nHost: %s\r\nConnection: close\r\nContent-Length: 0\r\nAccept: /*/\r\nContent-Type: application/x-www-form-urlencoded\r\nX-Requested-With: com.solaxcloud.starter\r\n\r\n", config.sensor_ip);
+        // sprintf(url, "POST /?optType=ReadRealTimeData&pwd=admin\r\n\r\n");
         break;
       case SOLAX_V1: // Solax v1
         sprintf(url, "GET /api/realTimeData.htm HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", config.sensor_ip);
@@ -235,19 +239,19 @@ void runAsyncClient()
     }
   });
 
-  if (config.wversion == SOLAX_V2_LOCAL) {
-    if (!aClient->connect("5.8.8.8", 80))
-    {
-      if (config.flags.debug5) { INFOV(PSTR("Connect Fail\n")); }
-      deleteClient();
-    }
-  } else {
+  // if (config.wversion == SOLAX_V2_LOCAL) {
+  //   if (!aClient->connect("5.8.8.8", 80))
+  //   {
+  //     if (config.flags.debug5) { INFOV(PSTR("Connect Fail\n")); }
+  //     deleteClient();
+  //   }
+  // } else {
     if (!aClient->connect(String(config.sensor_ip).c_str(), 80))
     {
       if (config.flags.debug5) { INFOV(PSTR("Connect Fail\n")); }
       deleteClient();
     }
-  }
+  // }
 }
 
 void deleteClient(void)
@@ -279,7 +283,8 @@ void processingData(void)
   switch (config.wversion)
   {
     case SOLAX_V2_LOCAL: // Solax v2 local mode
-      parseJsonv2local(message.message);
+      if (config.solaxVersion == 2) { parseJsonv2local(message.message); }
+      else { parseJsonv3local(message.message); }
       break;
     case SOLAX_V1: // Solax v1
       parseJsonv1(message.message);

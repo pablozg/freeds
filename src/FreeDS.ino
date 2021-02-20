@@ -111,32 +111,37 @@ extern "C"
 #define RX1 19
 #define TX1 23
 
-// Debounce control
-unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 100;
-bool ButtonState = false;
-bool ButtonLongPress = false;
-
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
-const char version[] PROGMEM = "1.0.7 Beta Rev. B";
+const char version[] PROGMEM = "1.0.7";
+const char beta[]  PROGMEM = "";
 
 const char *www_username = "admin";
 
-uint16_t invert_pwm = 0; // Up 1023 with 10 bits resolution.
+// Debounce control
+struct BUTTON_CONTROL
+{
+  unsigned long lastDebounceTime = 0;
+  unsigned long debounceDelay = 100;
+  bool ButtonState = false;
+  bool ButtonLongPress = false;
+  uint8_t screen = 0;
+} button;
 
-uint8_t pwmValue = 0;
+// Variables Globales calculo PWM
+struct PWM_CONFIG
+{
+  uint16_t invert_pwm = 0; // Up 1023 with 10 bits resolution.
+  uint16_t targetPwm = 0;
+  uint8_t pwmValue = 0;
+} pwm;
 
-uint8_t webMessageResponse = 0;
-boolean processData = false;
-
-uint8_t screen = 0;
-uint8_t workingMode;
-uint8_t masterMode = 0;
-
-uint8_t scanDoneCounter = 0;
-
-IPAddress modbusIP;
+struct SLAVE
+{
+  uint8_t workingMode;
+  uint8_t masterMode = 0;
+  uint8_t masterPwmValue = 0;
+} slave;
 
 // Temporizadores
 struct {
@@ -176,7 +181,8 @@ union {
     uint32_t pwmManAuto : 1;      // Bit 19
     uint32_t showClampCurrent : 1;// Bit 20
     uint32_t bootCompleted : 1;   // Bit 21
-    uint32_t spare : 10;          // Bit 22 - 31
+    uint32_t tempShutdown : 1;    // Bit 22
+    uint32_t spare : 10;          // Bit 23 - 31
   };
 } Flags;
 
@@ -227,8 +233,9 @@ typedef union {
     uint32_t debug5 : 1;             // Bit 24
     uint32_t useClamp : 1;           // Bit 25
     uint32_t useSolarAsMPTT : 1;     // Bit 26
-    uint32_t spare : 4;              // Bit 27 - 30
-    uint32_t debugPID : 1;              // Bit 31
+    uint32_t useBMV : 1;             // Bit 27
+    uint32_t spare : 3;              // Bit 28 - 30
+    uint32_t debugPID : 1;           // Bit 31
   };
 } SysBitfield;
 
@@ -425,8 +432,11 @@ struct CONFIG
   // Phase to be used
   uint8_t gridPhase;
 
+  // Solax Version
+  uint8_t solaxVersion;
+
   // FREE MEMORY
-  uint8_t free[1043];
+  uint8_t free[1042];
 } config;
 
 struct METER
@@ -515,13 +525,20 @@ struct
 struct tm timeinfo;
 
 #define LOGGINGSIZE 20 //30
-char loggingMessage[LOGGINGSIZE][1024];
-int logcount = 0;
+struct LOGGING
+{
+  char loggingMessage[LOGGINGSIZE][1024];
+  int logcount = 0;
+} logMessage;
+
+uint8_t webMessageResponse = 0;
+boolean processData = false;
+
+String scanNetworks[15];
+int32_t rssiNetworks[15];
+uint8_t scanDoneCounter = 0;
 
 char jsonResponse[768];
-
-// Variables Globales calculo PWM
-uint16_t targetPwm;
 
 // Definiciones Conexiones
 WiFiMulti wifiMulti;
@@ -533,10 +550,11 @@ AsyncEventSource webLogs("/weblog");
 AsyncMqttClient mqttClient;
 
 static esp32ModbusTCP *modbustcp = NULL;
+IPAddress modbusIP;
 
 HardwareSerial SerieEsp(2);   // RX, TX para esp-01
 HardwareSerial SerieMeter(1); // RX, TX para los Meter rs485/modbus
-DynamicJsonDocument root(3072); // 2048
+DynamicJsonDocument root(4096); // 3072
 
 TickerScheduler Tickers(7);
 
@@ -552,10 +570,14 @@ OneWire oneWire(DS18B20);
 // Pass our oneWire reference to Dallas Temperature sensor 
 DallasTemperature sensors(&oneWire);
 
-uint8_t tempSensorAddress[15][8];
-float temperaturaTermo = -127.0;
-float temperaturaTriac = -127.0;
-float temperaturaCustom = -127.0;
+struct TEMPERATURE_CONFIG
+{
+  uint8_t tempSensorAddress[15][8];
+  float temperaturaTermo = -127.0;
+  float temperaturaTriac = -127.0;
+  float temperaturaCustom = -127.0;
+} temperature;
+
 
 // Energy Monitor (Functions from emonLib) https://github.com/openenergymonitor/EmonLib
 #define ADC_BITS    12
@@ -571,7 +593,7 @@ double sqI, sumI, Irms;
 // PID Declaration
 float Setpoint, PIDInput, PIDOutput;
 
-PID myPID(&PIDInput, &PIDOutput, &Setpoint, 0.05, 0.06, 0.03, PID::DIRECT); // Probando 0.05 0.05 0.04
+PID myPID(&PIDInput, &PIDOutput, &Setpoint, 0.05, 0.06, 0.03, PID::DIRECT); // Probando 0.10 0.07 0.04
 
 // GoodWe UDP Config
 WiFiUDP inverterUDP;
@@ -579,9 +601,6 @@ unsigned int localUdpPort = 8899;  // local port to listen on
 uint8_t incomingPacket[512];  // buffer for incoming packets
 
 //////////////////// CAPTIVE PORTAL ////////////////
-
-String scanNetworks[15];
-int32_t rssiNetworks[15];
 
 class CaptiveRequestHandler : public AsyncWebHandler {
 public:
@@ -726,6 +745,7 @@ void defaultValues()
   config.flags.debug3 = false;
   config.flags.debug4 = false;
   config.flags.debug5 = false;
+  config.flags.debugPID = false;
   config.flags.weblog = true;
   config.publishMqtt = 10000;
   config.flags.timerEnabled = false;
@@ -772,6 +792,9 @@ void defaultValues()
   config.PIDValues[1] = 0.06;
   config.PIDValues[2] = 0.03;
   config.gridPhase = 1;
+  config.flags.useBMV = false;
+  config.flags.useSolarAsMPTT = false;
+  config.solaxVersion = 2;
   strcpy(config.tzConfig, "CET-1CEST,M3.5.0,M10.5.0/3");
   strcpy(config.ntpServer, "pool.ntp.org");
   strcpy(config.language, "es");
@@ -842,7 +865,7 @@ void setup()
   checkEEPROM();
 
   // Initialize SPIFFS
-  if (!SPIFFS.begin(true))
+  if (!SPIFFS.begin(true, "/spiffs", 40))
   {
     INFOV("An Error has occurred while mounting SPIFFS\n");
     return;
@@ -924,7 +947,8 @@ void setup()
       buildWifiArray();
 
       // Init, Configure and get the ntp time
-      if (config.wversion != SOLAX_V2_LOCAL) {
+      // if (config.wversion != SOLAX_V2_LOCAL) {
+      if (strcmp("5.8.8.8", config.sensor_ip) != 0) {
         configTzTime(config.tzConfig, config.ntpServer);
         updateLocalTime();
       }
@@ -973,15 +997,15 @@ void setup()
 
       if (config.flags.pwmEnabled && !config.flags.pwmMan)
       {
-        workingMode = 0;
+        slave.workingMode = 0;
       } // AUTO
       else if (config.flags.pwmEnabled && config.flags.pwmMan)
       {
-        workingMode = 1;
+        slave.workingMode = 1;
       } // MANUAL
       else
       {
-        workingMode = 2;
+        slave.workingMode = 2;
       } // OFF
 
       Error.RecepcionDatos = true;
@@ -1057,9 +1081,9 @@ void loop()
 
     // PID Check Loop
     if (config.flags.pwmEnabled && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking && myPID.GetMode() == PID::AUTOMATIC && myPID.Compute()) {
-      targetPwm = invert_pwm = (uint16_t)PIDOutput;
-      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; }
-      writePwmValue(invert_pwm);
+      pwm.targetPwm = pwm.invert_pwm = (uint16_t)PIDOutput;
+      if (config.flags.dimmerLowCost && pwm.invert_pwm <= 210) { pwm.invert_pwm = 0; }
+      writePwmValue(pwm.invert_pwm);
     }
     
     if (config.flags.sensorTemperatura) { checkTemperature(); }
@@ -1069,14 +1093,15 @@ void loop()
         INFOV("\n");
         INFOV("Error Recepción Datos: %s, Error Variación Datos: %s, Error Conexión Mqtt: %s\n", Error.RecepcionDatos ? "true" : "false", Error.VariacionDatos ? "true" : "false", Error.ConexionMqtt ? "true" : "false");
         INFOV("Timer Recepción Datos: %ld, Timer Variación Datos: %ld\n", millis() - timers.ErrorRecepcionDatos, millis() - timers.ErrorVariacionDatos);
-        INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, invert_pwm: %d, targetPwm: %d, battery: %.02f\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, invert_pwm, targetPwm, inverter.batteryWatts);
+        INFOV("Modo Manual: %d, Modo Manual Automático: %d, PwmIsWorking: %d, pwm.invert_pwm: %d, pwm.targetPwm: %d, battery: %.02f\n", config.flags.pwmMan, Flags.pwmManAuto, Flags.pwmIsWorking, pwm.invert_pwm, pwm.targetPwm, inverter.batteryWatts);
         INFOV("Rele 1: %s, Rele 2: %s, Rele 3: %s, Rele 4:%s\n", digitalRead(PIN_RL1) ? "ON" : "OFF", digitalRead(PIN_RL2) ? "ON" : "OFF", digitalRead(PIN_RL3) ? "ON" : "OFF", digitalRead(PIN_RL4) ? "ON" : "OFF");
         //INFOV("Error Temp 1: %ld, Error Temp 2: %ld, Error Temp 3: %ld", millis() - timers.ErrorLecturaTemperatura[0], millis() - timers.ErrorLecturaTemperatura[1], millis() - timers.ErrorLecturaTemperatura[2]);
         timers.printDebug = millis();
       }
     }
     
-    if (config.wversion != SOLAX_V2_LOCAL && Flags.ntpTime) {
+    // if (config.wversion != SOLAX_V2_LOCAL && Flags.ntpTime) {
+    if (strcmp("5.8.8.8", config.sensor_ip) != 0 && Flags.ntpTime) {
       checkTimer();
       updateLocalTime();
     }

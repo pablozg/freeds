@@ -24,17 +24,15 @@ void parseUDP(void)
   // receive incoming UDP packets
   if (packetSize)
   {
-    INFOV("Received %d bytes from %s, port %d\n", packetSize, inverterUDP.remoteIP().toString().c_str(), inverterUDP.remotePort());
+    // INFOV("Received %d bytes from %s, port %d\n", packetSize, inverterUDP.remoteIP().toString().c_str(), inverterUDP.remotePort());
     
-    int len = inverterUDP.read(incomingPacket, 1024);
+    int len = inverterUDP.read(incomingPacket, 512);
     
     if (len > 0) { incomingPacket[len] = 0; }
 
     // for (int i = 0; i < packetSize; i++) {
     //   INFOV("HEX pos %d: %02X\n", i, incomingPacket[i]);
     // }
- 
-    // Pos 7 de diferencia con python
 
     // PV1 Volts
     uvalue = (incomingPacket[7] << 8) | (incomingPacket[8]);
@@ -72,6 +70,9 @@ void parseUDP(void)
     // battery Power
     inverter.batteryWatts = meter.voltage * meter.current;
 
+    uvalue = incomingPacket[37];
+    uvalue == 3 ? inverter.batteryWatts *= -1 : inverter.batteryWatts *= 1;
+
     // Battery SoC
     uvalue = (incomingPacket[33] << 8) | (incomingPacket[34]);
     inverter.batterySoC = (float)uvalue;
@@ -85,26 +86,25 @@ void parseUDP(void)
     // meter.current = (float)uvalue / 10.0;
     
     // Grid Power
-    value = (incomingPacket[45] << 8) | (incomingPacket[46]);
+    value = (incomingPacket[45] << 8) | (incomingPacket[46]); // pgrid
     inverter.wgrid = value;
 
-    uvalue = (incomingPacket[87] << 8) | (incomingPacket[88]);
-
+    uvalue = incomingPacket[87];
     uvalue == 2 ? inverter.wgrid *= -1 : inverter.wgrid *= 1;
 
-    // House comsumption
+    // House Comsumption
     inverter.loadWatts = inverter.wsolar + inverter.batteryWatts - inverter.wgrid;
 
     config.flags.changeGridSign ? inverter.wgrid *= -1 : inverter.wgrid *= 1;
     
-    // Registro 52
+    // AC Frequency
     uvalue = (incomingPacket[47] << 8) | (incomingPacket[48]);
     meter.frequency = (float)uvalue / 100.0;
 
-    uvalue = (incomingPacket[76] << 8) | (incomingPacket[77]);
+    uvalue = (incomingPacket[74] << 8) | (incomingPacket[75]); // e_day
     inverter.wtoday = uvalue / 10.0;
 
-    // Registro 58
+    // Inverter Temperature
     uvalue = (incomingPacket[60] << 8) | (incomingPacket[61]);
     inverter.temperature = uvalue / 10.0;
 

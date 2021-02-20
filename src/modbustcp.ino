@@ -111,6 +111,7 @@ registerData victronRegisters[] = {
     &inverter.acOut, 100, 808, 1, U16FIX0,
     &inverter.wsolar, 100, 850, 1, U16FIX0,
     &inverter.wgrid, 100, 820, 1, S16FIX0,
+    &inverter.loadWatts, 100, 817, 1, U16FIX0
 };
 
 registerData froniusRegisters[] = {
@@ -260,7 +261,7 @@ void parseIngeteamModbus(uint8_t *data)
   uint16_t uvalue = 0;
 
 //   for (int i = 0; i < 69; i++) {
-//       Serial.printf("Registro %d: %02X %02X\n", i + 1, data[(2 * i)], data[(2 * i) + 1]);
+//       INFOV("Registro %d: %02X %02X\n", i + 1, data[(2 * i)], data[(2 * i) + 1]);
 //   }
 
   // Registro 18
@@ -273,7 +274,7 @@ void parseIngeteamModbus(uint8_t *data)
 
   // Registro 20
   value = (data[38] << 8) | (data[39]);
-  inverter.batteryWatts = (float)value / 100;
+  inverter.batteryWatts = (float)value * -1.0;
 
   // Registro 21
   uvalue = (data[40] << 8) | (data[41]);
@@ -434,8 +435,8 @@ float parseFloat32(uint8_t *data, int precision)
     *((unsigned char *)&value + 2) = data[1];
     *((unsigned char *)&value + 1) = data[2];
     *((unsigned char *)&value + 0) = data[3];
-    // Serial.printf("Data F32: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
-    // Serial.printf("Float 32: %.6f\n", value);
+    // INFOV("Data F32: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
+    // INFOV("Float 32: %.6f\n", value);
 
     switch (precision)
     {
@@ -451,7 +452,7 @@ float parseUnsigned16(uint8_t *data, int precision)
 {
     uint16_t value = 0;
     value = (data[0] << 8) | (data[1]);
-    // Serial.printf("unsigned 16: %" PRIu16 "\n",value);
+    // INFOV("unsigned 16: %" PRIu16 "\n",value);
 
     switch (precision)
     {
@@ -468,8 +469,8 @@ float parseUnsigned32(uint8_t *data, int precision)
 {
     uint32_t value = 0;
     value = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]);
-    // Serial.printf("Data U32: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
-    // Serial.printf("Unsigned 32: %" PRIu32 "\n",value);
+    // INFOV("Data U32: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
+    // INFOV("Unsigned 32: %" PRIu32 "\n",value);
 
     switch (precision)
     {
@@ -489,9 +490,9 @@ float parseUnsigned64(uint8_t *data, int precision)
     high = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]);
     low = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | (data[7]);
     value = (((uint64_t) high) << 32) | ((uint64_t) low);
-    // Serial.printf("Data U64 High: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
-    // Serial.printf("Data U64 low: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[4], data[5], data[6], data[7]);
-    // Serial.printf("Unsigned 64: %" PRIu64 "\n",value);
+    // INFOV("Data U64 High: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
+    // INFOV("Data U64 low: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[4], data[5], data[6], data[7]);
+    // INFOV("Unsigned 64: %" PRIu64 "\n",value);
 
     switch (precision)
     {
@@ -507,7 +508,7 @@ float parseSigned16(uint8_t *data, int precision)
 {
     int16_t value = 0;
     value = (data[0] << 8) | (data[1]);
-    //Serial.printf("signed 16: %" PRId16 "\n",value);
+    //INFOV("signed 16: %" PRId16 "\n",value);
 
     switch (precision)
     {
@@ -524,8 +525,8 @@ float parseSigned32(uint8_t *data, int precision)
 {
     int32_t value = 0;
     value = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]);
-    // Serial.printf("Data S32: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
-    // Serial.printf("Signed 32: %" PRId32 "\n",value);
+    // INFOV("Data S32: 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", data[0], data[1], data[2], data[3]);
+    // INFOV("Signed 32: %" PRId32 "\n",value);
 
     if (value == 0x80000000) return 0; // Sanitizer check
 
@@ -543,7 +544,7 @@ void configModbusTcp(void)
 {
     modbustcp->onData([](uint16_t packet, uint8_t slave, esp32Modbus::FunctionCode fc , uint8_t* data , uint16_t len, void* arg) {
         registerData* a = reinterpret_cast<registerData*>(arg);
-        //Serial.printf("Received data address %d\n", a->address);
+        // INFOV("Received data address %d\n", a->address);
         switch (a->type)
         {
             case ENUM:
@@ -594,8 +595,9 @@ void configModbusTcp(void)
 
         if (config.wversion == SMA_BOY && a->address == 30867 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == SMA_ISLAND && a->address == 30775 && !config.flags.changeGridSign) { inverter.batteryWatts *= -1.0; }
-        if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; if (config.flags.useSolarAsMPTT) { inverter.batteryWatts += inverter.wsolar;} }
-        if (config.wversion == HUAWEI_MODBUS && a->address == 37113 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; if (config.flags.useSolarAsMPTT) { inverter.batteryWatts += inverter.wsolar;} }
+        if (config.wversion == VICTRON && a->address == 820 && !config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+        if (config.wversion == VICTRON && a->address == 850) { if (!config.flags.useBMV) { inverter.batteryWatts += inverter.wsolar;} } // Custom function for Aeizoon
+        if (config.wversion == HUAWEI_MODBUS && a->address == 37113 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         if (config.wversion == SOLAREDGE && a->address == 40206 && config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         Error.RecepcionDatos = false;
         timers.ErrorRecepcionDatos = millis();
@@ -603,7 +605,7 @@ void configModbusTcp(void)
     });
     modbustcp->onError([](uint16_t packet, esp32Modbus::Error e, void* arg) {
       registerData* a = reinterpret_cast<registerData*>(arg);
-      Serial.printf("Error packet in address %d (%u): %02x\n", a->address, packet, e);
+      INFOV("Error packet in address %d (%u): %02x\n", a->address, packet, e);
       froniusVariables.froniusRequestSend = false;
     });
 }
@@ -623,9 +625,9 @@ void smaBoy(void)
     for (uint8_t i = 0; i < sizeOfArray(smaRegistersBoy); ++i) {
 
         if (modbustcp->readHoldingRegisters(smaRegistersBoy[i].serverID, smaRegistersBoy[i].address, smaRegistersBoy[i].length, &(smaRegistersBoy[i])) > 0) {
-            //Serial.printf("  requested %d\n", smaRegistersBoy[i].address);
+            //INFOV("  requested %d\n", smaRegistersBoy[i].address);
         } else {
-            Serial.printf("  error requesting address %d\n", smaRegistersBoy[i].address);
+            INFOV("  error requesting address %d\n", smaRegistersBoy[i].address);
         }
     }
 }
@@ -637,9 +639,9 @@ void smaIsland(void)
     for (uint8_t i = 0; i < sizeOfArray(smaRegistersIsland); ++i) {
 
         if (modbustcp->readHoldingRegisters(smaRegistersIsland[i].serverID, smaRegistersIsland[i].address, smaRegistersIsland[i].length, &(smaRegistersIsland[i])) > 0) {
-            //Serial.printf("  requested %d\n", smaRegistersIsland[i].address);
+            //INFOV("  requested %d\n", smaRegistersIsland[i].address);
         } else {
-            Serial.printf("  error requesting address %d\n", smaRegistersIsland[i].address);
+            INFOV("  error requesting address %d\n", smaRegistersIsland[i].address);
         }
     }
 }
@@ -650,9 +652,9 @@ void victron(void)
 
     for (uint8_t i = 0; i < sizeOfArray(victronRegisters); ++i) {
         if (modbustcp->readHoldingRegisters(victronRegisters[i].serverID, victronRegisters[i].address, victronRegisters[i].length, &(victronRegisters[i])) > 0) {
-            //Serial.printf("  requested %d\n", victronRegisters[i].address);
+            // INFOV("  requested %d\n", victronRegisters[i].address);
         } else {
-            Serial.printf("  error requesting address %d\n", victronRegisters[i].address);
+            INFOV("  error requesting address %d\n", victronRegisters[i].address);
         }
     }
 }
@@ -669,10 +671,10 @@ void fronius(void)
       froniusVariables.sendTimeOut = millis();
       froniusVariables.froniusRequestSend = false;
       if (modbustcp->readHoldingRegisters(froniusRegisters[froniusVariables.froniusRegisterNum].serverID, froniusRegisters[froniusVariables.froniusRegisterNum].address, froniusRegisters[froniusVariables.froniusRegisterNum].length, &(froniusRegisters[froniusVariables.froniusRegisterNum])) > 0) {
-          Serial.printf("  requested %d\n", froniusRegisters[froniusVariables.froniusRegisterNum].address);
+        //   INFOV("  requested %d\n", froniusRegisters[froniusVariables.froniusRegisterNum].address);
           froniusVariables.froniusRequestSend = true;
       } else {
-          Serial.printf("  error requesting address %d\n", froniusRegisters[froniusVariables.froniusRegisterNum].address);
+          INFOV("  error requesting address %d\n", froniusRegisters[froniusVariables.froniusRegisterNum].address);
           froniusVariables.froniusRequestSend = false;
       }
     }
@@ -684,9 +686,9 @@ void huawei(void)
 
     for (uint8_t i = 0; i < sizeOfArray(huaweiRegisters); ++i) {
         if (modbustcp->readHoldingRegisters(huaweiRegisters[i].serverID, huaweiRegisters[i].address, huaweiRegisters[i].length, &(huaweiRegisters[i])) > 0) {
-            //Serial.printf("  requested %d\n", huaweiRegisters[i].address);
+            //INFOV("  requested %d\n", huaweiRegisters[i].address);
         } else {
-            Serial.printf("  error requesting address %d\n", huaweiRegisters[i].address);
+            INFOV("  error requesting address %d\n", huaweiRegisters[i].address);
         }
     }
     inverter.pw1 = inverter.pv1v * inverter.pv1c;
@@ -699,9 +701,8 @@ void wibeeeModbus(void)
 
     for (uint8_t i = 0; i < sizeOfArray(wibeeeRegisters); ++i) {
         if (modbustcp->readHoldingRegisters(wibeeeRegisters[i].serverID, wibeeeRegisters[i].address, wibeeeRegisters[i].length, &(wibeeeRegisters[i])) > 0) {
-            //Serial.printf("  requested %d\n", wibeeeRegisters[i].address);
+            //INFOV("  requested %d\n", wibeeeRegisters[i].address);
         } else {
-            // Serial.printf("  error requesting address %d\n", wibeeeRegisters[i].address);
             INFOV("  error requesting address %d\n", wibeeeRegisters[i].address);
         }
     }
@@ -713,9 +714,8 @@ void schneiderModbus(void)
 
     for (uint8_t i = 0; i < sizeOfArray(schneiderRegisters); ++i) {
         if (modbustcp->readHoldingRegisters(schneiderRegisters[i].serverID, schneiderRegisters[i].address, schneiderRegisters[i].length, &(schneiderRegisters[i])) > 0) {
-            Serial.printf("  requested %d\n", schneiderRegisters[i].address);
+            // INFOV("  requested %d\n", schneiderRegisters[i].address);
         } else {
-            // Serial.printf("  error requesting address %d\n", schneiderRegisters[i].address);
             INFOV("  error requesting address %d\n", schneiderRegisters[i].address);
         }
     }
@@ -727,9 +727,9 @@ void ingeteamModbus(void)
 
     for (uint8_t i = 0; i < sizeOfArray(ingeteamRegisters); ++i) {
         if (modbustcp->readInputRegisters(ingeteamRegisters[i].serverID, ingeteamRegisters[i].address, ingeteamRegisters[i].length, &(ingeteamRegisters[i])) > 0) {
-            // Serial.printf("  requested %d\n", ingeteamRegisters[i].address);
+            // INFOV("  requested %d\n", ingeteamRegisters[i].address);
         } else {
-            Serial.printf("  error requesting address %d\n", ingeteamRegisters[i].address);
+            INFOV("  error requesting address %d\n", ingeteamRegisters[i].address);
         }
     }
 }
@@ -740,9 +740,9 @@ void solarEdge(void)
 
     for (uint8_t i = 0; i < sizeOfArray(solaredgeRegisters); ++i) {
         if (modbustcp->readHoldingRegisters(solaredgeRegisters[i].serverID, solaredgeRegisters[i].address, solaredgeRegisters[i].length, &(solaredgeRegisters[i])) > 0) {
-            //Serial.printf("  requested %d\n", solaredgeRegisters[i].address);
+            //INFOV("  requested %d\n", solaredgeRegisters[i].address);
         } else {
-            Serial.printf("  error requesting address %d\n", solaredgeRegisters[i].address);
+            INFOV("  error requesting address %d\n", solaredgeRegisters[i].address);
         }
     }
 }

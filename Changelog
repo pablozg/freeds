@@ -23,8 +23,11 @@ Versión 1.0.7
 	- Tamaño de eeprom ampliado a 2048 bytes (2Kb)
 	- Cambiado el control de potencia por un control PID (Gracias a Ciafe por "forzarme" a probar los PID con FreeDS y sus consejos, asi como también a Bisha, Aeizoon y Lolo por sus pruebas)
 	- Añadido comando para el ajuste de los valors del PID (tunePID 0.05;0.06;0.03)
+	- Añadida representación gráfica de los datos en la web inteface.
+	- Añadido soporte para baterías en los modos Solax V2, en la V3 todavía no está implementado por no haber sido probado.
 
 	- TODO: Añadir selección de puerto modbus tcp
+	- TODO: Terminar de implementar la selección de Fase a usar si lo soporta la fuente de datos a usar.
 	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado
 	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
   	- TODO: pinwatchdog o reinicio preventivo programable

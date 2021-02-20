@@ -32,12 +32,12 @@ void showOledData(void)
     Flags.flash = !Flags.flash;
   }
 
-  if (config.wversion == SLAVE_MODE) { wversion = masterMode; }
+  if (config.wversion == SLAVE_MODE) { wversion = slave.masterMode; }
   else { wversion = config.wversion; }
 
   if (config.flags.wifi)
   {
-    switch (screen)
+    switch (button.screen)
     {
       case 0: // Principal
         display.clear();
@@ -188,16 +188,21 @@ void showOledData(void)
           display.drawString(64, 38, lang._UPDATING_);
         else if (Error.ConexionWifi)
           display.drawString(64, 38, lang._LOSTWIFI_);
-        else if ((!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.VariacionDatos || Error.RecepcionDatos))) && invert_pwm <= 1)
+        // else if ((!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.VariacionDatos || Error.RecepcionDatos))) && pwm.invert_pwm <= 1)
+        else if ((!config.flags.pwmMan && (Error.VariacionDatos || Error.RecepcionDatos)) && pwm.invert_pwm <= 1)
           display.drawString(64, 38, WiFi.localIP().toString());
         else {
-          display.drawProgressBar(0, 38, 127, 12, pwmValue); // draw the progress bar
+          display.drawProgressBar(0, 38, 127, 12, pwm.pwmValue); // draw the progress bar
 
-          display.setTextAlignment(TEXT_ALIGN_LEFT);
-          if (config.flags.pwmEnabled == false) { display.drawString(42, 38, "PWM: OFF"); }
+          display.setTextAlignment(TEXT_ALIGN_CENTER);
+          if (config.flags.pwmEnabled == false) { display.drawString(64, 38, "PWM: OFF"); }
           else {
             display.setColor(INVERSE);
-            display.drawString(42, 38, (config.flags.pwmMan ? "PWM: MAN" : "PWM: " + String(pwmValue) + "%"));
+            if (config.wversion == SLAVE_MODE) {
+              display.drawString(64, 38, (config.flags.pwmMan ? "PWM: " + String(pwm.pwmValue) + "% (MANUAL)" : "MSTR: " + String(slave.masterPwmValue) + "%" + " PWM: " + String(pwm.pwmValue) + "%"));
+            } else {
+              display.drawString(64, 38, (config.flags.pwmMan ? "PWM: " + String(pwm.pwmValue) + "% (MANUAL)" : "PWM: " + String(pwm.pwmValue) + "%"));
+            }
             display.setColor(WHITE);
           }
         }
@@ -241,7 +246,7 @@ void showOledData(void)
             display.drawString(100, 44, (String(int(inverter.pw2)) + "W"));
             display.drawString(100,  54, (String(int(inverter.pv2v)) + "V " + String(inverter.pv2c) + "A"));
             display.display();
-          } else { screen++; }
+          } else { button.screen++; }
           break;
       
       case 2: // Meters
@@ -262,7 +267,7 @@ void showOledData(void)
             display.drawString(100, 44, (String(meter.exportActive) + "KWH"));
             display.drawString(64,  54, ("Total: " + String(meter.energyTotal) + "KWH"));
             display.display();
-          } else { screen++; }
+          } else { button.screen++; }
           break;
 
       case 3: // Wifi Info
@@ -272,7 +277,7 @@ void showOledData(void)
           display.drawString(0, 0,  ("IP: " + WiFi.localIP().toString()));
           display.drawString(0, 12, ("SSID: " + WiFi.SSID() + " (" + String(WifiGetRssiAsQuality((int8_t)WiFi.RSSI())) + "%)"));
           display.drawString(0, 24, ("Frec. Pwm: " + String((float)config.pwmFrequency / 10000) + "Khz"));
-          display.drawString(0, 36, ("PWM: " + String(pwmValue) + "% (" + String(invert_pwm) + ")"));
+          display.drawString(0, 36, ("PWM: " + String(pwm.pwmValue) + "% (" + String(pwm.invert_pwm) + ")"));
           display.drawString(0, 48, printUptimeOled());
           // if (Flags.ntpTime) {
           //   display.drawString(0, 60, printDateOled());
@@ -287,9 +292,9 @@ void showOledData(void)
           display.drawString(64, 0, lang._TEMPERATURES_);
           display.setTextAlignment(TEXT_ALIGN_LEFT);
           display.drawString(0, 12, (lang._INVERTERTEMP_ + String(inverter.temperature) + "ºC"));
-          display.drawString(0, 24, (lang._TERMOTEMP_ + String(temperaturaTermo) + "ºC"));
-          display.drawString(0, 36, (lang._TRIACTEMP_ + String(temperaturaTriac) + "ºC"));
-          display.drawString(0, 48, (String(config.nombreSensor) + ": " + String(temperaturaCustom) + "ºC"));
+          display.drawString(0, 24, (lang._TERMOTEMP_ + String(temperature.temperaturaTermo) + "ºC"));
+          display.drawString(0, 36, (lang._TRIACTEMP_ + String(temperature.temperaturaTriac) + "ºC"));
+          display.drawString(0, 48, (String(config.nombreSensor) + ": " + String(temperature.temperaturaCustom) + "ºC"));
           display.display();
           break;
       

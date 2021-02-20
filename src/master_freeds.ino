@@ -27,24 +27,27 @@ void parseMasterFreeDs(char *json)
   if (error) {
     INFOV("deserializeJson() failed: %s\n", error.c_str());
   } else {
-    masterMode = (int)root["wversion"];
+    slave.masterMode = (int)root["wversion"];
+    
+    slave.masterPwmValue = (bool)root["tempShutdown"] ? 100 : (int)root["PwmMaster"];
 
-    if ((int)root["PwmMaster"] >= config.pwmSlaveOn) {
+    if (slave.masterPwmValue >= config.pwmSlaveOn) {
       Flags.pwmIsWorking = true;
     } else {
-      if (!config.flags.pwmMan && invert_pwm > 0) {
+      if (!config.flags.pwmMan && pwm.invert_pwm > 0) {
         Flags.pwmIsWorking = false;
         shutdownPwm(true, "PWM: disabled by low % on master");
       }
     }
 
-  defineWebMonitorFields(masterMode);
+  defineWebMonitorFields(slave.masterMode);
   // Inverter data
   if (webMonitorFields.wsolar) {
     inverter.wsolar = (float)root["wsolar"]; // Potencia solar actual
   }
   if (webMonitorFields.wgrid) {
     inverter.wgrid = (float)root["wgrid"]; // Potencia de red
+    if (config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
   }
   if (webMonitorFields.temperature) {
     inverter.temperature = (float)root["invTemp"]; // Temperatura Inversor
