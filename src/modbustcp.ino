@@ -125,15 +125,15 @@ registerData froniusRegisters[] = {
 };
 
 registerData huaweiRegisters[] = {
+    &inverter.wgrid, 0, 37113, 2, S32FIX0,
+    &inverter.wtoday, 0, 32114, 2, U32FIX2,
+    &inverter.wsolar, 0, 32064, 2, S32FIX0,
     &inverter.pv1v, 0, 32016, 1, S16FIX1,
     &inverter.pv1c, 0, 32017, 1, S16FIX2,
     &inverter.pv2v, 0, 32018, 1, S16FIX1,
     &inverter.pv2c, 0, 32019, 1, S16FIX2,
-    &inverter.wsolar, 0, 32064, 2, S32FIX0,
     &inverter.temperature, 0, 32087, 1, S16FIX1,
-    &inverter.wtoday, 0, 32114, 2, U32FIX2,
-    &inverter.batteryWatts, 0, 37001, 2, S32FIX0,
-    &inverter.wgrid, 0, 37113, 2, S32FIX0
+    &inverter.batteryWatts, 0, 37001, 2, S32FIX0
 };
 
 registerData solaredgeRegisters[] = {
@@ -146,7 +146,7 @@ registerData wibeeeRegisters[] = {
 };
 
 registerData ingeteamRegisters[] = {
-    &inverter.wgrid, 1, 0, 69, INGETEAMMODBUS
+    &inverter.wgrid, 1, 0, 73, INGETEAMMODBUS
 };
 
 registerData schneiderRegisters[] = { // Schneider
@@ -321,7 +321,7 @@ void parseIngeteamModbus(uint8_t *data)
   meter.frequency = (float)uvalue / 100.0;
   
   // Registro 52
-  value = (data[102] << 8) | (data[103]);
+  value = config.flags.useExternalMeter ? (data[142] << 8) | (data[143]) : (data[102] << 8) | (data[103]);
   inverter.wgrid = value;
 
   config.flags.changeGridSign ? inverter.wgrid *= -1 : inverter.wgrid *= 1;
@@ -329,7 +329,22 @@ void parseIngeteamModbus(uint8_t *data)
    // Registro 58
   value = (data[114] << 8) | (data[115]);
   inverter.temperature = value / 10.0;
- 
+
+  // Registro 59 116-117
+  // Registro 60 118-119
+  // Registro 61 120-121
+  // Registro 62 122-123
+  // Registro 63 124-125
+  // Registro 64 126-127
+  // Registro 65 128-129
+  // Registro 66 130-131
+  // Registro 67 132-133
+  // Registro 68 134-135
+  // Registro 69 136-137
+  // Registro 70 138-139 (Meter)
+  // Registro 71 140-141 (Meter)
+  // Registro 72 142-143 (Meter) Usado junto registro 52
+  // Registro 73 144-145 (Meter)
 }
 
 void parseWibeeeModbus(uint8_t *data)

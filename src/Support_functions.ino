@@ -50,7 +50,7 @@ void getSensorData(void)
       case MUSTSOLAR: // MustSolar
         readModbus();
         break;
-      case GOODWE: // MustSolar
+      case GOODWE: // GoodWe
         sendUDPRequest();
         break;
     }
@@ -388,6 +388,7 @@ void checkTimer(void)
         INFOV("Timer stopped\n");
         Flags.timerSet = false;
         config.flags.pwmMan = false;
+        saveEEPROM();
         changeToAuto();
         if (config.modoTemperatura != 3) { Flags.pwmIsWorking = true; }
       }
@@ -922,6 +923,7 @@ void checkEEPROM(void) {
     config.flags.debugPID = false;
     config.flags.weblog = true;
     config.solaxVersion = 2;
+    config.flags.useExternalMeter = false;
     config.eeinit = 0x17;
     INFOV(PSTR("EEPROM Settings upgraded from version %x to version %x\n"), actualVersion, config.eeinit);
     saveEEPROM();

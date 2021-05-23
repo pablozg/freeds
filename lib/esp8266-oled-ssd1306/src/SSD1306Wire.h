@@ -82,7 +82,7 @@ class SSD1306Wire : public OLEDDisplay {
     }
 
     bool connect() {
-#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH8266)
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH_ESP8266)
       _wire->begin();
 #else
       // On ESP32 arduino, -1 means 'don't change pins', someone else has called begin for us.
@@ -167,12 +167,6 @@ class SSD1306Wire : public OLEDDisplay {
         sendCommand(PAGEADDR);
         sendCommand(0x0);
 
-        if (geometry == GEOMETRY_128_64) {
-          sendCommand(0x7);
-        } else if (geometry == GEOMETRY_128_32) {
-          sendCommand(0x3);
-        }
-
         for (uint16_t i=0; i < displayBufferSize; i++) {
           _wire->beginTransmission(this->_address);
           _wire->write(0x40);
@@ -204,7 +198,7 @@ class SSD1306Wire : public OLEDDisplay {
 
     void initI2cIfNeccesary() {
       if (_doI2cAutoInit) {
-#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH8266)
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH_ESP8266)
       	_wire->begin();
 #else
       	_wire->begin(this->_sda, this->_scl);

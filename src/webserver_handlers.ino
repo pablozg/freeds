@@ -1042,6 +1042,12 @@ void setWebConfig(void)
       saveEEPROM();
     }
 
+    if (comando == "useExternalMeter") {
+      if (value == 1) { config.flags.useExternalMeter = true; }
+      else { config.flags.useExternalMeter = false; }
+      saveEEPROM();
+    }
+
     if (comando == "solaxVersion") {
       if (value < 2 || value > 3) { value = 2; }
       config.solaxVersion = value;

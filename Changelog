@@ -26,8 +26,20 @@ Versión 1.0.7
 	- Añadida representación gráfica de los datos en la web inteface.
 	- Añadido soporte para baterías en los modos Solax V2, en la V3 todavía no está implementado por no haber sido probado.
 
-	- TODO: Añadir selección de puerto modbus tcp
+- Revisión 1
+
+	- Solucionados problemas de representación en la interface web.
+
+- Revisión 2
+	- Solucionados problemas con la actualización del estado de los relés.
+	- Solucionado error por el que cuando la fuente de datos reporta una carga total de consumo de 0W, no se mostraba la carga calculada por freeDS. (Reloj Casa)
+	- VICTRON: Comando "useSolarAsMPTT 1 / 0", Si está activado suma los valores de acIn + acOut a la potencia solar.
+	- VICTRON: Comando "useBMV 1 / 0", si está activado suma al valor de la batería el valor de la potencia solar.
+	- MQTT: Añadida la publicación de los campos batteryWatts, batterySoC, loadWatts y AcIn, AcOut (solo usados por victron)
+
 	- TODO: Terminar de implementar la selección de Fase a usar si lo soporta la fuente de datos a usar.
+	- TODO: Añadir programador horario según el día de la semana (por terminar la mejor forma, por ejemplo tipo Tasmota)
+	- TODO: Añadir selección de puerto modbus tcp
 	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado
 	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
   	- TODO: pinwatchdog o reinicio preventivo programable

@@ -350,14 +350,29 @@ void relayManualControl(boolean forceOFF)
   if ((Flags.Relay03Man || config.relaysFlags.R03Man) && !digitalRead(PIN_RL3)) { digitalWrite(PIN_RL3, HIGH); INFOV("Relay 3 Forced On\n");}
   if ((Flags.Relay04Man || config.relaysFlags.R04Man) && !digitalRead(PIN_RL4)) { digitalWrite(PIN_RL4, HIGH); INFOV("Relay 4 Forced On\n");}
 
+  // Se desactivan las salidas seleccionadas manualmente si no lo están ya
+  if ((!Flags.Relay01Man && !config.relaysFlags.R01Man) && digitalRead(PIN_RL1)) { digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n");}
+  if ((!Flags.Relay02Man && !config.relaysFlags.R02Man) && digitalRead(PIN_RL2)) { digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n");}
+  if ((!Flags.Relay03Man && !config.relaysFlags.R03Man) && digitalRead(PIN_RL3)) { digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n");}
+  if ((!Flags.Relay04Man && !config.relaysFlags.R04Man) && digitalRead(PIN_RL4)) { digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n");}
+
   // Se fuerza el apagado de todas las salidas
-    if (forceOFF || !config.flags.pwmEnabled)
+  if (forceOFF)
   {
-    if (digitalRead(PIN_RL1) && !Flags.Relay01Man && !config.relaysFlags.R01Man) { digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n"); }
-    if (digitalRead(PIN_RL2) && !Flags.Relay02Man && !config.relaysFlags.R02Man) { digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n"); }
-    if (digitalRead(PIN_RL3) && !Flags.Relay03Man && !config.relaysFlags.R03Man) { digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n"); }
-    if (digitalRead(PIN_RL4) && !Flags.Relay04Man && !config.relaysFlags.R04Man) { digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n"); }
+    digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n");
+    digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n");
+    digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n");
+    digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n");
   }
+
+  // Se fuerza el apagado de todas las salidas
+  // if (forceOFF || !config.flags.pwmEnabled)
+  // {
+  //   if (digitalRead(PIN_RL1) && !Flags.Relay01Man && !config.relaysFlags.R01Man) { digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n"); }
+  //   if (digitalRead(PIN_RL2) && !Flags.Relay02Man && !config.relaysFlags.R02Man) { digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n"); }
+  //   if (digitalRead(PIN_RL3) && !Flags.Relay03Man && !config.relaysFlags.R03Man) { digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n"); }
+  //   if (digitalRead(PIN_RL4) && !Flags.Relay04Man && !config.relaysFlags.R04Man) { digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n"); }
+  // }
 }
 
 // PWM Functions

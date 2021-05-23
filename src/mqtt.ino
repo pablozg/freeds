@@ -38,6 +38,11 @@ topicData topicRegisters[] = {
     &inverter.wtogrid, "wtogrid",
     &inverter.gridv, "gridv",
     &inverter.currentCalcWatts, "calcWatts",
+    &inverter.batteryWatts, "batteryWatts",
+    &inverter.batterySoC, "batterySoC",
+    &inverter.loadWatts, "loadWatts",
+    &inverter.acIn, "AcIn",
+    &inverter.acOut, "AcOut",
     &meter.voltage, "voltage",
     &meter.current, "current",
     &temperature.temperaturaTermo, "tempTermo",
@@ -220,17 +225,19 @@ void onMqttConnect(bool sessionPresent)
   {
     sprintf(tmpTopic, "%s/cmnd/%s", config.hostServer, topics[i]);
     mqttClient.subscribe(tmpTopic, 0);
+    INFOV("Suscribing to topic %s\n",tmpTopic);
   }
 
   for (int i = 1; i <= 4; i++)
   {
     sprintf(tmpTopic, "%s/relay/%d/CMND", config.hostServer, i);
     mqttClient.subscribe(tmpTopic, 0);
+    INFOV("Suscribing to topic %s\n",tmpTopic);
   }
 
   if (config.wversion >= MQTT_MODE && config.wversion <= (MQTT_MODE + MODE_STEP - 1)) { suscribeMqttMeter(); }
 
-  if (config.flags.domoticz) { mqttClient.subscribe("domoticz/out", 0); }
+  if (config.flags.domoticz) { mqttClient.subscribe("domoticz/out", 0); INFOV("Suscribing to topic domoticz/out\n");}
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
@@ -493,7 +500,9 @@ void suscribeMqttMeter(void)
   {
     case MQTT_BROKER:
       mqttClient.subscribe(config.Solax_mqtt, 0);
+      INFOV("Suscribing to topic %s\n",config.Solax_mqtt);
       mqttClient.subscribe(config.Meter_mqtt, 0);
+      INFOV("Suscribing to topic %s\n",config.Meter_mqtt);
       break;
     case ICC_SOLAR:
       mqttClient.subscribe("Inverter/GridWatts", 0);
@@ -510,7 +519,9 @@ void suscribeMqttMeter(void)
       mqttClient.subscribe("Inverter/BatteryWatts", 0);
       mqttClient.subscribe("Inverter/LoadWatts", 0);
       mqttClient.subscribe("Inverter/Temperature", 0);
+      INFOV("Suscribing to Icc_Solar topics\n");
       mqttClient.subscribe(config.SoC_mqtt, 0);
+      INFOV("Suscribing to topic %s\n",config.SoC_mqtt);
       break;
   }
 }

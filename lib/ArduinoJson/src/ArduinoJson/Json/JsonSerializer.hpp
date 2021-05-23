@@ -1,5 +1,5 @@
-// ArduinoJson - arduinojson.org
-// Copyright Benoit Blanchon 2014-2020
+// ArduinoJson - https://arduinojson.org
+// Copyright Benoit Blanchon 2014-2021
 // MIT License
 
 #pragma once
@@ -71,13 +71,13 @@ class JsonSerializer : public Visitor<size_t> {
     return bytesWritten();
   }
 
-  size_t visitNegativeInteger(UInt value) {
-    _formatter.writeNegativeInteger(value);
+  size_t visitSignedInteger(Integer value) {
+    _formatter.writeInteger(value);
     return bytesWritten();
   }
 
-  size_t visitPositiveInteger(UInt value) {
-    _formatter.writePositiveInteger(value);
+  size_t visitUnsignedInteger(UInt value) {
+    _formatter.writeInteger(value);
     return bytesWritten();
   }
 

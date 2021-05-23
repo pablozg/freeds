@@ -114,7 +114,7 @@ extern "C"
 // Variables Globales
 const char compile_date[] PROGMEM = __DATE__ " " __TIME__;
 const char version[] PROGMEM = "1.0.7";
-const char beta[]  PROGMEM = "";
+const char beta[]  PROGMEM = "Rev 2";
 
 const char *www_username = "admin";
 
@@ -234,7 +234,8 @@ typedef union {
     uint32_t useClamp : 1;           // Bit 25
     uint32_t useSolarAsMPTT : 1;     // Bit 26
     uint32_t useBMV : 1;             // Bit 27
-    uint32_t spare : 3;              // Bit 28 - 30
+    uint32_t useExternalMeter : 1;   // Bit 28
+    uint32_t spare : 2;              // Bit 29 - 30
     uint32_t debugPID : 1;           // Bit 31
   };
 } SysBitfield;
@@ -687,7 +688,7 @@ void defaultValues()
   strcpy(config.pass2, "DSPLUSWIFI2");
   strcpy(config.ssid_esp01, "SOLAXX");
   strcpy(config.password_esp01, "");
-  strcpy(config.sensor_ip, "192.168.0.100");
+  strcpy(config.sensor_ip, "IPORIGENDATOS");
   config.flags.dhcp = true;
   strcpy(config.ip, "192.168.0.99");
   strcpy(config.gw, "192.168.0.1");
@@ -785,6 +786,7 @@ void defaultValues()
   config.voltageOffset = 0.30;
   config.maxWattsTariff = 3450;
   config.flags.showEnergyMeter = true;
+  config.flags.useExternalMeter = false;
   config.flags.useClamp = false;
   config.clampCalibration = 22.3;
   config.clampVoltage = 230.0;
