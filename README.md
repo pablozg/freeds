@@ -12,7 +12,7 @@ them (whether they come from photovoltaic and/or wind generation).
 ## Dependencies (just to compile)
 - **TickerScheduler** (included in this repository with the necessary patch): [Toshik/TickerScheduler](https://github.com/Toshik/TickerScheduler)
 - **Async MQTT client for ESP8266 and ESP32**: [marvinroger/async-mqtt-client](https://github.com/marvinroger/async-mqtt-client)
-- **ArduinoJson**: [bblanchon/ArduinoJson/](https://github.com/bblanchon/ArduinoJson/)
+- **ArduinoJson**: [bblanchon/ArduinoJson](https://github.com/bblanchon/ArduinoJson)
 - **AsyncTCP**: [me-no-dev/AsyncTCP](https://github.com/me-no-dev/AsyncTCP)
 - **ESPAsyncWebServer**: [me-no-dev/ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer)
 - **ThingPulse OLED SSD1306 (ESP8266/ESP32/Mbed-OS)**: [ThingPulse/esp8266-oled-ssd1306](https://github.com/ThingPulse/esp8266-oled-ssd1306)
