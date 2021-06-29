@@ -10,7 +10,7 @@
 them (whether they come from photovoltaic and/or wind generation).
 
 ## Dependencies (just to compile)
-- **TickerScheduler** (Incluida en este repositorio con el patch necesario): [Toshik/TickerScheduler](https://github.com/Toshik/TickerScheduler)
+- **TickerScheduler** (included in this repository with the necessary patch): [Toshik/TickerScheduler](https://github.com/Toshik/TickerScheduler)
 - **Async MQTT client for ESP8266 and ESP32**: [marvinroger/async-mqtt-client](https://github.com/marvinroger/async-mqtt-client)
 - **ArduinoJson**: [bblanchon/ArduinoJson/](https://github.com/bblanchon/ArduinoJson/)
 - **AsyncTCP**: [me-no-dev/AsyncTCP](https://github.com/me-no-dev/AsyncTCP)
