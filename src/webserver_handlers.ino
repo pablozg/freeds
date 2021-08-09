@@ -857,7 +857,7 @@ void setWebConfig(void)
       configModbusTcp();
     }
 
-    if (config.wversion == GOODWE) {
+    if (config.wversion == GOODWE || config.wversion == GOODWE_EH) {
       inverterUDP.begin(localUdpPort);
       INFOV("Now listening at IP %s, UDP port %d\n", WiFi.localIP().toString().c_str(), localUdpPort);
     }

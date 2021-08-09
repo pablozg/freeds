@@ -51,7 +51,10 @@ void getSensorData(void)
         readModbus();
         break;
       case GOODWE: // GoodWe
-        sendUDPRequest();
+        sendUDPRequestES_EM();
+        break;
+      case GOODWE_EH: // GoodWe EH
+        sendUDPRequestEH();
         break;
     }
   }
@@ -85,6 +88,9 @@ void setGetDataTime(void)
     case SCHNEIDER:
     case SOLAREDGE:
     case GOODWE:
+      if (config.getDataTime < 1000) config.getDataTime = 1000;
+      break;
+    case GOODWE_EH:
       if (config.getDataTime < 1000) config.getDataTime = 1000;
       break;
   }
@@ -470,6 +476,9 @@ void defineWebMonitorFields(uint8_t version)
       webMonitorFields.data = 0x0F77E006;
       break;
     case GOODWE: // GoodWe
+      webMonitorFields.data = 0x0F77E006;
+      break;
+    case GOODWE_EH: // GoodWe
       webMonitorFields.data = 0x0F77E006;
       break;
     case WIBEEE: // Wibee

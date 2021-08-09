@@ -151,6 +151,9 @@ void showOledData(void)
             case GOODWE:
               display.drawString(69, 0, "GDWE");
               break;
+            case GOODWE_EH:
+              display.drawString(69, 0, "GDWE_EH");
+              break;
             case SMA_BOY:
               display.drawString(69, 0, "SMAB");
               break;

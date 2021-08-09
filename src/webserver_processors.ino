@@ -53,6 +53,10 @@ String workingModeString(void)
   {
     return "GoodWe ES/EM";
   }
+  if (config.wversion == GOODWE_EH)
+  {
+    return "GoodWe EH";
+  }
   if (config.wversion == MUSTSOLAR)
   {
     return "MustSolar Modbus (En desarrollo)";
@@ -139,7 +143,9 @@ String processorFreeDS(const String &var)
            String((config.wversion == SDM_METER) ? " selected='selected' " : " ") + ">Meter SDM120 / SDM220 Modbus</option>"
                                                                               "<option value='"+ String(GOODWE) + "'" +
            String((config.wversion == GOODWE) ? " selected='selected' " : " ") + ">Goodwe ES/EM</option>"
-                                                                              "<option value='"+ String(MUSTSOLAR) + "'" +
+                                                                              "<option value='"+ String(GOODWE_EH) + "'" +
+           String((config.wversion == GOODWE_EH) ? " selected='selected' " : " ") + ">Goodwe EH</option>"
+                                                                               "<option value='"+String(MUSTSOLAR) + "'" +
            String((config.wversion == MUSTSOLAR) ? " selected='selected' " : " ") + ">MustSolar Modbus (En desarrollo)</option>"
                                                                               "<option value='" + String(SMA_BOY) + "'" +
            String((config.wversion == SMA_BOY) ? " selected='selected' " : " ") + ">SMA (Sunny Boy)</option>"
@@ -475,7 +481,7 @@ String processorConfig(const String &var)
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +
              String(config.sensor_ip) + "\" name=\"wifis\"/></div>";
     }
-    if (config.wversion == GOODWE)
+    if (config.wversion == GOODWE || config.wversion == GOODWE_EH)
     {
       return "<label id='labelModo' class='col-sm-4 form-control-label'>IP GoodWe:</label>"
              "<div id='divModo' class='col-sm-8 mg-t-10 mg-sm-t-0'><input id='wifis' type=\"text\" class=\"form-control select2\" maxlength=\"30\" value=\"" +

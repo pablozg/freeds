@@ -1034,7 +1034,7 @@ void setup()
     Setpoint = config.potTarget;
 
     // GOODWE UDP SETUP
-    if (config.wversion == GOODWE) {
+    if (config.wversion == GOODWE || config.wversion == GOODWE_EH) {
       inverterUDP.begin(localUdpPort);
       INFOV("Now listening at IP %s, UDP port %d\n", WiFi.localIP().toString().c_str(), localUdpPort);
     }
@@ -1079,7 +1079,8 @@ void loop()
     
     changeScreen();
     
-    if (config.wversion == GOODWE) { parseUDP(); }
+    if (config.wversion == GOODWE) { parseUDP_ES_EM(); }
+    if (config.wversion == GOODWE_EH) { parseUDP_EH(); }
 
     // PID Check Loop
     if (config.flags.pwmEnabled && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking && myPID.GetMode() == PID::AUTOMATIC && myPID.Compute()) {

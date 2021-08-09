@@ -22,6 +22,7 @@
 #define FRONIUS_API 26
 #define SLAVE_MODE 27
 #define GOODWE 28
+#define GOODWE_EH 29
 
 // MQTT_MODE 41 - 60
 #define MQTT_BROKER 41
