@@ -645,7 +645,7 @@ public:
       }
       response->print("</select></div>");
       response->printf("<br><label class='description' for='password'>Password:</label>");
-      response->printf("<div><input id='password' name='password' class='element text medium' type='text' maxlength='30' value=''/></div>");
+      response->printf("<div><input id='password' name='password' class='element text medium' type='text' size='75' maxlength='63' value=''/></div>");
       response->printf("<br><input id='saveForm' class='button_text' type='submit' name='submit' value='Guardar' /></ul>");
       response->printf("</form></div></body></html>");
       request->send(response);
