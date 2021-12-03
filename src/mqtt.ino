@@ -25,29 +25,34 @@ struct topicData
 };
 
 topicData topicRegisters[] = {
-    &inverter.pw1, "pw1",
-    &inverter.pv1v, "pv1v",
-    &inverter.pv1c, "pv1c",
-    &inverter.pw2, "pw2",
-    &inverter.pv2v, "pv2v",
-    &inverter.pv2c, "pv2c",
-    &inverter.wsolar, "wsolar",
-    &inverter.temperature, "invTemp",
-    &inverter.wtoday, "wtoday",
-    &inverter.wgrid, "wgrid",
-    &inverter.wtogrid, "wtogrid",
-    &inverter.gridv, "gridv",
-    &inverter.currentCalcWatts, "calcWatts",
+    &inverter.pv1c, "pv1c",                                    // Corriente DC string 1
+    &inverter.pv2c, "pv2c",                                    // Corriente DC string 2
+    &inverter.pv1v, "pv1v",                                    // Tension DC string 1
+    &inverter.pv2v, "pv2v",                                    // Tension DC string 2
+    &inverter.pw1, "pvw1",                                    // Potencia DC string 1
+    &inverter.pw2, "pvw2",                                    // Potencia DC string 2
+    &inverter.wsolar, "wsolar",                                // Potencia AC solar
+    &inverter.temperature, "invTemp",                          // Temperature Inversor
+    &inverter.wtoday, "wtoday",                                // Potencia AC solar diaria WH
+    &inverter.wgrid, "wgrid",                                  // Potencia AC de red (Negativo: de red - Positivo: a red)
+    &inverter.wtogrid, "wtogrid",                              // Potencia AC diaria enviada a red WH
+    &inverter.gridv, "gridv",                                  // Tension AC de red
+    &inverter.loadWatts, "loadWatts",                          // Consumos de la Casa
+
+    &inverter.currentCalcWatts, "calcWatts",    //---------------No se usa en MQTT, se incluye batteryAmps, batteryVolts
     &inverter.batteryWatts, "batteryWatts",
     &inverter.batterySoC, "batterySoC",
-    &inverter.loadWatts, "loadWatts",
+
     &inverter.acIn, "AcIn",
     &inverter.acOut, "AcOut",
+
     &meter.voltage, "voltage",
     &meter.current, "current",
+
     &temperature.temperaturaTermo, "tempTermo",
     &temperature.temperaturaTriac, "tempTriac",
     &temperature.temperaturaCustom, "tempCustom",
+
     &config.KwToday, "KwToday",
     &config.KwYesterday, "KwYesterday",
     &config.KwExportToday, "KwExportToday",
@@ -353,15 +358,25 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         }
         else
         {
-          inverter.pv1c = (float)root["ENERGY"]["Pv1Current"]; // Corriente string 1
-          inverter.pv2c = (float)root["ENERGY"]["Pv2Current"]; // Corriente string 2
-          inverter.pv1v = (float)root["ENERGY"]["Pv1Voltage"]; // Tension string 1
-          inverter.pv2v = (float)root["ENERGY"]["Pv2Voltage"]; // Tension string 2
-          inverter.pw1 = (float)root["ENERGY"]["Pv1Power"];    // Potencia string 1
-          inverter.pw2 = (float)root["ENERGY"]["Pv2Power"];    // Potencia string 2
-          inverter.wtoday = (float)root["ENERGY"]["Today"];    // Potencia solar diaria
-          inverter.wsolar = (float)root["ENERGY"]["Power"];    // Potencia solar actual
-          inverter.temperature = (float)root["ENERGY"]["Temperature"];    // Temperatura Inversor
+          //INVERSOR
+          inverter.pv1c = (float)root["ENERGY"]["Pv1Current"]; 		// Corriente DC string 1
+          inverter.pv2c = (float)root["ENERGY"]["Pv2Current"];  	// Corriente DC string 1 2
+          inverter.pv1v = (float)root["ENERGY"]["Pv1Voltage"]; 		// Tension DC string 1
+          inverter.pv2v = (float)root["ENERGY"]["Pv2Voltage"]; 		// Tension DC string 2
+          inverter.pw1 = (float)root["ENERGY"]["Pv1Power"];    		// Potencia DC string 1
+          inverter.pw2 = (float)root["ENERGY"]["Pv2Power"];    		// Potencia DC string 2
+		      inverter.wsolar = (float)root["ENERGY"]["PvPowerTotal"];  // Potencia AC solar
+		      inverter.wtoday = (float)root["ENERGY"]["PvKwhToday"];    		// Potencia AC solar diaria KWH Producida
+		      inverter.temperature = (float)root["ENERGY"]["Temperature"];    // Temperature Inversor
+	        //GRID		  
+		      inverter.wgrid  = (float)root["ENERGY"]["GridPower"]; 	// Potencia de red (Negativo: de red - Positivo: a red) para usar con los datos de Tasmota
+          inverter.wtogrid = (float)root["ENERGY"]["GridKwhSent"];		// Potencia AC diaria enviada a red WH----------------------------------------------------------------
+		      inverter.gridv = (float)root["ENERGY"]["GridVoltage"]; 		// Tension AC de red
+          //CASA		  
+		      inverter.loadWatts = (float)root["ENERGY"]["loadWatts"]; 		// Consumos de la Casa--------------LOS CALCULA DE ( BatteryWatts - wgrid)-------------------------------------------
+	        //BATERIA
+	        inverter.batteryWatts = (float)root["ENERGY"]["BatteryWatts"];
+          inverter.batterySoC = (float)root["ENERGY"]["BatterySoC"];
         }
         return;
       }
@@ -380,20 +395,28 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         return;
       }
 
-      if (strcmp(topic, "Inverter/MPPT1_Watts") == 0) { inverter.pw1 = atof(payload); return; }
-      if (strcmp(topic, "Inverter/MPPT2_Watts") == 0) { inverter.pw2 = atof(payload); return; }
-      if (strcmp(topic, "Inverter/MPPT1_Volts") == 0) { inverter.pv1v = atof(payload); return; }
-      if (strcmp(topic, "Inverter/MPPT2_Volts") == 0) { inverter.pv2v = atof(payload); return; }
-      if (strcmp(topic, "Inverter/MPPT1_Amps") == 0) { inverter.pv1c = atof(payload); return; }
-      if (strcmp(topic, "Inverter/MPPT2_Amps") == 0) { inverter.pv2c = atof(payload); return; }
-      if (strcmp(topic, "Inverter/PvWattsTotal") == 0) { inverter.wsolar = atof(payload); return; }
-      if (strcmp(topic, "Inverter/SolarKwUse") == 0) { inverter.wtoday = atof(payload); return; }
-      if (strcmp(topic, "Inverter/BatteryVolts") == 0) { meter.voltage = atof(payload); return; }
-      if (strcmp(topic, "Inverter/BatteryAmps") == 0) { meter.current = atof(payload); return; }
-      if (strcmp(topic, "Inverter/BatteryWatts") == 0) { inverter.batteryWatts = atof(payload); return; }
-      if (strcmp(topic, config.SoC_mqtt) == 0) { inverter.batterySoC = atof(payload); return; }
+    //INVERSOR
+      if (strcmp(topic, "Inverter/Pv1Current") == 0) { inverter.pv1c = atof(payload); return; } // Corriente DC string 1
+      if (strcmp(topic, "Inverter/Pv2Current") == 0) { inverter.pv2c = atof(payload); return; } // Corriente DC string 2
+	    if (strcmp(topic, "Inverter/Pv1Voltage") == 0) { inverter.pv1v = atof(payload); return; } // Tension DC string 1
+      if (strcmp(topic, "Inverter/Pv2Voltage") == 0) { inverter.pv2v = atof(payload); return; } // Tension DC string 2
+	    if (strcmp(topic, "Inverter/Pv1Power") == 0) { inverter.pw1 = atof(payload); return; } // Potencia DC string 1
+      if (strcmp(topic, "Inverter/Pv2Power") == 0) { inverter.pw2 = atof(payload); return; } // Potencia DC string 2
+	    if (strcmp(topic, "Inverter/PvPowerTotal") == 0) { inverter.wsolar = atof(payload); return; } // Potencia AC solar
+      if (strcmp(topic, "Inverter/PvKwhToday") == 0) { inverter.wtoday = atof(payload); return; } // Potencia AC solar diaria KWH Producida
+	    if (strcmp(topic, "Inverter/Temperature") == 0) { inverter.temperature = atof(payload); return; } // Temperature Inversor
+	  //GRID
+	    if (strcmp(topic, "Inverter/GridPower") == 0) { inverter.wgrid = atof(payload); return; } // Potencia de red (Negativo: de red - Positivo: a red)--NUEVO-------
+	    if (strcmp(topic, "Inverter/GridKwhSent") == 0) { inverter.wtogrid = atof(payload); return; } // Potencia AC diaria enviada a red WH---------------NUEVO-------
+	    if (strcmp(topic, "Inverter/GridVoltage") == 0) { inverter.gridv = atof(payload); return; } // Tension AC de red-----------------------------------NUEVO-------  
+
+      meter.voltage = root["Data"][12];       	// Tension AC de red == gridv
+      meter.current = root["Data"][13];			// Corriente AC
+    //CASA
       if (strcmp(topic, "Inverter/LoadWatts") == 0) { inverter.loadWatts = atof(payload); return; }
-      if (strcmp(topic, "Inverter/Temperature") == 0) { inverter.temperature = atof(payload); return; }
+	  //BATERIA
+	    if (strcmp(topic, "Inverter/BatteryWatts") == 0) { inverter.batteryWatts = atof(payload); return; }
+  	  if (strcmp(topic, config.SoC_mqtt) == 0) { inverter.batterySoC = atof(payload); return; }
     }
 
     static char tmpTopic[50]; 
@@ -505,20 +528,22 @@ void suscribeMqttMeter(void)
       INFOV("Suscribing to topic %s\n",config.Meter_mqtt);
       break;
     case ICC_SOLAR:
-      mqttClient.subscribe("Inverter/GridWatts", 0);
-      mqttClient.subscribe("Inverter/MPPT1_Watts", 0);
-      mqttClient.subscribe("Inverter/MPPT2_Watts", 0);
-      mqttClient.subscribe("Inverter/MPPT1_Volts", 0);
-      mqttClient.subscribe("Inverter/MPPT2_Volts", 0);
-      mqttClient.subscribe("Inverter/MPPT1_Amps", 0);
-      mqttClient.subscribe("Inverter/MPPT2_Amps", 0);
+      mqttClient.subscribe("Inverter/Pv1Current", 0);
+      mqttClient.subscribe("Inverter/Pv2Current", 0);
+      mqttClient.subscribe("Inverter/Pv1Voltage", 0);
+      mqttClient.subscribe("Inverter/Pv2Voltage", 0);
+      mqttClient.subscribe("Inverter/Pv1Power", 0);
+      mqttClient.subscribe("nverter/Pv2Power", 0);
+      mqttClient.subscribe("Inverter/PvPowerTotal", 0);
       mqttClient.subscribe("Inverter/PvWattsTotal", 0);
-      mqttClient.subscribe("Inverter/SolarKwUse", 0);
-      mqttClient.subscribe("Inverter/BatteryVolts", 0);
-      mqttClient.subscribe("Inverter/BatteryAmps", 0);
-      mqttClient.subscribe("Inverter/BatteryWatts", 0);
-      mqttClient.subscribe("Inverter/LoadWatts", 0);
+      mqttClient.subscribe("Inverter/PvKwhToday", 0);
       mqttClient.subscribe("Inverter/Temperature", 0);
+      mqttClient.subscribe("Inverter/GridVoltage", 0);
+      mqttClient.subscribe("Inverter/GridPower", 0);
+      mqttClient.subscribe("Inverter/GridKwhSent", 0);
+      mqttClient.subscribe("Inverter/LoadWatts", 0);
+      mqttClient.subscribe("Inverter/BatteryWatts", 0);
+      mqttClient.subscribe("Inverter/BatterySoC", 0);
       INFOV("Suscribing to Icc_Solar topics\n");
       mqttClient.subscribe(config.SoC_mqtt, 0);
       INFOV("Suscribing to topic %s\n",config.SoC_mqtt);
@@ -530,20 +555,20 @@ void unSuscribeMqtt(void)
 {  
   mqttClient.unsubscribe(config.Solax_mqtt);
   mqttClient.unsubscribe(config.Meter_mqtt);
-  mqttClient.unsubscribe("Inverter/GridWatts");
-  mqttClient.unsubscribe("Inverter/MPPT1_Watts");
-  mqttClient.unsubscribe("Inverter/MPPT2_Watts");
-  mqttClient.unsubscribe("Inverter/MPPT1_Volts");
-  mqttClient.unsubscribe("Inverter/MPPT2_Volts");
-  mqttClient.unsubscribe("Inverter/MPPT1_Amps");
-  mqttClient.unsubscribe("Inverter/MPPT2_Amps");
-  mqttClient.unsubscribe("Inverter/PvWattsTotal");
-  mqttClient.unsubscribe("Inverter/SolarKwUse");
-  mqttClient.unsubscribe("Inverter/BatteryVolts");
-  mqttClient.unsubscribe("Inverter/BatteryAmps");
-  mqttClient.unsubscribe("Inverter/BatteryWatts");
-  mqttClient.unsubscribe("Inverter/LoadWatts");
+  mqttClient.unsubscribe("Inverter/Pv1Current");
+  mqttClient.unsubscribe("Inverter/Pv2Current");
+  mqttClient.unsubscribe("Inverter/Pv1Voltage");
+  mqttClient.unsubscribe("Inverter/Pv2Voltage");
+  mqttClient.unsubscribe("Inverter/Pv1Power");
+  mqttClient.unsubscribe("Inverter/Pv2Power");
+  mqttClient.unsubscribe("Inverter/PvPowerTotal");
+  mqttClient.unsubscribe("Inverter/PvKwhToday");
   mqttClient.unsubscribe("Inverter/Temperature");
+  mqttClient.unsubscribe("Inverter/GridVoltage");
+  mqttClient.unsubscribe("Inverter/GridPower");
+  mqttClient.unsubscribe("Inverter/GridKwhSent");
+  mqttClient.unsubscribe("Inverter/LoadWatts");
+  mqttClient.unsubscribe("Inverter/BatteryWatts");
   mqttClient.unsubscribe(config.SoC_mqtt);
   if (!config.flags.domoticz) { mqttClient.unsubscribe("domoticz/out"); }
 }
