@@ -38,16 +38,9 @@ topicData topicRegisters[] = {
     &inverter.wtogrid, "wtogrid",
     &inverter.gridv, "gridv",
     &inverter.currentCalcWatts, "calcWatts",
-    &inverter.batteryWatts, "batteryWatts",
-    &inverter.batterySoC, "batterySoC",
-    &inverter.loadWatts, "loadWatts",
-    &inverter.acIn, "AcIn",
-    &inverter.acOut, "AcOut",
-    &meter.voltage, "voltage",
-    &meter.current, "current",
-    &temperature.temperaturaTermo, "tempTermo",
-    &temperature.temperaturaTriac, "tempTriac",
-    &temperature.temperaturaCustom, "tempCustom",
+    &temperaturaTermo, "tempTermo",
+    &temperaturaTriac, "tempTriac",
+    &temperaturaCustom, "tempCustom",
     &config.KwToday, "KwToday",
     &config.KwYesterday, "KwYesterday",
     &config.KwExportToday, "KwExportToday",
@@ -58,11 +51,11 @@ topicData topicRegisters[] = {
 
 void connectToWifi()
 {
-  if (config.flags.debug2) { INFOV("ConnectToWifi()\n"); }
+  if (config.flags.moreDebug) { INFOV("ConnectToWifi()\n"); }
 
   Serial.println("Connecting to Wi-Fi...");
   #ifdef OLED
-    showLogo(lang._CONNECTING_, false);
+    showLogo(_CONNECTING_, false);
   #endif
 
   wifiMulti.addAP(config.ssid1, config.pass1);
@@ -103,8 +96,8 @@ void errorConnectToWifi(void)
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 0, "WIFI");
   display.drawString(64, 16, "ERROR");
-  display.drawString(64, 30, lang._PRGRESTORE_);
-  display.drawString(64, 40, lang._WAIT_);
+  display.drawString(64, 30, _PRGRESTORE_);
+  display.drawString(64, 40, _WAIT_);
   display.display();
 #endif
   timers.ErrorConexionWifi = millis();
@@ -114,13 +107,13 @@ void errorConnectToWifi(void)
   {
     if (digitalRead(0) == LOW)
     {
-      button.ButtonLongPress = true;
+      ButtonLongPress = true;
       break;
     }
     yield();
   }
   
-  if (button.ButtonLongPress)
+  if (ButtonLongPress)
   {
     INFOV(PSTR("Prg pressed\n"));
     defaultValues();
@@ -133,9 +126,9 @@ void errorConnectToWifi(void)
 
 void connectToMqtt()
 {
-  if (config.flags.debug2) { INFOV("ConnectToMqtt()\n"); }
+  if (config.flags.moreDebug) { INFOV("ConnectToMqtt()\n"); }
 
-  if (strcmp("5.8.8.8", config.sensor_ip) != 0 && config.flags.mqtt && !mqttClient.connected())
+  if (config.wversion != SOLAX_V2_LOCAL && config.flags.mqtt && !mqttClient.connected())
   {
     INFOV(PSTR("Connecting to MQTT...\n"));
     mqttClient.connect();
@@ -152,16 +145,17 @@ void WiFiEvent(WiFiEvent_t event)
   case SYSTEM_EVENT_STA_GOT_IP:
     Error.ConexionWifi = false;
     Flags.pwmIsWorking = true;
-    INFOV(PSTR("WiFi connected to IP address: %s\n"),WiFi.localIP().toString().c_str());
+    INFOV(PSTR("WiFi connected\nIP address: %s\n"),WiFi.localIP().toString().c_str());
     delay(1000);
 
     Tickers.enableAll();
     Tickers.disable(3); // Wifi
+    if (!config.flags.sensorTemperatura) { Tickers.disable(7); }
 
     if (!config.flags.mqtt || config.wversion == SOLAX_V2_LOCAL) {
       Serial.printf("Desactivando timer mqtt\n");
       Tickers.disable(2);
-      Tickers.disable(5);
+      Tickers.disable(6);
     }
     break;
 
@@ -174,7 +168,7 @@ void WiFiEvent(WiFiEvent_t event)
     Tickers.disableAll();
     Tickers.enable(0); // Display
     Tickers.enable(3); // Wifi
-    if (pwm.invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; shutdownPwm(true, "PWM Down: STA DISCONNECTED\n"); } // PWM Shutdown
+    if (invert_pwm > 0 && !config.flags.pwmMan) { Flags.pwmIsWorking = false; down_pwm(false); } // PWM Shutdown
     break;
 
   case SYSTEM_EVENT_WIFI_READY:
@@ -214,7 +208,7 @@ void onMqttConnect(bool sessionPresent)
 {
   INFOV("Connected to MQTT\n");
   Tickers.disable(2);
-  Tickers.enable(5);
+  Tickers.enable(6);
   Error.ConexionMqtt = false;
 
   static char tmpTopic[33];
@@ -225,19 +219,17 @@ void onMqttConnect(bool sessionPresent)
   {
     sprintf(tmpTopic, "%s/cmnd/%s", config.hostServer, topics[i]);
     mqttClient.subscribe(tmpTopic, 0);
-    INFOV("Suscribing to topic %s\n",tmpTopic);
   }
 
   for (int i = 1; i <= 4; i++)
   {
     sprintf(tmpTopic, "%s/relay/%d/CMND", config.hostServer, i);
     mqttClient.subscribe(tmpTopic, 0);
-    INFOV("Suscribing to topic %s\n",tmpTopic);
   }
 
-  if (config.wversion >= MQTT_MODE && config.wversion <= (MQTT_MODE + MODE_STEP - 1)) { suscribeMqttMeter(); }
+  if (config.wversion == MQTT_BROKER || config.wversion == ICC_SOLAR) { suscribeMqttMeter(); }
 
-  if (config.flags.domoticz) { mqttClient.subscribe("domoticz/out", 0); INFOV("Suscribing to topic domoticz/out\n");}
+  if (config.flags.domoticz) { mqttClient.subscribe("domoticz/out", 0); }
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
@@ -246,18 +238,18 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 
   Error.ConexionMqtt = true;
 
-  if (WiFi.isConnected() && config.flags.mqtt && strcmp("5.8.8.8", config.sensor_ip) != 0 && !Flags.Updating) { Tickers.enable(2); }
+  if (WiFi.isConnected() && config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !Flags.Updating) { Tickers.enable(2); }
 }
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
 {
   Error.ConexionMqtt = false;
   
-  if (config.flags.debug1) { 
+  if (config.flags.debug) { 
     INFOV("Publish received, Topic: %s, Size: %d\n", topic, total);
   }
 
-  if (config.flags.mqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
+  if (config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL)
   {
     
     if (strcmp(topic, "domoticz/out") == 0 && config.flags.domoticz)
@@ -275,7 +267,6 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         {
           if (config.flags.pwmEnabled != (int)root["nvalue"]) {
             config.flags.pwmEnabled = (int)root["nvalue"];
-            if (!config.flags.pwmEnabled) { shutdownPwm(); }
             saveEEPROM();
           }
         }
@@ -286,7 +277,6 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
           boolean status = (int)root["nvalue"] > 0 ? true : false;
           if (config.flags.pwmMan != status) {
             config.flags.pwmMan = status;
-            config.flags.pwmMan ? changeToManual() : changeToAuto();
             saveEEPROM();
           }
           
@@ -359,6 +349,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
           inverter.pv2v = (float)root["ENERGY"]["Pv2Voltage"]; // Tension string 2
           inverter.pw1 = (float)root["ENERGY"]["Pv1Power"];    // Potencia string 1
           inverter.pw2 = (float)root["ENERGY"]["Pv2Power"];    // Potencia string 2
+          //inverter.gridv = (float)root["ENERGY"]["Voltage"];   // Tension de red
           inverter.wtoday = (float)root["ENERGY"]["Today"];    // Potencia solar diaria
           inverter.wsolar = (float)root["ENERGY"]["Power"];    // Potencia solar actual
           inverter.temperature = (float)root["ENERGY"]["Temperature"];    // Temperatura Inversor
@@ -373,8 +364,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       Error.RecepcionDatos = false;
 
       if (strcmp(topic, "Inverter/GridWatts") == 0) {
-        // timers.ErrorVariacionDatos = millis();
-        // Error.VariacionDatos = false;
+        timers.ErrorVariacionDatos = millis();
+        Error.VariacionDatos = false;
         inverter.wgrid = atof(payload);
         if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
         return;
@@ -388,10 +379,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
       if (strcmp(topic, "Inverter/MPPT2_Amps") == 0) { inverter.pv2c = atof(payload); return; }
       if (strcmp(topic, "Inverter/PvWattsTotal") == 0) { inverter.wsolar = atof(payload); return; }
       if (strcmp(topic, "Inverter/SolarKwUse") == 0) { inverter.wtoday = atof(payload); return; }
-      if (strcmp(topic, "Inverter/BatteryVolts") == 0) { meter.voltage = atof(payload); return; }
-      if (strcmp(topic, "Inverter/BatteryAmps") == 0) { meter.current = atof(payload); return; }
       if (strcmp(topic, "Inverter/BatteryWatts") == 0) { inverter.batteryWatts = atof(payload); return; }
-      if (strcmp(topic, config.SoC_mqtt) == 0) { inverter.batterySoC = atof(payload); return; }
       if (strcmp(topic, "Inverter/LoadWatts") == 0) { inverter.loadWatts = atof(payload); return; }
       if (strcmp(topic, "Inverter/Temperature") == 0) { inverter.temperature = atof(payload); return; }
     }
@@ -412,7 +400,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
           op = 0x200 << i;
           Flags.data = Flags.data ^ op;
         }
-        relayManualControl(false);
+        relay_control_man(false);
         return;
       }
     }
@@ -421,9 +409,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     if (strcmp(topic, tmpTopic) == 0)
     { // pwm control ON-OFF
       INFOV("Mqtt - PWM control: %s\n", (char)payload[0] == '1' ? "ON" : "OFF");
-      config.flags.pwmEnabled = (char)payload[0] == '1' ? true : false;
-      if (!config.flags.pwmEnabled) { shutdownPwm(false, "PWM Dowm: Mqtt command received\n"); }
-      Flags.pwmIsWorking = true;
+      if ((char)payload[0] == '1') { config.flags.pwmEnabled = true; }
+      else { config.flags.pwmEnabled = false; down_pwm(true); }
       saveEEPROM();
       return;
     }
@@ -433,8 +420,6 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // pwm control manual ON-OFF
       INFOV("Mqtt - PWM mode set to: %s\n", (char)payload[0] == '1' ? "MANUAL" : "AUTO");
       config.flags.pwmMan = (char)payload[0] == '1' ? true : false;
-      config.flags.pwmMan ? changeToManual() : changeToAuto();
-      Flags.pwmIsWorking = true;
       saveEEPROM();
       return;
     }
@@ -454,7 +439,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // Pwm frequency
       int strData = atoi(payload);
       INFOV("Mqtt - PWM Frequency set to: %i\n", strData);
-      config.pwmFrequency = constrain(strData, 10, 30000);
+      config.pwmFrequency = constrain(strData, 10, 3000);
       saveEEPROM();
       return;
     }
@@ -462,12 +447,12 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     sprintf(tmpTopic, "%s/cmnd/screen", config.hostServer);
     if (strcmp(topic, tmpTopic) == 0)
     { // Info Screen
-      button.screen = constrain(int(payload[0] - '0'), 0, MAX_SCREENS);
-      INFOV("Mqtt - Change to Screen: %i\n", button.screen);      
+      screen = constrain(int(payload[0] - '0'), 0, MAX_SCREENS);
+      INFOV("Mqtt - Change to Screen: %i\n", screen);      
       
-      if (config.wversion >= (MODBUS_RTU + MODE_STEP) && button.screen == 2) { button.screen = 1; }
-      if ((config.wversion >= MODBUS_RTU && config.wversion <= (MODBUS_RTU + MODE_STEP - 1)) && button.screen == 1) { button.screen = 2; }
-      if (!config.flags.sensorTemperatura && button.screen == 5) { button.screen = 6; }
+      if ((config.wversion < DDS238_METER || config.wversion > SDM_METER) && screen == 2) { screen = 1; }
+      if ((config.wversion >= DDS238_METER && config.wversion <= SDM_METER)  && screen == 1) { screen = 2; }
+      if (!config.flags.sensorTemperatura && screen == 5) { screen = 6; }
       return;
     }
 
@@ -487,8 +472,8 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
     { // Manual pwm control value
       uint16_t strData = atoi(payload);
       INFOV("Mqtt - PWM value set to: %i\n", strData);
-      pwm.invert_pwm = constrain(strData, 0, 1023);
-      config.manualControlPWM = ((pwm.invert_pwm * 100) / 1023);
+      invert_pwm = constrain(strData, 0, 1023);
+      config.manualControlPWM = ((invert_pwm * 100) / 1023);
       return;
     }
   }
@@ -498,13 +483,11 @@ void suscribeMqttMeter(void)
 {
   switch (config.wversion)
   {
-    case MQTT_BROKER:
+    case 3:
       mqttClient.subscribe(config.Solax_mqtt, 0);
-      INFOV("Suscribing to topic %s\n",config.Solax_mqtt);
       mqttClient.subscribe(config.Meter_mqtt, 0);
-      INFOV("Suscribing to topic %s\n",config.Meter_mqtt);
       break;
-    case ICC_SOLAR:
+    case 13:
       mqttClient.subscribe("Inverter/GridWatts", 0);
       mqttClient.subscribe("Inverter/MPPT1_Watts", 0);
       mqttClient.subscribe("Inverter/MPPT2_Watts", 0);
@@ -514,14 +497,9 @@ void suscribeMqttMeter(void)
       mqttClient.subscribe("Inverter/MPPT2_Amps", 0);
       mqttClient.subscribe("Inverter/PvWattsTotal", 0);
       mqttClient.subscribe("Inverter/SolarKwUse", 0);
-      mqttClient.subscribe("Inverter/BatteryVolts", 0);
-      mqttClient.subscribe("Inverter/BatteryAmps", 0);
       mqttClient.subscribe("Inverter/BatteryWatts", 0);
       mqttClient.subscribe("Inverter/LoadWatts", 0);
       mqttClient.subscribe("Inverter/Temperature", 0);
-      INFOV("Suscribing to Icc_Solar topics\n");
-      mqttClient.subscribe(config.SoC_mqtt, 0);
-      INFOV("Suscribing to topic %s\n",config.SoC_mqtt);
       break;
   }
 }
@@ -539,12 +517,9 @@ void unSuscribeMqtt(void)
   mqttClient.unsubscribe("Inverter/MPPT2_Amps");
   mqttClient.unsubscribe("Inverter/PvWattsTotal");
   mqttClient.unsubscribe("Inverter/SolarKwUse");
-  mqttClient.unsubscribe("Inverter/BatteryVolts");
-  mqttClient.unsubscribe("Inverter/BatteryAmps");
   mqttClient.unsubscribe("Inverter/BatteryWatts");
   mqttClient.unsubscribe("Inverter/LoadWatts");
   mqttClient.unsubscribe("Inverter/Temperature");
-  mqttClient.unsubscribe(config.SoC_mqtt);
   if (!config.flags.domoticz) { mqttClient.unsubscribe("domoticz/out"); }
 }
 
@@ -572,9 +547,11 @@ void publishMqtt()
   // nombrehost/stat/pwm -> Modo actual de funcionamiento
   // nombrehost/Meter -> En caso de usar el modo meter envía los datos del meter en este Topic
 
-  if (config.flags.debug2) { INFOV("PUBLISHMQTT()\n"); }
+  if (config.flags.moreDebug) { INFOV("PUBLISHMQTT()\n"); }
 
-  if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
+  // if (WiFi.isConnected() && config.flags.mqtt && config.wversion != SOLAX_V2_LOCAL && !mqttClient.connected()) { Tickers.enable(2); }
+
+  if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
   {
     static char tmpString[33];
     static char tmpTopic[33];
@@ -588,10 +565,14 @@ void publishMqtt()
     }
 
     sprintf(tmpTopic, "%s/pwm", config.hostServer);
-    sprintf(tmpString, "%d", pwm.pwmValue);
+    sprintf(tmpString, "%d", pwmValue);
     publisher(tmpTopic, tmpString);
 
-    config.flags.pwmEnabled ? (config.flags.pwmMan ? strcpy(tmpString, "MAN") : strcpy(tmpString, "AUTO")) : strcpy(tmpString, "OFF");
+    if (config.flags.pwmEnabled == false) { strcpy(tmpString, "OFF"); }
+    else {
+      if (config.flags.pwmMan) { strcpy(tmpString, "MAN"); }
+      else { strcpy(tmpString, "AUTO"); }
+    }
     
     sprintf(tmpTopic, "%s/stat/pwm", config.hostServer);
     publisher(tmpTopic, tmpString);
@@ -619,7 +600,7 @@ void publishMqtt()
       publisher("domoticz/in", tmpTopic);
     }
 
-    if (config.wversion >= MODBUS_RTU && config.wversion <= (MODBUS_RTU + MODE_STEP - 1))
+    if (config.wversion >= DDS238_METER && config.wversion <= SDM_METER)
     {
 
       DynamicJsonDocument jsonValues(512);

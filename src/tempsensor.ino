@@ -25,77 +25,81 @@ void calcDallasTemperature(void)
 
     float temperatura;
 
+    //delay(30); // To ensure a completed conversion
+
     if (config.termoSensorAddress[0] != 0x0) {
         temperatura = sensors.getTempC(config.termoSensorAddress);
 
         if (temperatura != -127.0) {
-            temperature.temperaturaTermo = temperatura; 
+            temperaturaTermo = temperatura; 
             timers.ErrorLecturaTemperatura[0] = millis();
             Error.temperaturaTermo = false;
         }
 
         if ((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) {
             Error.temperaturaTermo = true;
-            temperature.temperaturaTermo = -127;
+            temperaturaTermo = -127;
             INFOV("Failed to read termo temperature from DS18B20 sensor\n");
         }
-    } else { temperature.temperaturaTermo = -127; Error.temperaturaTermo = false;}
+    } else { temperaturaTermo = -127; Error.temperaturaTermo = false;}
 
     if (config.triacSensorAddress[0] != 0x0) {
         temperatura = sensors.getTempC(config.triacSensorAddress);
         
         if (temperatura != -127.0) {
-            temperature.temperaturaTriac = temperatura; 
+            temperaturaTriac = temperatura; 
             timers.ErrorLecturaTemperatura[1] = millis();
             Error.temperaturaTriac = false;
         }
 
         if ((millis() - timers.ErrorLecturaTemperatura[1]) > config.maxErrorTime) {
             Error.temperaturaTriac = true;
-            temperature.temperaturaTriac = -127;
+            temperaturaTriac = -127;
             INFOV("Failed to read triac temperature from DS18B20 sensor\n");
         }
-    } else { temperature.temperaturaTriac = -127; Error.temperaturaTriac = false; }
+    } else { temperaturaTriac = -127; Error.temperaturaTriac = false; }
 
     if (config.customSensorAddress[0] != 0x0) {
         temperatura = sensors.getTempC(config.customSensorAddress);
 
         if (temperatura != -127.0) {
-            temperature.temperaturaCustom = temperatura; 
+            temperaturaCustom = temperatura; 
             timers.ErrorLecturaTemperatura[2] = millis();
             Error.temperaturaCustom = false;
         }
 
         if ((millis() - timers.ErrorLecturaTemperatura[2]) > config.maxErrorTime) {
             Error.temperaturaCustom = true;
-            temperature.temperaturaCustom = -127;
+            temperaturaCustom = -127;
             INFOV("Failed to read termo temperature from DS18B20 sensor\n");
         }
-    } else { temperature.temperaturaCustom = -127; Error.temperaturaCustom = false; }
+    } else { temperaturaCustom = -127; Error.temperaturaCustom = false; }
 }
 
 void checkTemperature(void)
 {
-    if (!Error.temperaturaTermo) {
+    //if (config.flags.sensorTemperatura && temperaturaTermo != -127.00 && !Error.temperaturaTermo) {
+    if (config.flags.sensorTemperatura && !Error.temperaturaTermo) {
+        //timers.ErrorLecturaTemperatura[0] = millis();
         switch(config.modoTemperatura) {
             case 1: // Auto
-                if (!config.flags.pwmMan && temperature.temperaturaTermo < config.temperaturaEncendido) { Flags.tempShutdown = false; Flags.pwmIsWorking = true; }
-                if (!config.flags.pwmMan && temperature.temperaturaTermo >= config.temperaturaApagado) { if (pwm.invert_pwm > 0 || (myPID.GetMode() == PID::AUTOMATIC)) { Flags.tempShutdown = true; Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP AUTO\n"); } }
+                if (!config.flags.pwmMan && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
+                if (!config.flags.pwmMan && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
                 break;
             case 2: // Manual
-                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperature.temperaturaTermo < config.temperaturaEncendido) { Flags.tempShutdown = false; Flags.pwmIsWorking = true; }
-                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperature.temperaturaTermo >= config.temperaturaApagado) { if (pwm.invert_pwm > 0) { Flags.tempShutdown = true; Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP MANUAL\n"); } }
+                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
+                if ((config.flags.pwmMan || Flags.pwmManAuto) && temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
                 break;
             case 3: // Auto y Manual
-                if (temperature.temperaturaTermo < config.temperaturaEncendido) { Flags.tempShutdown = false; Flags.pwmIsWorking = true; }
-                if (temperature.temperaturaTermo >= config.temperaturaApagado) { if (pwm.invert_pwm > 0 || (myPID.GetMode() == PID::AUTOMATIC)) { Flags.tempShutdown = true; Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP AUTO/MAN\n"); } }
+                if (temperaturaTermo < config.temperaturaEncendido) { Flags.pwmIsWorking = true; }
+                if (temperaturaTermo >= config.temperaturaApagado) { if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); } }
                 break;
         }
     }
 
-    if (((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) && config.modoTemperatura > 0 && config.termoSensorAddress[0] != 0x0)
+    if (((millis() - timers.ErrorLecturaTemperatura[0]) > config.maxErrorTime) && config.modoTemperatura > 0)
     {
-        if (pwm.invert_pwm > 0) { Flags.pwmIsWorking = false; shutdownPwm(false, "APAGADO TEMP ERROR LECTURA\n"); }
+        if (invert_pwm > 0) { Flags.pwmIsWorking = false; down_pwm(false); }
     }
 }
 
@@ -103,8 +107,8 @@ void buildSensorArray(void)
 {
     uint8_t idCount = 0;
 
-    while (oneWire.search(temperature.tempSensorAddress[idCount])) {
-        INFOV("DS18B20 ID %i: 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", idCount + 1, temperature.tempSensorAddress[idCount][0], temperature.tempSensorAddress[idCount][1], temperature.tempSensorAddress[idCount][2], temperature.tempSensorAddress[idCount][3], temperature.tempSensorAddress[idCount][4], temperature.tempSensorAddress[idCount][5], temperature.tempSensorAddress[idCount][6], temperature.tempSensorAddress[idCount][7]);
+    while (oneWire.search(tempSensorAddress[idCount])) {
+        INFOV("DS18B20 ID %i: 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X 0x%.2X\n", idCount + 1, tempSensorAddress[idCount][0], tempSensorAddress[idCount][1], tempSensorAddress[idCount][2], tempSensorAddress[idCount][3], tempSensorAddress[idCount][4], tempSensorAddress[idCount][5], tempSensorAddress[idCount][6], tempSensorAddress[idCount][7]);
         idCount++;
     }  
         
