@@ -1,15 +1,86 @@
-Versión 1.0.5
-- Revisión 15
-	- Modificada la gestión de temperatura para evitar falsos errores.
-	- Cambiados los tiempos mínimos de adquisición de datos (Modbus 250ms, Slave 250ms, Solax con ESP01 fijo a 250ms, HTTP API 1500ms)
-	- Añadido contador básico de energia consumida y vertida según los datos de Red.
-	- Añadido comando "flipScreen" (desde la consola) para invertir la pantalla Oled.
-	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado.
-	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
-	- TODO: Permitir funcionamiento en instalación aislada (OFF-GRID)
-  	- TODO: Borrar líneas de debug usadas para detectar el fallo por el que no sube de pwm existiendo excedentes.
-  	- TODO: pinwatchdog o reincio preventivo programable.
+Versión 1.0.7
 
+	- Solucionado bug usando el programador cuando el control por temperatura está activado.
+	- Solucionado bug usando el programador en la implemetación con PID.
+	- Solucionado bug con el comando para reiniciar los contadores.
+	- Solucionado bug en el cambio de contraseña según su longitud.
+	- Solucionado bug por el que freeDS no era detectado por Alexa.
+	- Cambio de posición del parametro "Parche derivador lowcost", para evitar confusiones (sugerido por F. Cadenas) y mejoras en el entorno web.
+	- Deshabilitada la opción de programador si no ha actualizado la hora correctamente.
+	- Añadida la posibilidad de cambiar el topic del SoC con el modo ICC Solar.
+	- Implementación Wibee Modbus (falta comprobar funcionamiento según versión de firmware)
+	- Añadido comando por consola para cambiar entre Soc / Voltaje de batería como modo de funcionamiento en instalaciones aisladas. (offgridVoltage 1 / offgridVoltage 0)
+	- Añadido comando para controlar el offset del nivel de voltaje en batería. (voltageOffset para comprobar valor actual, voltageOffset valor (ej. 0.30) para establecerlo)
+	- Añadida la compatibilidad con pinza amperimétrica para la obtención de una lectura más real del consumo del termo, junto a los comandos:
+		- useClamp 1 / useClamp 0 para activar / desactivar el uso de la pinza
+		- clampCalibration / clampCalibration valor (ej. 20.3) para visualizar valor actual / establecer valor
+		- clampVoltage / clampVoltage voltaje (ej. 324.5) para visualizar valor actual / establecer valor para la obtención de la potencia actual (W = V * I)
+		- showClampCurrent 1 / showClampCurrent 0 para mostrar / ocultar la itensidad medida por la pinza amperimétrica, es útil para su calibracion mediante pinza externa.
+	- Añadido comando para configurar el servidor ntp (pool.ntp.org por defecto), uso: ntpServer ip / nombre_servidor (Ejemplo: ntpServer pool.ntp.org)
+	- Mejorada la estabilidad en la lectura de los datos de wibeee. (gracias a David y Felipe por las pruebas).
+	- Añadidas dos frecuencias para su uso con el ultra low cost (12.5 y 25 Hz) y cambio de escala de frecuencia almacenada.
+	- Añadida opción para restaurar y descargar el fichero de configuración dentro de la página de Actualización.
+	- Tamaño de eeprom ampliado a 2048 bytes (2Kb)
+	- Cambiado el control de potencia por un control PID (Gracias a Ciafe por "forzarme" a probar los PID con FreeDS y sus consejos, asi como también a Bisha, Aeizoon y Lolo por sus pruebas)
+	- Añadido comando para el ajuste de los valors del PID (tunePID 0.05;0.06;0.03)
+	- Añadida representación gráfica de los datos en la web inteface.
+	- Añadido soporte para baterías en los modos Solax V2, en la V3 todavía no está implementado por no haber sido probado.
+
+- Revisión 1
+
+	- Solucionados problemas de representación en la interface web.
+
+- Revisión 2
+	- Solucionados problemas con la actualización del estado de los relés.
+	- Solucionado error por el que cuando la fuente de datos reporta una carga total de consumo de 0W, no se mostraba la carga calculada por freeDS. (Reloj Casa)
+	- VICTRON: Comando "useSolarAsMPTT 1 / 0", Si está activado suma los valores de acIn + acOut a la potencia solar.
+	- VICTRON: Comando "useBMV 1 / 0", si está activado suma al valor de la batería el valor de la potencia solar.
+	- MQTT: Añadida la publicación de los campos batteryWatts, batterySoC, loadWatts y AcIn, AcOut (solo usados por victron)
+
+	- TODO: Terminar de implementar la selección de Fase a usar si lo soporta la fuente de datos a usar.
+	- TODO: Añadir programador horario según el día de la semana (por terminar la mejor forma, por ejemplo tipo Tasmota)
+	- TODO: Añadir selección de puerto modbus tcp
+	- TODO: Activar relé cuando el nivel de batería llegue baje de un valor determinado
+	- TODO: Añadir contador de energía usada en la derivación (con pinza amperimétrica)
+  	- TODO: pinwatchdog o reinicio preventivo programable
+	- TODO: Añadir la opción de realizar un on/off temporizado en lugar de un ON y OFF para las salidas 1 - 4
+	- TODO: Añadir contador para energia consumida en solar (wsolar) para los que tienen vertido cero
+
+Versión 1.0.6
+
+	¡¡¡¡¡¡ IMPORTANTE !!!! para actualizar a esta versión y debido a los cambios realizados en la web, el orden de actualización de los ficheros mediante web debe ser el sigiente:
+
+	1º firmware.bin
+	2º spiffs.bin
+	3º CTRL + F5 (para forzar la recarga de la web o borrar la caché en caso necesario)
+
+	Si se produce algún error durante la actualización es necesario programar de nuevo el esp32 mediante cable.
+
+	- Solucionado error en el cálculo de potencia consumida/vertida
+	- Añadida comprobación para evitar multiples intentos de puesta en hora con equipos sin conexión o problemas de conectividad.
+	- Solucionado lectura de datos erroneos en el Solax X1 Generación 3 (ESP01), es necesario escribir en la consola el comando: "solaxVersion 3", para elegir
+	  el nuevo modo de procesado de datos, si se desea volver al anterior escribir: "solaxVersion 2", es imprescindible hacerlo con el ESP01 conectado y funcionando.
+	- Añadido comando para elegir la zona horaria, es necesario elegir la configuración correcta del fichero TimeZones.txt y escribir el siguiente comando en la consola:
+	  "tzConfig CET-1CEST,M3.5.0,M10.5.0/3" (Ejemplo de la configuración usada en la Península (Madrid))
+	- Añadido control de potencia en modo manual para no sobrepasar la potencia contratada en caso de activación de carga externa (Gracias Bisha por las pruebas).
+	- Añadida selección del idioma en la web del freeDs (traducciones por: J - Portugués, MiguelCrego - Gallego, Tonelo - Catalán, Lolo - Inglés).
+	- Mejorada la estabilidad con Wibeee (Gracias Fernando por el acceso a tu Wibeee).
+	- Restituida la visualización de las medidad aún siendo 0.
+	- Añadido comando para mostrar/ocultar el medidor de consumo/vertido. (en la consola escribir showEnergyMeter 1 o showEnergyMeter 0)
+
+Versión 1.0.5 (Versión Final)
+	- Modificada la gestión de temperatura para evitar falsos errores
+	- Cambiados los tiempos mínimos de adquisición de datos (Modbus 250ms, Modbus TCP 1000ms (Fronius 250ms), Slave 250ms, Solax con ESP01 fijo a 250ms, HTTP API 1500ms)
+	- Añadido contador básico de energia consumida y vertida según los datos de Red
+	- Añadido comando "flipScreen" (desde la consola) para invertir la pantalla Oled
+	- Añadido funcionamiento en instalación aislada (OFF-GRID)
+	- Añadido soporte para Sunny Island (Aislada) - Gracias David -
+	- Correción errores en implementación Sunny Boy - Gracias Fran -
+	- Añadido soporte para SolarEdge mediante Modbus TCP - Gracias Albert -
+	- Solucionado fallo al realizar el cambio de horario (verano/invierno)
+	- Cambios en el diseño web para facilitar la integración de nuevas fuentes de datos (inversores, meters, etc)
+	- Inclusión de botón de donaciones (Paypal)
+	
 - Revisión 14
 	- Añadida la publicación por mqtt del valor calculado de la carga actual.
 	- Añadido campo configurable para ajustar el tope del pwm (100%) en las placas low-cost.
@@ -48,26 +119,26 @@ Versión 1.0.5
 	- Versión propia del firmware para el ESP01 (Para su uso con el modo Solax V2)
 
 
-Añadida publicación del estado del pwm por mqtt (AUTO, MAN, OFF), Topic: freeds/stat/pwm
-Solucionado bug en el que no se mostraba correctamente el estado del PWM en la Pantalla Oled
-Frecuencia publicación Mqtt Configurable
-Añadida conexión mediante MODBUS TCP (en desarrollo, pero funcional) para:
-	- SMA
-	- FRONIUS
-	- VICTRON
-	- HUAWEI
-Añadido Soporte para ICC Solar (Mqtt)
-Redistribución configuración en página web
-Solucionado error por el que el pwm no pasaba de 19% en ciertas circunstancias.
-Cambio de los topics por defecto para permitir la publicación de datos por mqtt a varios freeds, ahora usa como nombre principal el nombre de host configurado. (IMPORTANTE PARA LOS QUE LO USEN PARA AUTOMATIZACIONES)
-Ejemplo: de freeds/wgrid a freeds_XXXX/wgrid o nombre asignado como host.
-Sustitución cliente HTTP sincrono por peticiones Asíncronas.
-Añadido control mediante Alexa (control de encendido/apagado del pwm, control de auto/manual y porcentaje del pwm, control del encendido/apagado pantalla y porcentaje de brillo)
-Añadido control de Temperatura del Termo (Control de encendido y apagado por temperatura), Temperatura del Triac (en desarrollo) y una tercera sonda personalizable.
-Solucionado malfuncionamiento del derivador esclavo en ciertas circustancias.
-Añadida histéresis del 10% en el apagado de los relés sobre el valor de encendido. (Se apaga a un 10% por debajo del valor del encendido)
-Mejorado el script de programación por linea de comandos.
-Añadido compatibilidad con Domoticz (PWM, AUTO/MAN, OLED)
+	- Añadida publicación del estado del pwm por mqtt (AUTO, MAN, OFF), Topic: freeds/stat/pwm
+	- Solucionado bug en el que no se mostraba correctamente el estado del PWM en la Pantalla Oled
+	- Frecuencia publicación Mqtt Configurable
+	- Añadida conexión mediante MODBUS TCP (en desarrollo, pero funcional) para:
+		- SMA
+		- FRONIUS
+		- VICTRON
+		- HUAWEI
+	- Añadido Soporte para ICC Solar (Mqtt)
+	- Redistribución configuración en página web
+	- Solucionado error por el que el pwm no pasaba de 19% en ciertas circunstancias.
+	- Cambio de los topics por defecto para permitir la publicación de datos por mqtt a varios freeds, ahora usa como nombre principal el nombre de host configurado. (IMPORTANTE PARA LOS QUE LO USEN PARA AUTOMATIZACIONES)
+		Ejemplo: de freeds/wgrid a freeds_XXXX/wgrid o nombre asignado como host.
+	- Sustitución cliente HTTP sincrono por peticiones Asíncronas.
+	- Añadido control mediante Alexa (control de encendido/apagado del pwm, control de auto/manual y porcentaje del pwm, control del encendido/apagado pantalla y porcentaje de brillo)
+	- Añadido control de Temperatura del Termo (Control de encendido y apagado por temperatura), Temperatura del Triac (en desarrollo) y una tercera sonda personalizable.
+	- Solucionado malfuncionamiento del derivador esclavo en ciertas circustancias.
+	- Añadida histéresis del 10% en el apagado de los relés sobre el valor de encendido. (Se apaga a un 10% por debajo del valor del encendido)
+	- Mejorado el script de programación por linea de comandos.
+	- Añadido compatibilidad con Domoticz (PWM, AUTO/MAN, OLED)
 
 Versión 1.0.4
 Refactorización del código

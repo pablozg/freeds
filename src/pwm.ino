@@ -20,22 +20,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define changePwm 210 // 20%
-#define slowPwm 10 // 1 %
-#define fastPwm 20 // 2 %
-#define downFactor 1.5 // (1.5% en lento, 4% en rápido)
-
 void pwmControl()
 { 
-  if (config.flags.moreDebug) { INFOV("PWMCONTROL()\n"); }
+  if (config.flags.debug2) { INFOV("PWMCONTROL()\n"); }
 
-  if (config.flags.dimmerLowCost) { maxPwm = config.maxPwmLowCost; } 
-  else { maxPwm = 1023;}
-
-  // Check pwm_output
-
-  // if (inverter.wgrid_control != inverter.wgrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
-  if ((inverter.wgrid_control != inverter.wgrid) || config.flags.offGrid) // En caso de recepción de lectura, actualizamos el valor de invert_wgrid_control
+  // En caso de recepción de lectura distinta a la almacenada la actualizamos con el nuevo valor
+  if ((inverter.wgrid_control != inverter.wgrid) || config.flags.offGrid)
   {
     inverter.wgrid_control = inverter.wgrid;
     // TODO: Filtrar los datos erroneos en ausencia de meter y ponerlos a 0.
@@ -43,141 +33,84 @@ void pwmControl()
     timers.ErrorVariacionDatos = millis();
   }
 
+  // Same data along error time
   if (((millis() - timers.ErrorVariacionDatos) > config.maxErrorTime) && !Error.VariacionDatos)
   {
-    INFOV(PSTR("PWM: Apagando PWM por superar el tiempo máximo en la recepción de los datos del consumo de Red\n"));
-    Error.VariacionDatos = true;
+    INFOV(PSTR("PWM: Apagando PWM por superar el tiempo máximo en la variación de los datos del consumo de Red\n"));
     memset(&inverter, 0, sizeof(inverter));
     memset(&meter, 0, sizeof(meter));
+    Error.VariacionDatos = true;
   }
 
-  if (!config.flags.pwmEnabled || (!config.flags.pwmMan && (Error.VariacionDatos || Error.RecepcionDatos)))
+  // Lost connection error
+  if (((millis() - timers.ErrorRecepcionDatos) > config.maxErrorTime) && !Error.RecepcionDatos)
   {
-    down_pwm(true);
+    INFOV(PSTR("PWM: Apagando PWM por error en la conexión con la fuente de datos\n"));
+    memset(&inverter, 0, sizeof(inverter));
+    memset(&meter, 0, sizeof(meter));
+    Error.RecepcionDatos = true;
   }
+
+  if ((Error.RecepcionDatos || Error.VariacionDatos || !Flags.pwmIsWorking) && myPID.GetMode() == PID::AUTOMATIC) { shutdownPwm(true, "PWM: Down by security reasons\n"); }
 
   //////////////////////////////// CONTROL MANUAL DEL PWM ////////////////////////////////
   if ((config.flags.pwmMan || Flags.pwmManAuto) && config.flags.pwmEnabled && Flags.pwmIsWorking)
   {
-    if (config.flags.dimmerLowCost) { 
-      targetPwm = ((((config.maxPwmLowCost - 210) * config.manualControlPWM) / 100) + 210);
-      if (targetPwm <= 210) { targetPwm = 0; } // Solución Fernando
-    }
-    else { targetPwm = (1023 * config.manualControlPWM) / 100; }
+    static uint16_t tariffOffset = config.maxWattsTariff * 0.10; // Se calcula un 10% del total contratado, unos 345W sobre 3450W contratados.
+    uint16_t maxTargetPwm = calculeTargetPwm(config.manualControlPWM);
 
-    relay_control_man(false);
-
-    if (invert_pwm < targetPwm)
+    if ((config.flags.changeGridSign ? inverter.wgrid < (config.maxWattsTariff - tariffOffset) : inverter.wgrid > -(config.maxWattsTariff - tariffOffset)) && pwm.targetPwm < maxTargetPwm)
     {
-      if (invert_pwm <= changePwm) // hasta el 20 % subida lenta
-        invert_pwm += slowPwm;
-      else if (invert_pwm > changePwm)
-        invert_pwm += fastPwm;
-
-      if (config.flags.dimmerLowCost && invert_pwm < 210) { invert_pwm = 210; } // Solución Fernando
+      if (pwm.targetPwm < maxTargetPwm - 8) {
+        pwm.targetPwm += 8;
+      } else { pwm.targetPwm = maxTargetPwm; }
       
-      invert_pwm = constrain(invert_pwm, 0, maxPwm);
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: SUBIENDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
-      }
-    }
-    else if (invert_pwm > targetPwm)
-    {
-      if ((invert_pwm - targetPwm) > (fastPwm * downFactor)) {
-        invert_pwm -= (fastPwm * downFactor);
-      } else if ((invert_pwm - targetPwm) > (slowPwm * downFactor)) {
-        invert_pwm -= (slowPwm * downFactor);
-      } else if ((invert_pwm - targetPwm) >= 10) {
-        invert_pwm -= 10;
-      } else if ((invert_pwm - targetPwm) >= 5) {
-        invert_pwm -= 5;
-      } else if (invert_pwm >= 1) {
-        invert_pwm--;
-      }
-  
-      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; } // Solución Fernando
-
-      invert_pwm = constrain(invert_pwm, 0, maxPwm);
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug) { INFOV(PSTR("PWM MANUAL: BAJANDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
-      }
+      if (config.flags.dimmerLowCost && pwm.targetPwm < 210)
+          pwm.targetPwm = 210;
     }
     
-    writePwmValue(invert_pwm);
+    if ((config.flags.changeGridSign ? inverter.wgrid > config.maxWattsTariff : inverter.wgrid < -config.maxWattsTariff) || pwm.targetPwm > maxTargetPwm) {
+      if (pwm.targetPwm >= 8) {
+        pwm.targetPwm -= 8;
+      } else { pwm.targetPwm = 0; }
+
+      if (config.flags.dimmerLowCost && pwm.targetPwm < 210)
+          pwm.targetPwm = 0;
+    }
+
+    if (pwm.invert_pwm != pwm.targetPwm) { pwm.invert_pwm = pwm.targetPwm; writePwmValue(pwm.invert_pwm); }
+
+    // relayManualControl(false);
+    // INFOV("Manual- Max Target: %d, Target: %d, Invert_PWM: %d, Wgrid: %.02f, MaxWatts: %d, Offset: %d, Max-Offset: %d\n\n", maxTargetPwm, pwm.targetPwm, pwm.invert_pwm, inverter.wgrid, config.maxWattsTariff, tariffOffset, (config.maxWattsTariff - tariffOffset));
   }
 
   //////////////////////////////// CONTROL AUTOMÁTICO DEL PWM ////////////////////////////////
-  if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && Flags.pwmIsWorking)
+  if (config.flags.pwmEnabled && !config.flags.pwmMan && !Flags.pwmManAuto && !Error.VariacionDatos && !Error.RecepcionDatos && Flags.pwmIsWorking)
   {
-    // if (inverter.wgrid > config.pwmMin && inverter.batteryWatts >= 0)
-    if (config.flags.debug4) { INFOV("Dentro de Auto\n"); }
-
-    // if ((config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts) // Prueba Aeizoon por defecto 0
-
-    if (config.flags.offGrid ?
-        (inverter.batteryWatts >= config.battWatts && inverter.batterySoC >= config.soc) :
-        (config.flags.changeGridSign ? inverter.wgrid < config.pwmMin : inverter.wgrid > config.pwmMin) && inverter.batteryWatts >= config.battWatts
+    // INFOV("pwm.invert_pwm: %s, wgrid: %s, comparacion: %s, , comparacion_sin_signo: %s\n", pwm.invert_pwm == 0 ? "true" : "false", inverter.wgrid < config.potTarget ? "true" : "false", (pwm.invert_pwm == 0 && (config.flags.changeGridSign ? inverter.wgrid > config.potTarget : inverter.wgrid < config.potTarget)) ? "true" : "false", (pwm.invert_pwm == 0 && inverter.wgrid < config.potTarget) ? "true" : "false");
+    if (config.flags.offGrid ? // Modo Off-grid
+        (config.flags.offgridVoltage ? // True
+          (myPID.GetMode() == PID::MANUAL && inverter.batteryWatts > config.potTarget && meter.voltage >= config.batteryVoltage) : // True
+          (myPID.GetMode() == PID::MANUAL && inverter.batteryWatts > config.potTarget && inverter.batterySoC >= config.soc) // False
+        ) : // Modo On-grid
+          (myPID.GetMode() == PID::MANUAL && (config.flags.changeGridSign ? inverter.wgrid < config.potTarget : inverter.wgrid > config.potTarget) && inverter.batteryWatts >= config.battWatts) // False
        )
     {
-      if (config.flags.debug4) { INFOV("Dentro de pwmmin\n"); }
-
-      if (config.flags.changeGridSign ? inverter.wgrid < config.pwmMax : inverter.wgrid > config.pwmMax) {
-        if (config.flags.debug4) { INFOV("Dentro de pwmmax\n"); }
-
-        if (invert_pwm <= changePwm)
-        {
-          invert_pwm += slowPwm;
-        } else {
-          invert_pwm += fastPwm;
-        }
-      }
-
-      if (config.flags.dimmerLowCost && (invert_pwm > 0 && invert_pwm < 210)) { invert_pwm = 210; } // Solución Fernando
-      
-      invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug) { INFOV(PSTR("PWM: SUBIENDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
-      }
+      myPID.SetMode(PID::AUTOMATIC);
+      config.flags.offGrid ? myPID.SetControllerDirection(PID::REVERSE) : config.flags.changeGridSign ? myPID.SetControllerDirection(PID::DIRECT) : myPID.SetControllerDirection(PID::REVERSE);
+      Setpoint = config.potTarget;
     }
-    // else if (inverter.wgrid < config.pwmMax || inverter.batteryWatts < 0)
-    // else if ((config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts) // Prueba Aeizoon por defecto 0
-
     else if (config.flags.offGrid ?
-              (inverter.batteryWatts < config.battWatts || inverter.batterySoC < config.soc) :
-              (config.flags.changeGridSign ? inverter.wgrid > config.pwmMax : inverter.wgrid < config.pwmMax) || inverter.batteryWatts < config.battWatts
+              (config.flags.offgridVoltage ?
+                myPID.GetMode() == PID::AUTOMATIC && (meter.voltage < (config.batteryVoltage - config.voltageOffset) || (pwm.invert_pwm == 0 && inverter.batteryWatts < config.potTarget)): // True
+                myPID.GetMode() == PID::AUTOMATIC && (inverter.batterySoC < config.soc || (pwm.invert_pwm == 0 && inverter.batteryWatts < config.potTarget)) // False
+              ) :
+                myPID.GetMode() == PID::AUTOMATIC && (inverter.batteryWatts < config.battWatts || (pwm.invert_pwm == 0 && (config.flags.changeGridSign ? inverter.wgrid > config.potTarget : inverter.wgrid < config.potTarget)))
             )
     {
-      if (invert_pwm > (fastPwm * downFactor)) {
-        invert_pwm -= (fastPwm * downFactor);
-      } else if (invert_pwm > (slowPwm * downFactor)) {
-        invert_pwm -= (slowPwm * downFactor);
-      } else if (invert_pwm >= 10) {
-        invert_pwm -= 10;
-      } else if (invert_pwm >= 5) {
-        invert_pwm -= 5;
-      } else if (invert_pwm >= 1) {
-        invert_pwm--;
-      }
-      
-      if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; } // Solución Fernando
-            
-      invert_pwm = constrain(invert_pwm, 0, maxPwm); // Limitamos el valor
-      if (invert_pwm != last_invert_pwm)
-      {
-        if (config.flags.debug) { INFOV(PSTR("PWM: BAJANDO POTENCIA\n")); }
-        last_invert_pwm = invert_pwm;
-      }
+      shutdownPwm(false);
     }
-    writePwmValue(invert_pwm);
   }
-
-  calcPwmProgressBar();
 
   /////////////////////////////////////////////////////////////// SALIDAS POR PORCENTAJE ////////////////////////////////////////////////////////////////////////////////
 
@@ -185,47 +118,47 @@ void pwmControl()
 
   if (!config.flags.pwmMan && config.flags.pwmEnabled)
   {
-    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && (pwmValue >= config.R01Min))
+    if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && (pwm.pwmValue >= config.R01Min))
     {
       // Start relay1
       digitalWrite(PIN_RL1, HIGH);
       INFOV("Encendido por %% Salida 1\n");
       Flags.RelayTurnOn = false;
       Flags.Relay01Auto = true;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && (pwmValue >= config.R02Min))
+    if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && (pwm.pwmValue >= config.R02Min))
     {
       // Start relay2
       digitalWrite(PIN_RL2, HIGH);
       INFOV("Encendido por %% Salida 2\n");
       Flags.RelayTurnOn = false;
       Flags.Relay02Auto = true;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && (pwmValue >= config.R03Min))
+    if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && (pwm.pwmValue >= config.R03Min))
     {
       // Start relay3
       digitalWrite(PIN_RL3, HIGH);
       INFOV("Encendido por %% Salida 3\n");
       Flags.RelayTurnOn = false;
       Flags.Relay03Auto = true;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
     }
 
-    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && (pwmValue >= config.R04Min))
+    if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && (pwm.pwmValue >= config.R04Min))
     {
       // Start relay4
       digitalWrite(PIN_RL4, HIGH);
       INFOV("Encendido por %% Salida 4\n");
       Flags.RelayTurnOn = false;
       Flags.Relay04Auto = true;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
     }
   }
@@ -234,46 +167,46 @@ void pwmControl()
 
   if (!Flags.RelayTurnOff)
   {
-    if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (pwmValue <= ((config.R04Min - 10) < 0 ? 0 : (config.R04Min - 10))) && config.R04Min != 999)
+    if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && (pwm.pwmValue <= ((config.R04Min - 10) < 0 ? 0 : (config.R04Min - 10))) && config.R04Min != 999)
     {
       digitalWrite(PIN_RL4, LOW);
       INFOV("Apagado por %% Salida 4\n");
       Flags.RelayTurnOff = true;
       Flags.Relay04Auto = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       {
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (pwmValue <= ((config.R03Min - 10) < 0 ? 0 : (config.R03Min - 10))) && config.R03Min != 999)
+    if (!(Flags.Relay03Man || config.relaysFlags.R03Man) && digitalRead(PIN_RL3) && !Flags.RelayTurnOff && (pwm.pwmValue <= ((config.R03Min - 10) < 0 ? 0 : (config.R03Min - 10))) && config.R03Min != 999)
     {
       digitalWrite(PIN_RL3, LOW);
       INFOV("Apagado por %% Salida 3\n");
       Flags.RelayTurnOff = true;
       Flags.Relay03Auto = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       {
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (pwmValue <= ((config.R02Min - 10) < 0 ? 0 : (config.R02Min - 10))) && config.R02Min != 999)
+    if (!(Flags.Relay02Man || config.relaysFlags.R02Man) && digitalRead(PIN_RL2) && !Flags.RelayTurnOff && (pwm.pwmValue <= ((config.R02Min - 10) < 0 ? 0 : (config.R02Min - 10))) && config.R02Min != 999)
     {
       digitalWrite(PIN_RL2, LOW);
       INFOV("Apagado por %% Salida 2\n");
       Flags.RelayTurnOff = true;
       Flags.Relay02Auto = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       {
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
       }
     }
-    if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (pwmValue <= ((config.R01Min - 10) < 0 ? 0 : (config.R01Min - 10))) && config.R01Min != 999)
+    if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && digitalRead(PIN_RL1) && !Flags.RelayTurnOff && (pwm.pwmValue <= ((config.R01Min - 10) < 0 ? 0 : (config.R01Min - 10))) && config.R01Min != 999)
     {
       digitalWrite(PIN_RL1, LOW);
       INFOV("Apagado por %% Salida 1\n");
       Flags.RelayTurnOff = true;
       Flags.Relay01Auto = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       {
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
       }
@@ -284,9 +217,8 @@ void pwmControl()
 
   // Start at defined power on
 
-  if (!config.flags.pwmMan && config.flags.pwmEnabled && (pwmValue >= config.autoControlPWM))
+  if (!config.flags.pwmMan && config.flags.pwmEnabled && (pwm.pwmValue >= config.autoControlPWM))
   {
-    //if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (inverter.wgrid > config.R01PotOn))
     if (!digitalRead(PIN_RL1) && Flags.RelayTurnOn && config.R01Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R01PotOn : inverter.wgrid > config.R01PotOn))
     {
       // Start relay1
@@ -294,7 +226,7 @@ void pwmControl()
       INFOV("Encendido por W Salida 1\n");
       Flags.Relay01Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
     }
     if (!digitalRead(PIN_RL2) && Flags.RelayTurnOn && config.R02Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R02PotOn : inverter.wgrid > config.R02PotOn))
@@ -304,7 +236,7 @@ void pwmControl()
       INFOV("Encendido por W Salida 2\n");
       Flags.Relay02Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
     }
     if (!digitalRead(PIN_RL3) && Flags.RelayTurnOn && config.R03Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R03PotOn : inverter.wgrid > config.R03PotOn))
@@ -314,7 +246,7 @@ void pwmControl()
       INFOV("Encendido por W Salida 3\n");
       Flags.Relay03Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
     }
     if (!digitalRead(PIN_RL4) && Flags.RelayTurnOn && config.R04Min == 999 && (config.flags.changeGridSign ? inverter.wgrid < config.R04PotOn : inverter.wgrid > config.R04PotOn))
@@ -324,14 +256,13 @@ void pwmControl()
       INFOV("Encendido por W Salida 4\n");
       Flags.Relay04Auto = true;
       Flags.RelayTurnOn = false;
-      if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+      if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
         publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
     }
   }
 
   // Stop at defined power off
 
-  // if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && config.R04Min == 999 && (inverter.wgrid < config.R04PotOff))
   if (!(Flags.Relay04Man || config.relaysFlags.R04Man) && digitalRead(PIN_RL4) && !Flags.RelayTurnOff && config.R04Min == 999 && (config.flags.changeGridSign ? inverter.wgrid > config.R04PotOff : inverter.wgrid < config.R04PotOff))
   {
     // Start relay4
@@ -339,7 +270,7 @@ void pwmControl()
     INFOV("Apagado por W Salida 4\n");
     Flags.Relay04Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+    if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       publisher(config.R04_mqtt, digitalRead(PIN_RL4) ? "ON" : "OFF");
   }
 
@@ -350,7 +281,7 @@ void pwmControl()
     INFOV("Apagado por W Salida 3\n");
     Flags.Relay03Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+    if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       publisher(config.R03_mqtt, digitalRead(PIN_RL3) ? "ON" : "OFF");
   }
 
@@ -361,7 +292,7 @@ void pwmControl()
     INFOV("Apagado por W Salida 2\n");
     Flags.Relay02Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+    if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       publisher(config.R02_mqtt, digitalRead(PIN_RL2) ? "ON" : "OFF");
   }
 
@@ -372,7 +303,7 @@ void pwmControl()
     INFOV("Apagado por W Salida 1\n");
     Flags.Relay01Auto = false;
     Flags.RelayTurnOff = true;
-    if (config.flags.mqtt && !Error.ConexionMqtt && config.wversion != SOLAX_V2_LOCAL)
+    if (config.flags.mqtt && !Error.ConexionMqtt && strcmp("5.8.8.8", config.sensor_ip) != 0)
       publisher(config.R01_mqtt, digitalRead(PIN_RL1) ? "ON" : "OFF");
   }
 
@@ -387,14 +318,6 @@ void pwmControl()
   } 
 }
 
-void writePwmValue(uint16_t value)
-{
-  if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
-  
-  ledcWrite(2, value);
-  dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
-}
-
 void enableRelay(void)
 {
   Flags.RelayTurnOn = true;
@@ -407,29 +330,10 @@ void disableRelay(void)
   xTimerStop(relayOffTimer, 0);
 }
 
-void calcPwmProgressBar()
-{
-  // Arreglos necesarios para mostrar el % correcto en caso de usar el dimmer low cost afectado por el fallo del 20%
-
-  if (config.flags.dimmerLowCost) {
-    if (invert_pwm > 0) { pwmValue = round(((invert_pwm - 210) * 100.0) / (config.maxPwmLowCost - 210.0)); }
-    else pwmValue = 0;
-  } else {  
-    pwmValue = round((invert_pwm * 100.0) / 1023.0);
-  }
-
-  inverter.currentCalcWatts = sq( sin( (pwmValue / 100.0) * (M_PI_2) ) ) * config.attachedLoadWatts;
-
-  // Print PWM Values
-  // if (config.flags.debug) {
-  // INFOV("PWM Value: %d%%, PWM Value decimals: %lf, invert_pwm: %d\n", pwmValue, ((invert_pwm * 100.0) / 1023.0), invert_pwm);
-  // }
-}
-
-void relay_control_man(boolean forceOFF)
+void relayManualControl(boolean forceOFF)
 {
 
-  if (config.flags.moreDebug) { INFOV("relay_control_man()\n"); }
+  if (config.flags.debug2) { INFOV("relayManualControl()\n"); }
 
   // if (!(Flags.Relay01Man || config.relaysFlags.R01Man) && !Flags.Relay01Auto)
   //   digitalWrite(PIN_RL1, LOW);
@@ -446,48 +350,77 @@ void relay_control_man(boolean forceOFF)
   if ((Flags.Relay03Man || config.relaysFlags.R03Man) && !digitalRead(PIN_RL3)) { digitalWrite(PIN_RL3, HIGH); INFOV("Relay 3 Forced On\n");}
   if ((Flags.Relay04Man || config.relaysFlags.R04Man) && !digitalRead(PIN_RL4)) { digitalWrite(PIN_RL4, HIGH); INFOV("Relay 4 Forced On\n");}
 
+  // Se desactivan las salidas seleccionadas manualmente si no lo están ya
+  if ((!Flags.Relay01Man && !config.relaysFlags.R01Man) && digitalRead(PIN_RL1)) { digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n");}
+  if ((!Flags.Relay02Man && !config.relaysFlags.R02Man) && digitalRead(PIN_RL2)) { digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n");}
+  if ((!Flags.Relay03Man && !config.relaysFlags.R03Man) && digitalRead(PIN_RL3)) { digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n");}
+  if ((!Flags.Relay04Man && !config.relaysFlags.R04Man) && digitalRead(PIN_RL4)) { digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n");}
+
   // Se fuerza el apagado de todas las salidas
-    if (forceOFF || !config.flags.pwmEnabled)
+  if (forceOFF)
   {
-    if (digitalRead(PIN_RL1) && !Flags.Relay01Man && !config.relaysFlags.R01Man) { digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n"); }
-    if (digitalRead(PIN_RL2) && !Flags.Relay02Man && !config.relaysFlags.R02Man) { digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n"); }
-    if (digitalRead(PIN_RL3) && !Flags.Relay03Man && !config.relaysFlags.R03Man) { digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n"); }
-    if (digitalRead(PIN_RL4) && !Flags.Relay04Man && !config.relaysFlags.R04Man) { digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n"); }
+    digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n");
+    digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n");
+    digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n");
+    digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n");
   }
+
+  // Se fuerza el apagado de todas las salidas
+  // if (forceOFF || !config.flags.pwmEnabled)
+  // {
+  //   if (digitalRead(PIN_RL1) && !Flags.Relay01Man && !config.relaysFlags.R01Man) { digitalWrite(PIN_RL1, LOW); INFOV("Relay 1 Forced Off\n"); }
+  //   if (digitalRead(PIN_RL2) && !Flags.Relay02Man && !config.relaysFlags.R02Man) { digitalWrite(PIN_RL2, LOW); INFOV("Relay 2 Forced Off\n"); }
+  //   if (digitalRead(PIN_RL3) && !Flags.Relay03Man && !config.relaysFlags.R03Man) { digitalWrite(PIN_RL3, LOW); INFOV("Relay 3 Forced Off\n"); }
+  //   if (digitalRead(PIN_RL4) && !Flags.Relay04Man && !config.relaysFlags.R04Man) { digitalWrite(PIN_RL4, LOW); INFOV("Relay 4 Forced Off\n"); }
+  // }
 }
 
-void down_pwm(boolean softDown)
+// PWM Functions
+void shutdownPwm(boolean forceRelayOff, const char *message)
 {
-  if (softDown == true)
-  {
-    if (invert_pwm > (fastPwm * downFactor)) {
-      invert_pwm -= (fastPwm * downFactor);
-    } else if (invert_pwm > (slowPwm * downFactor)) {
-      invert_pwm -= (slowPwm * downFactor);
-    } else if (invert_pwm >= 10) {
-      invert_pwm -= 10;
-    } else if (invert_pwm >= 5) {
-      invert_pwm -= 5;
-    } else if (invert_pwm >= 1) {
-      invert_pwm--;
-    }
+  if (config.flags.debug1) { INFOV(PSTR(message)); }
 
-    if (config.flags.dimmerLowCost && invert_pwm <= 210) { invert_pwm = 0; } // Solución Fernando
-    writePwmValue(invert_pwm);
-  } else {
-    invert_pwm = 0;
-    pwmValue = 0;
-    ledcWrite(2, 0); // Hard shutdown
-    dac_output_disable(DAC_CHANNEL_2);
-    INFOV("PWM disabled\n");
-  }
-
-  if (invert_pwm != last_invert_pwm)
-  {
-    if (config.flags.debug) { INFOV(PSTR("PWM: disabling PWM\n")); }
-    last_invert_pwm = invert_pwm;
-  }
-
-  relay_control_man(!softDown);
+  myPID.SetMode(PID::MANUAL);
+  PIDOutput = 0;
+  Setpoint = 0;
+  pwm.targetPwm = 0;
+  pwm.invert_pwm = 0;
+  pwm.pwmValue = 0;
+  ledcWrite(2, 0); // Hard shutdown
+  dac_output_disable(DAC_CHANNEL_2);
   calcPwmProgressBar();
+
+  relayManualControl(forceRelayOff);
+}
+
+void writePwmValue(uint16_t value)
+{
+  if (config.flags.dimmerLowCost && value > 1023) { value -= 1023; } 
+    
+  ledcWrite(2, value);
+  dac_output_voltage(DAC_CHANNEL_2, constrain((value / 4), 0, 255));
+  calcPwmProgressBar();
+}
+
+uint16_t calculeTargetPwm(uint16_t targetValue)
+{
+  uint16_t maxTargetPwm;
+
+  if (config.flags.dimmerLowCost) { 
+    maxTargetPwm = ((((config.maxPwmLowCost - 210) * targetValue) / 100) + 210);
+    if (maxTargetPwm <= 210) { maxTargetPwm = 0; }
+  } else { maxTargetPwm = (1023 * targetValue) / 100; }
+
+  return maxTargetPwm;
+}
+
+void calcPwmProgressBar()
+{
+  // Arreglos necesarios para mostrar el % correcto en caso de usar el dimmer low cost afectado por el fallo del 20%
+  if (config.flags.dimmerLowCost) {
+    if (pwm.invert_pwm > 0) { pwm.pwmValue = round(((pwm.invert_pwm - 210) * 100.0) / (config.maxPwmLowCost - 210.0)); }
+    else pwm.pwmValue = 0;
+  } else {  
+    pwm.pwmValue = round((pwm.invert_pwm * 100.0) / 1023.0);
+  }
 }

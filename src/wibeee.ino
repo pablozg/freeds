@@ -22,12 +22,12 @@
 
 void parseWibeee(char *xml) {
   
-  if (config.flags.messageDebug) { Serial.printf("Wibee Size: %d, Json: %s\n", strlen(xml), xml); } // No usar INFOV produce stack error
+  if (config.flags.debug3) { Serial.printf("Wibee Size: %d, Json: %s\n", strlen(xml), xml); } // No usar INFOV produce stack error
   String response = xml;
   
   // Pinza 1 como lector de Red
   meter.activePower = inverter.wgrid = midString(&response, "<fase1_p_activa>", "</fase1_p_activa>").toFloat();
-  meter.voltage = midString(&response, "<fase1_vrms>", "</fase1_vrms>").toFloat();
+  meter.voltage =  inverter.gridv = midString(&response, "<fase1_vrms>", "</fase1_vrms>").toFloat();
   meter.current = midString(&response, "<fase1_irms>", "</fase1_irms>").toFloat();
   meter.reactivePower = midString(&response, "<fase1_p_reactiva_ind>", "</fase1_p_reactiva_ind>").toFloat();
   meter.reactivePower += midString(&response, "<fase1_p_reactiva_cap>", "</fase1_p_reactiva_cap>").toFloat();;
@@ -48,7 +48,7 @@ void parseWibeee(char *xml) {
   
   // Pinza 2 como lector del Inversor
   inverter.wsolar = midString(&response, "<fase2_p_activa>", "</fase2_p_activa>").toFloat();
-  inverter.gridv = midString(&response, "<fase2_vrms>", "</fase2_vrms>").toFloat();
+  // inverter.gridv = midString(&response, "<fase2_vrms>", "</fase2_vrms>").toFloat();
 
   Error.RecepcionDatos = false;
   timers.ErrorRecepcionDatos = millis();

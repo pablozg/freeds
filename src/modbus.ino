@@ -32,28 +32,6 @@ const uint16_t Ddsu666_start_addresses[] {
   0X400A,   // DDSU666_EXPORT_ACTIVE       [kWh]  7
 };
 
-const uint8_t sdm120_table = 8;
-const uint8_t sdm220_table = 13;
-uint8_t sdm_start_address_count = sdm220_table;
-
-const uint16_t sdm120_start_addresses[] {
-  0x0000,   // SDM120C_VOLTAGE             [V]
-  0x0006,   // SDM120C_CURRENT             [A]
-  0x000C,   // SDM120C_POWER               [W]
-  0x0012,   // SDM120C_APPARENT_POWER      [VA]
-  0x0018,   // SDM120C_REACTIVE_POWER      [VAR]
-  0x001E,   // SDM120C_POWER_FACTOR
-  0x0046,   // SDM120C_FREQUENCY           [Hz]
-  0x0156,   // SDM120C_TOTAL_ACTIVE_ENERGY [kWh]
-
-  0X0048,   // SDM220_IMPORT_ACTIVE        [kWh]
-  0X004A,   // SDM220_EXPORT_ACTIVE        [kWh]
-  0X004C,   // SDM220_IMPORT_REACTIVE      [kVArh]
-  0X004E,   // SDM220_EXPORT_REACTIVE      [kVArh]
-  0X0024    // SDM220_PHASE_ANGLE          [Degree]
-};
-
-
 void ddsu666(void)
 {
   bool data_ready = modbusReceiveReady();
@@ -114,7 +92,7 @@ void ddsu666(void)
 
       meter.read_state++;
 
-      Error.VariacionDatos = false;
+      // Error.VariacionDatos = false;
       Error.RecepcionDatos = false;
       timers.ErrorRecepcionDatos = millis();
       
@@ -137,99 +115,114 @@ void sdm120(void)
   bool data_ready = modbusReceiveReady();
 
   if (data_ready) {
-    uint8_t buffer[14];  // At least 5 + (2 * 2) = 9
+    uint8_t buffer[170];
 
-    uint32_t error = modbusReceiveBuffer(buffer, 2); 
+    uint32_t error = modbusReceiveBuffer(buffer, 80); 
 
     if (error) {
-      INFOV("SDM120 error: %i\n", error);
+      INFOV("SDM120/220/230 error: %i\n", error);
     } else {
-     
-      //  0  1  2  3  4  5  6  7  8
-      // SA FC BC Fh Fl Sh Sl Cl Ch
-      // 01 04 04 43 66 33 34 1B 38 = 230.2 Volt
       float value;
+
+      //   0x0000,   // SDM120C_VOLTAGE             [V]
+      //   0x0006,   // SDM120C_CURRENT             [A]
+      //   0x000C,   // SDM120C_POWER               [W]
+      //   0x0012,   // SDM120C_APPARENT_POWER      [VA]
+      //   0x0018,   // SDM120C_REACTIVE_POWER      [VAR]
+      //   0x001E,   // SDM120C_POWER_FACTOR
+      //   0X0024,   // SDM220_PHASE_ANGLE          [Degree]
+      //   0x0046,   // SDM120C_FREQUENCY           [Hz]
+      //   0X0048,   // SDM220_IMPORT_ACTIVE        [kWh]
+      //   0X004A,   // SDM220_EXPORT_ACTIVE        [kWh]
+      //   0X004C,   // SDM220_IMPORT_REACTIVE      [kVArh]
+      //   0X004E,   // SDM220_EXPORT_REACTIVE      [kVArh]
+      
       ((uint8_t*)&value)[3] = buffer[3];   // Get float values
       ((uint8_t*)&value)[2] = buffer[4];
       ((uint8_t*)&value)[1] = buffer[5];
       ((uint8_t*)&value)[0] = buffer[6];
+      meter.voltage = value;
 
-      switch(meter.read_state) {
-        case 0:
-          meter.voltage = value ; // 230.2 V
-          break;
+      ((uint8_t*)&value)[3] = buffer[15];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[16];
+      ((uint8_t*)&value)[1] = buffer[17];
+      ((uint8_t*)&value)[0] = buffer[18];
+      meter.current = value;
+      
+      ((uint8_t*)&value)[3] = buffer[27];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[28];
+      ((uint8_t*)&value)[1] = buffer[29];
+      ((uint8_t*)&value)[0] = buffer[30];
+      inverter.wgrid = meter.activePower = value;
+      if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; meter.activePower *= -1.0; }
 
-        case 1:
-          meter.current  = value; // 1.260 A
-          break;
+      ((uint8_t*)&value)[3] = buffer[39];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[40];
+      ((uint8_t*)&value)[1] = buffer[41];
+      ((uint8_t*)&value)[0] = buffer[42];
+      meter.aparentPower = value; // -196.3 W
+      if (!config.flags.changeGridSign) { meter.aparentPower *= -1.0; }
+      
+      ((uint8_t*)&value)[3] = buffer[51];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[52];
+      ((uint8_t*)&value)[1] = buffer[53];
+      ((uint8_t*)&value)[0] = buffer[54];
+      meter.reactivePower = value;   // 92.2
+      if (!config.flags.changeGridSign) { meter.reactivePower *= -1.0; }
 
-        case 2:
-          inverter.wgrid = meter.activePower = value; // -196.3 W
-          if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; meter.activePower *= -1.0; }
-          break;
+      ((uint8_t*)&value)[3] = buffer[63];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[64];
+      ((uint8_t*)&value)[1] = buffer[65];
+      ((uint8_t*)&value)[0] = buffer[66];
+       meter.powerFactor = value;     // 0.91
 
-        case 3:
-          meter.aparentPower = value; // -196.3 W
-          if (!config.flags.changeGridSign) { meter.aparentPower *= -1.0; }
-          break;
+      ((uint8_t*)&value)[3] = buffer[75];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[76];
+      ((uint8_t*)&value)[1] = buffer[77];
+      ((uint8_t*)&value)[0] = buffer[78];
+      meter.phaseAngle = value;    // 0.00 Deg
+      
+      ((uint8_t*)&value)[3] = buffer[143];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[144];
+      ((uint8_t*)&value)[1] = buffer[145];
+      ((uint8_t*)&value)[0] = buffer[146];
+      meter.frequency = value;        // 50.0 Hz
 
-        case 4:
-          meter.reactivePower = value;   // 92.2
-          if (!config.flags.changeGridSign) { meter.reactivePower *= -1.0; }
-          break;
+      ((uint8_t*)&value)[3] = buffer[147];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[148];
+      ((uint8_t*)&value)[1] = buffer[149];
+      ((uint8_t*)&value)[0] = buffer[150];
+      meter.importActive = value;    // 478.492 kWh
+      
+      ((uint8_t*)&value)[3] = buffer[151];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[152];
+      ((uint8_t*)&value)[1] = buffer[153];
+      ((uint8_t*)&value)[0] = buffer[154];
+      meter.exportActive = value;    // 6.216 kWh
+      
+      ((uint8_t*)&value)[3] = buffer[155];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[156];
+      ((uint8_t*)&value)[1] = buffer[157];
+      ((uint8_t*)&value)[0] = buffer[158];
+      meter.importReactive = value;    // 478.492 KVArh
+      
+      ((uint8_t*)&value)[3] = buffer[159];   // Get float values
+      ((uint8_t*)&value)[2] = buffer[160];
+      ((uint8_t*)&value)[1] = buffer[161];
+      ((uint8_t*)&value)[0] = buffer[162];
+      meter.exportReactive = value;    // 6.216 KVArh
+      
+      meter.energyTotal = meter.importActive + meter.exportActive;      // 478.492 kWh import + export
 
-        case 5:
-          meter.powerFactor = value;     // 0.91
-          break;
-
-        case 6:
-          meter.frequency = value;        // 50.0 Hz
-          break;
-        
-        case 7:
-          meter.energyTotal = value;      // 478.492 kWh import + export
-          break;
-
-        case 8:
-          meter.importActive = value;    // 478.492 kWh
-          break;
-
-        case 9:
-          meter.exportActive = value;    // 6.216 kWh
-          break;
-        
-        case 10:
-          meter.importReactive = value;    // 478.492 KVArh
-          break;
-
-        case 11:
-          meter.exportReactive = value;    // 6.216 KVArh
-          break;
-        
-        case 12:
-          meter.phaseAngle = value;    // 0.00 Deg
-          break;
-      }
-
-      meter.read_state++;
-
-      Error.VariacionDatos = false;
+      // Error.VariacionDatos = false;
       Error.RecepcionDatos = false;
       timers.ErrorRecepcionDatos = millis();
-      
-      if (meter.read_state == sdm_start_address_count) {
-        meter.read_state = 0;
-
-        if (sdm_start_address_count > sdm120_table) {
-          if (meter.importActive == -1) { sdm_start_address_count = sdm120_table; }  // No extended registers available
-        }
-      }
-    } // end data ready
-  }
+    }
+  } // end data ready
 
   if (0 == meter.send_retry || data_ready) {
     meter.send_retry = 5;
-    modbusSend(config.idMeter, 0x04, sdm120_start_addresses[meter.read_state], 2);
+    modbusSend(config.idMeter, 0x04, 0x00, 80);
   } else {
     meter.send_retry--;
   }
@@ -248,7 +241,7 @@ void dds2382(void)
       INFOV("DDS238-2 error: %i\n", error);
     } else {
 
-      if (config.flags.messageDebug) { 
+      if (config.flags.debug3) { 
         char hexarray[200] = {0};
         char hexvalue[5] = {0};
         for (int i = 0; i < 45; i++)
@@ -290,7 +283,7 @@ void dds2382(void)
                meter.importActive = (float)((buffer[23] << 24) + (buffer[24] << 16) + (buffer[25] << 8) + buffer[26]) / 100.0;  // 429496.729 kW
         }
       
-      Error.VariacionDatos = false;
+      // Error.VariacionDatos = false;
       Error.RecepcionDatos = false;
       timers.ErrorRecepcionDatos = millis();
     }
@@ -304,40 +297,85 @@ void dds2382(void)
   }
 }
 
+void mustSolar(void)
+{
+  bool data_ready = modbusReceiveReady();
 
+  if (data_ready) {
+    uint8_t buffer[160];
+
+    uint32_t error = modbusReceiveBuffer(buffer, 75); 
+    
+    if (error) {
+      INFOV("MustSolar error: %i\n", error);
+    } else {
+      // meter.energyTotal = (float)((buffer[3] << 24) + (buffer[4] << 16) + (buffer[5] << 8) + buffer[6]) / 100.0;  // 429496.729 kW
+
+      inverter.wsolar = (float)((buffer[24] << 8) + buffer[25]) / 10.0;
+      inverter.wgrid = (float)((buffer[26] << 8) + buffer[27]) / 10.0;
+      if (!config.flags.changeGridSign) { inverter.wgrid *= -1.0; }
+      
+      // Error.VariacionDatos = false;
+      Error.RecepcionDatos = false;
+      timers.ErrorRecepcionDatos = millis();
+    }
+  } // end data ready
+
+  if (0 == meter.send_retry || data_ready) {
+    meter.send_retry = 5;
+    modbusSend(config.idMeter, 0x03, 6271, 75);
+  } else {
+    meter.send_retry--;
+  }
+}
 
 void readModbus(void)
 {
   
-  if (config.flags.debug) { 
+  if (config.flags.debug1) { 
     INFOV(PSTR("Baudios: %lu\n"), SerieMeter.baudRate());
   }
 
   switch (config.wversion)
   {
-    case 4:
+    case DDS238_METER:
       dds2382();
       break;
-    case 5:
+    case DDSU666_METER:
       ddsu666();
       break;
-    case 6:
+    case SDM_METER:
       sdm120();
       break;
-    case 8:
+    case SMA_BOY:
       smaBoy();
       break;
-    case 14:
+    case VICTRON:
       victron();
       break;
-    case 15:
+    case FRONIUS_MODBUS:
       fronius();
       break;
-    case 16:
+    case HUAWEI_MODBUS:
       huawei();
       break;
-    case 17:
+    case SMA_ISLAND:
       smaIsland();
+      break;
+    case SOLAREDGE:
+      solarEdge();
+      break;
+    case WIBEEE_MODBUS:
+      wibeeeModbus();
+      break;
+    case INGETEAM:
+      ingeteamModbus();
+      break;
+    case SCHNEIDER:
+      schneiderModbus();
+      break;
+    case MUSTSOLAR:
+      mustSolar();
       break;
     }
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -7,12 +7,15 @@
         <meta name="author" content="(C) 2020 Pablo Zerón">
         <link rel='icon' type='image/vnd.microsoft.icon' href='favicon.ico'>
         <title>FreeDS</title>
-        <link href="all.min.css" rel="stylesheet" type="text/css">
-        <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+        <link href="freeds.min.css" rel="stylesheet" type="text/css">
+        <link href="nunito.min.css" rel="stylesheet" type="text/css">
         <link href="sb-admin-2.min.css" rel="stylesheet">
+        <script src="jquery-3.5.1.min.js"></script>
+        <script src="bootstrap.bundle.min.js"></script>
+        <script src="freeds.min.js"></script>
     </head>
-    <body onload='onloadConfigCheck();'>
-        <div id="wrapper">
+    <body>
+         <div id="wrapper">
             <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
                 <a class="sidebar-brand d-flex align-items-center justify-content-center"  href='http://freeds.es/'>
                     <div class="sidebar-brand-icon">
@@ -23,84 +26,84 @@
                 <hr class="sidebar-divider my-1">
                 <li class="nav-item">
                     <a class="nav-link" href="/">
-                        <i class="fas fa-home"></i>
-                        <span class="m-l-20">Monitorización</span>
+                        <i class="freeds-home"></i>
+                        <span class="m-l-20 language" key="MONITOR"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Red.html">
-                        <i class="fas fa-wifi"></i>
-                        <span>Ajustes de Red</span>
+                        <i class="freeds-wifi"></i>
+                        <span class="language" key="LANSETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Mqtt.html">
-                        <i class="fas fa-sliders-h"></i>
-                        <span>Configuración MQTT</span>
+                        <i class="freeds-sliders-h"></i>
+                        <span class="language" key="MQTTSETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Config.html">
-                        <i class="fas fa-sliders-h"></i>
-                        <span>Configuración</span>
+                        <i class="freeds-sliders-h"></i>
+                        <span class="language" key="SETTINGS"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Salidas.html">
-                        <i class="fas fa-plug"></i>
-                        <span>Salidas</span>
+                        <i class="freeds-plug"></i>
+                        <span class="language" key="RELAYS"></span>
                     </a>
                 </li>
                 <hr class="sidebar-divider my-1">
                 <li class="nav-item">
                     <a id='panelControl' class="nav-link" href="#" data-toggle="collapse" data-target="#collapseControl" aria-expanded="true" aria-controls="collapseControl">
-                        <i class="fas fa-lightbulb"></i>
-                        <span>Panel de Control</span>
+                        <i class="freeds-lightbulb"></i>
+                        <span class="language" key="CONTROLPANEL"></span>
                     </a>
                     <div id="collapseControl" class="collapse" aria-labelledby="headingControl" data-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner rounded">
-                            <h6 class="collapse-header">Control Pantalla:</h6>
-                            <a id="Button5" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(5)" title="Enciende / Apaga la pantalla Oled">Pantalla (ON)</a>
+                            <h6 class="collapse-header language" key ="SCREENCONTROL"></h6>
+                            <a id="Button5" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" key="SCREEN" onclick="return tooglebuttons(5)"></a>
                             <div class="range-control">
-                                <input id="oledBrightness" type="range" min="0" max="100" step="1" value="100" data-thumbwidth="10" data-toggle="tooltip" data-placement="right" title="Ajusta el nivel de brillo de la pantalla Oled">
+                                <input id="oledBrightness" type="range" min="0" max="100" step="1" value="100" data-thumbwidth="10" data-toggle="tooltip" data-placement="right">
                                 <output id="rangeVal" name="rangeVal">100</output>
                             </div>
-                            <h6 class="collapse-header">Control PWM:</h6>
-                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(6)">PWM (ON)</a>
-                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item" onclick="return tooglebuttons(7)">PWM <span class="man_auto man_auto-inactive" id="labelauto">AUTO</span> / <span class="man_auto man_auto-inactive" id="labelman">MAN</span>
-                            </a>
+                            <h6 class="collapse-header language" key="CONTROLPWM"></h6>
+                            <a id="Button6" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(6)"></a>
+                            <h6 class="collapse-header language" key="PWMMODE"></h6>
+                            <a id="Button7" data-toggle="tooltip" href='#' data-placement="right" class="collapse-item language" onclick="return tooglebuttons(7)"></a>
                         </div>
                     </div>
                 </li>
                 <hr class="sidebar-divider my-1">
                 <li class="nav-item">
                     <a class="nav-link" onclick="$('#modalRestart').modal();" href='#'>
-                        <i class="fas fa-sync-alt"></i>
-                        <span>Reiniciar</span>
+                        <i class="freeds-sync-alt"></i>
+                        <span class="language" key="RESTART"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="Ota.html">
-                        <i class="fas fa-download"></i>
-                        <span>Actualizar</span>
+                        <i class="freeds-download"></i>
+                        <span class="language" key="UPDATE"></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="weblog.html">
-                        <i class="fas fa-desktop"></i>
-                        <span>Consola</span>
+                        <i class="freeds-desktop"></i>
+                        <span class="language" key="CONSOLE"></span>
                     </a>
                 </li>
                 <div class="sidebar-heading">Monitor</div>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='barText1'>Potencia Solar:</span>
+                        <span id='barText1' class="language" key="wsolar"></span>
                         <h6 class='pt-1' id='barValue1'></h6>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link">
-                        <span id='barText2'>Potencia de red:</span>
+                        <span id='barText2' class="language" key="wgrid"></span>
                         <h6 class='pt-1' id='barValue2'></h6>
                     </a>
                 </li>
@@ -110,7 +113,7 @@
                         <h6 class='pt-1' id='barValue3'></h6>
                     </a>
                 </li>
-                <hr class="sidebar-divider d-none d-md-block">
+                <hr class="sidebar-divider d-none d-md-block align-self-center">
                 <div class="text-center d-none d-md-inline">
                     <button class="rounded-circle border-0" id="sidebarToggle"></button>
                 </div>
@@ -119,7 +122,7 @@
                 <div id="content">
                     <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
                         <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-                            <i class="fa fa-bars"></i>
+                            <i class="fa freeds-bars"></i>
                         </button>
                         <div style="align-content: left" id="temperatura"></div>
                         <ul class="navbar-nav ml-auto">
@@ -130,7 +133,7 @@
                         <div id="Errors"></div>
                         %MESSAGE%
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                            <h1 class="h3 mb-0 text-gray-800">Configuración</h1>
+                            <h1 class="h3 mb-0 text-gray-800 language" key="SETTINGS"></h1>
                         </div>
                         <div class="row">
                             <div class="col">
@@ -139,46 +142,42 @@
                                         <form method="post" id='Config' action=''>
                                             <div class="col-xl-12">
                                                 <div class="form-layout form-layout-10">
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Cambio de Password</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="PASSWORDCHANGE"></h6>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Clave de acceso:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="OLDPASSWORD"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='oldpass' name='oldpass' type="password" class="form-control" maxlength='12'>
-                                                            <input id='storedpass' name='storedpass' type="hidden" class="form-control" maxlength='12' value="%STOREDPASS%">
+                                                            <input id='oldpass' name='oldpass' type="password" class="form-control" maxlength='20'>
+                                                            <input id='storedpass' name='storedpass' type="hidden" class="form-control" maxlength='30' value="%STOREDPASS%">
                                                         </div>
                                                     </div>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Nueva clave de acceso:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="NEWPASSWORD"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='newpass' name='newpass' type="password" class="form-control" maxlength='12'>
                                                         </div>
                                                     </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Funcionamiento en instalación Aislada o con Baterías</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="OFFGRIDMODE"></h6>
                                                     <label class="custom-control custom-checkbox pb-3">
                                                         <input type="checkbox" class="custom-control-input" id="offGrid" name="offGrid" onchange='checkOffGrid();' %OFFGRID%>
                                                         <span class="custom-control-indicator"></span><span id='offGridText'></span>
                                                     </label>
+                                                    %OFFGRIDMODE%
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Porcentaje mínimo de SoC para derivar:</label>
-                                                        <div class="col-sm-8 mg-t-10 mg-sm-t-0">
-                                                            <input id='soc' name='soc' type="text" class="form-control" maxlength='3' value="%SOC%" onchange='checkSoCValue();'>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Consumo máximo de Batería (W):</label>
+                                                        <label class="col-sm-4 form-control-label language" key="BATTWATTS"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='battWatts' name='battWatts' type="text" class="form-control" maxlength='5' value="%BATTWATTS%">
                                                         </div>
                                                     </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Origen de los Datos</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="SOURCE"></h6>
                                                     <div id='modo' class="row mg-t-2">%WIFIS%</div>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="CHANGESIGN"></h6>
                                                     <label class="custom-control custom-checkbox pb-3">
                                                         <input type="checkbox" class="custom-control-input" id="changeGridSign" name="changeGridSign" onchange='checkChangeGridSign();' %CHANGEGRIDSIGN%>
                                                         <span class="custom-control-indicator"></span><span id='changeGridSignText'></span>
                                                     </label>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Meter</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="METERSETTINGS"></h6>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Baud rate:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="BAUDRATE"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <select id='baudiosmeter' name='baudiosmeter' class='form-control select2'>
                                                                 <option value='300'>300 bps</option>
@@ -193,98 +192,98 @@
                                                         </div>
                                                     </div>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Meter Id:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="METERID"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='idmeter' name='idmeter' type="text" class="form-control" maxlength='3' value="%IDMETER%">
                                                         </div>
                                                     </div>
 
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Tiempo máximo de error</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="TIMEERROR"></h6>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Tiempo máximo de error (ms):</label>
+                                                        <label class="col-sm-4 form-control-label language" key="TIMEERRORTEXT"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='maxerrortime' name='maxerrortime' type='text' maxlength='5' class='form-control' value="%MAXERRORTIME%">
                                                         </div>
                                                     </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Tiempo de adquisición de Datos</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="GETDATA"></h6>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Tiempo adquisición datos (ms):</label>
+                                                        <label class="col-sm-4 form-control-label language" key="GETDATATEXT"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='getdatatime' name='getdatatime' type='text' maxlength='5' class='form-control' value="%GETDATATIME%">
                                                         </div>
                                                     </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Pantalla Oled</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="SCREENCONFIG"></h6>
                                                     <label class="custom-control custom-checkbox pb-3">
                                                         <input type="checkbox" class="custom-control-input" id="autoPowerOff" name="autoPowerOff" onchange='checkPowerOffOled();' %AUTOPOWEROFF%>
                                                         <span class="custom-control-indicator"></span><span id='autoPowerOffText'></span>
                                                     </label>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Tiempo para apagado automático (ms):</label>
+                                                        <label class="col-sm-4 form-control-label language" key="POWEROFFTEXT"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='autoPowerOffTime' name='autoPowerOffTime' type='text' maxlength='5' class='form-control' value="%AUTOPOWEROFFTIME%">
                                                         </div>
                                                     </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Sensor de Temperatura</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="TEMPSENSOR"></h6>
                                                     <label class="custom-control custom-checkbox pb-3">
                                                         <input type="checkbox" class="custom-control-input" id="sensorTemp" name="sensorTemp" onchange='checkSensorTemp();' %SENSORTEMP%>
                                                         <span class="custom-control-indicator"></span><span id='sensorTempText'></span>
                                                     </label>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Temperatura de Encendido:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="TEMPON"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='tempOn' name='tempOn' type="text" class="form-control" maxlength='2' value="%TEMPON%" onfocusout='checkSensorTempOn();'>
                                                         </div>
                                                     </div>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Temperatura de Apagado:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="TEMPOFF"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='tempOff' name='tempOff' type="text" class="form-control" maxlength='2' value="%TEMPOFF%" onfocusout='checkSensorTempOff();'>
                                                         </div>
                                                     </div>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Aplicar a:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="APPLYTO"></label>
                                                         <label class="col-sm-4 form-control-label"><label class="custom-control custom-checkbox pb-3">
                                                             <input type="checkbox" class="custom-control-input" id="sensorModoAuto" name="sensorModoAuto" %SENSORMODOAUTO%>
-                                                            <span class="custom-control-indicator"></span><span>Modo automático</span>
+                                                            <span class="custom-control-indicator"></span><span class="language" key="TEMPAUTO"></span>
                                                             </label>
                                                         </label>
                                                         <label class="col-sm-4 form-control-label"><label class="custom-control custom-checkbox pb-3">
                                                             <input type="checkbox" class="custom-control-input" id="sensorModoManual" name="sensorModoManual" %SENSORMODOMANUAL%>
-                                                            <span class="custom-control-indicator"></span><span>Modo Manual</span>
+                                                            <span class="custom-control-indicator"></span><span class="language" key="TEMPMAN"></span>
                                                             </label>
                                                         </label>
                                                     </div>
                                                     <div class="row">
-                                                        <label class="col-sm-4 form-control-label">Dirección Sensor Termo:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="TERMOADDRS"></label>
                                                         <div class="col-sm-8 mg-t-8 mg-sm-t-0">
                                                             %TERMOADDRS%
                                                         </div>
                                                     </div>
                                                     <div class="row">
-                                                        <label class="col-sm-4 form-control-label">Dirección Sensor Triac:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="TRIACADDRS"></label>
                                                         <div class="col-sm-8 mg-t-8 mg-sm-t-0">
                                                             %TRIACADDRS%
                                                         </div>
                                                     </div>
                                                     <div class="row mg-t-2">
-                                                        <label class="col-sm-4 form-control-label">Nombre Sensor Personalizado:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="SENSORNAME"></label>
                                                         <div class="col-sm-8 mg-t-10 mg-sm-t-0">
                                                             <input id='customSensor' name='customSensor' type="text" class="form-control" maxlength='30' value="%CUSTOMSENSOR%">
                                                         </div>
                                                     </div>
                                                     <div class="row">
-                                                        <label class="col-sm-4 form-control-label">Dirección Sensor Personalizado:</label>
+                                                        <label class="col-sm-4 form-control-label language" key="CUSTOMADDRS"></label>
                                                         <div class="col-sm-8 mg-t-8 mg-sm-t-0">
                                                             %CUSTOMADDRS%
                                                         </div>
                                                     </div>
-                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10">Configuración Alexa</h6>
+                                                    <h6 class="tx-gray-800 tx-uppercase tx-bold tx-14 mg-t-10 mg-b-10 language" key="ALEXA"></h6>
                                                     <label class="custom-control custom-checkbox pb-3">
                                                         <input type="checkbox" class="custom-control-input" id="alexa" name="alexa" onchange='checkAlexa();' %ALEXA%>
                                                         <span class="custom-control-indicator"></span><span id='alexaText'></span>
                                                     </label>
                                                     <div class="form-layout-footer pt-4 pb-4">
-                                                        <button type="button" class="btn btn-info" onclick='evaluaPassword()'>Guardar</button> <a href="" class="btn btn-danger" data-toggle="modal" data-target="#factoryDefaults">Reinicializar</a>
+                                                        <button type="button" class="btn btn-info language" onclick='evaluaPassword()' key="SAVE"></button> <a href="" class="btn btn-danger language" data-toggle="modal" data-target="#factoryDefaults" key="FACTORY"></a>
                                                     </div>
                                                 </div>
                                             </div>
@@ -296,30 +295,33 @@
                     </div>
                 </div>
                 <footer class="sticky-footer bg-white">
+                    <form action="https://www.paypal.com/donate" method="post" target="_top">
+                        <input type="hidden" name="hosted_button_id" value="T3JE5XHDKDJN8" />
+                        <input type="image" src="https://www.paypalobjects.com/en_US/ES/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+                    </form>
+                    <br>
                     <div>Copyright © 2020. Derivador de energía solar excedente %VERSION_CODE%</div>
-                    <div>Inspirado en openDS+ de Iqas, betatester: Aeizoon, (C) 2020 Pablo Zerón</div>
+                    <div>(C) 2020 Pablo Zerón, betatester: Aeizoon, Diseño pcb: Amcalo</div>
                     <small>
+                        <div>Inspirado en openDS+ de Iqas</div>
                         <div>Fecha compilación: %FECHA_COMPILACION%</div>
                         <div id='uptime_small'></div>
                     </small>
                 </footer>
             </div>
         </div>
-        <script src="jquery-3.4.1.min.js"></script>
-        <script src="bootstrap.bundle.min.js"></script>
         <script src="sb-admin-2.min.js"></script>
-        <script src="freeds.min.js"></script>
-
+        <!--        VENTANAS MODALES        -->
         <div id="factoryDefaults" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog" role="document">
                 <div class="modal-content text-center">
                     <div class="modal-body tx-center pd-y-20 pd-x-20">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
-                        <h4 class="tx-danger tx-semibold pt-2 pb-2">¡¡¡¡ATENCIÓN!!!!</h4>
-                        <p class="mg-b-20 mg-x-20">Si pulsa reinicializar se restaurarán todos los valores por defecto, y deberá volver a configurar el derivador desde el principio.</p>
+                        <i class="freeds-exclamation-triangle freeds-2x"></i>
+                        <h4 class="tx-danger tx-semibold pt-2 pb-2 language" key="WARNING"></h4>
+                        <p class="mg-b-20 mg-x-20 language" key="RESTORETEXT"></p>
                         <form method="post" action='/factoryDefaults'>
-                            <button type="submit" class="btn btn-success">Restaurar</button>
-                            <button type="button" class="btn btn-danger" data-dismiss="modal" aria-label="Close">Cancelar</button>
+                            <button type="submit" class="btn btn-success language" key="RESTORE"></button>
+                            <button type="button" class="btn btn-danger language" data-dismiss="modal" aria-label="Close" key="CANCEL"></button>
                         </form>
                     </div>
                 </div>
@@ -329,10 +331,10 @@
             <div class="modal-dialog" role="document">
                 <div class="modal-content text-center">
                     <div class="modal-body tx-center pd-y-20 pd-x-20">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
-                        <h4 class="tx-danger tx-semibold pt-2 pb-2">¡¡¡¡ATENCIÓN!!!!</h4>
-                        <p class="mg-b-20 mg-x-20">Las contraseñas no coinciden</p>
-                        <button type="button" class="btn btn-danger" data-dismiss="modal" aria-label="Close">Cerrar</button>
+                        <i class="freeds-exclamation-triangle freeds-2x"></i>
+                        <h4 class="tx-danger tx-semibold pt-2 pb-2 language" key="WARNING"></h4>
+                        <p class="mg-b-20 mg-x-20 language" key="PASSWORDMISMATCH"></p>
+                        <button type="button" class="btn btn-danger language" data-dismiss="modal" aria-label="Close" key="CLOSE"></button>
                     </div>
                 </div>
             </div>
@@ -341,11 +343,11 @@
             <div class="modal-dialog modal-sm" role="document">
                 <div class="modal-content text-center">
                     <div class="modal-body">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
-                        <h4 class="tx-danger tx-semibold pt-2 pb-2">¡¡¡¡ATENCIÓN!!!!</h4>
-                        <p class="mg-b-20 mg-x-20">¿Seguro que desea Reiniciar?</p>
-                        <button type="button" onClick="location.href='/reboot'" class="btn btn-success" data-dismiss="modal" aria-label="Close">Reiniciar</button>
-                        <button type="button" class="btn btn-danger" data-dismiss="modal" aria-label="Close">Cerrar</button>
+                        <i class="freeds-exclamation-triangle freeds-2x"></i>
+                        <h4 class="tx-danger tx-semibold pt-2 pb-2 language" key="WARNING"></h4>
+                        <p class="mg-b-20 mg-x-20 language" key="RESTARTTEXT"></p>
+                        <button type="button" onClick="location.href='/reboot'" class="btn btn-success language" data-dismiss="modal" aria-label="Close" key="RESTART"></button>
+                        <button type="button" class="btn btn-danger language" data-dismiss="modal" aria-label="Close" key="CLOSE"></button>
                     </div>
                 </div>
             </div>
