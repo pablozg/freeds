@@ -1,0 +1,20 @@
+Importante: Las placas me llegan el martes 30 y hasta que no las tenga montadas y probadas no puedo garantizar que no haya ningun problema. Solo adelanto los ficheros de Kicad, gerbers, lista de materiales, etc. por si os sirve de ayuda.
+
+Estas PCBs han sido diseñadas siguiendo los esquemas e indicaciones publicados en https://freeds.es con el programa Kicad.
+En cuanto a sus dimensiones, estan pensadas para la caja sonoff, que es economica, robusta y tiene la tapa transparente para poder visualizar la pantalla.
+
+He querido hacer unas placas que puedan ser utiles a la mayor parte posible de la gente. Asi, aprovechando la altura de la caja de unos 40mm he pensado en colocar dos circuitos impresos apilados.
+
+El circuito inferior es la placa de potencia.
+Se puede escoger entre montar el modulo chino (lowcost) desoldando las bornas y el triac que lleva y puenteando la puerta del modulo con el pin TP1 del circuito impreso, o montar el MOC3041 con sus tres resistencias (ultra lowcost) o cambiar de un sistema a otro para probar cual nos funciona mejor.
+Por un tema de espacio, en los bornes de conexion de potencia he incluido uno para unir las tierras de entrada y salida, uno de entrada y salida para el neutro, y las fases de entrada y salida. Las pistas de conexion de potencia al triac y fusible no tienen mascara de soldadura para poder aumentar su seccion depositando una capa gruesa de estaño, soldando un hilo de cobre encima, o lo que se os ocurra.
+
+La placa de control superior dispone de espacio para el modulo RS485 (modbus) a TTL para personas que lo necesiten. El modulo ESP32 escogido es el ESP32-WROOM-32U que tiene conexion de antena externa y deberia dar mas alcance de conexion wifi. La pantalla se monta separada del ESP32.
+Tiene pines para conectar los sensores de temperatura, los reles externos, y el sensor de corriente SCT-013-030 si se desea utilizar. El ventilador puede conectarse a 5V para funcionamiento permanente o asociarlo al rele 4 para funcionamiento a partir de un pwm determinado.
+Tambien puede colocarse el sensor de temperatura DS18B20 en la placa cerca del triac para poder unir al disipador.
+
+
+
+
+
+
