@@ -7,3 +7,6 @@
 build_output
 pio
 lib
+
+# Caché de componentes de KiCad
+fp-info-cache
