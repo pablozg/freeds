@@ -1,5 +1,3 @@
-Importante: Las placas me llegan el martes 30 y hasta que no las tenga montadas y probadas no puedo garantizar que no haya ningun problema. Solo adelanto los ficheros de Kicad, gerbers, lista de materiales, etc. por si os sirve de ayuda.
-
 Estas PCBs han sido diseñadas siguiendo los esquemas e indicaciones publicados en https://freeds.es con el programa Kicad.
 En cuanto a sus dimensiones, estan pensadas para la caja sonoff, que es economica, robusta y tiene la tapa transparente para poder visualizar la pantalla.
 
