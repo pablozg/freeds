@@ -1,0 +1,1560 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>/home/ivan/devel/freeds-pcb/sanchez/freeds-sanchez/freeds-sanchez.kicad_sch</source>
+    <date>vie 14 jul 2023 13:41:45</date>
+    <tool>Eeschema 7.0.3+dfsg-1</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>FreeDS Arquitectura Sánchez</title>
+        <company>Iván Sánchez Ortega,  César Sánchez Ortega</company>
+        <rev>1</rev>
+        <date>2023-05-30</date>
+        <source>freeds-sanchez.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+    <sheet number="2" name="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/">
+      <title_block>
+        <title>FreeDS Arquitectura Sánchez</title>
+        <company>Iván Sánchez Ortega,  César Sánchez Ortega</company>
+        <rev>1</rev>
+        <date>2023-05-30</date>
+        <source>potencia.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+    <sheet number="3" name="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/">
+      <title_block>
+        <title>FreeDS Arquitectura Sánchez</title>
+        <company>Iván Sánchez Ortega,  César Sánchez Ortega</company>
+        <rev>1</rev>
+        <date>2023-05-30</date>
+        <source>control.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="N1">
+      <value>Housing</value>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32856717327.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Mechanical" part="Housing" description="Housing"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32856717327.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="freeds-sanchez.kicad_sch"/>
+      <property name="exclude_from_board"/>
+      <property name="ki_description" value="Housing"/>
+      <property name="ki_keywords" value="housing enclosure"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>36bc0b00-788b-480c-81a7-c684fbe2367b</tstamps>
+    </comp>
+    <comp ref="C2">
+      <value>10µF</value>
+      <footprint>Capacitor_THT:C_Disc_D4.7mm_W2.5mm_P5.00mm</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001715033995.html</field>
+        <field name="Grupo">Pinza Amperimétrica</field>
+      </fields>
+      <libsource lib="Device" part="C_Small" description="Unpolarized capacitor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001715033995.html"/>
+      <property name="Grupo" value="Pinza Amperimétrica"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Unpolarized capacitor, small symbol"/>
+      <property name="ki_keywords" value="capacitor cap"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>2129cdde-cc10-4be9-9006-fb8fbe8cc56b</tstamps>
+    </comp>
+    <comp ref="D2">
+      <value>1N4007</value>
+      <footprint>Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal</footprint>
+      <datasheet>http://www.vishay.com/docs/88503/1n4001.pdf</datasheet>
+      <libsource lib="Diode" part="1N4007" description="1000V 1A General Purpose Rectifier Diode, DO-41"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="1000V 1A General Purpose Rectifier Diode, DO-41"/>
+      <property name="ki_keywords" value="diode"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>da94ab94-8382-4f66-b15c-e452e141575f</tstamps>
+    </comp>
+    <comp ref="F1">
+      <value>Fuse</value>
+      <footprint>Fuse:Fuseholder_Clip-5x20mm_Littelfuse_100_Inline_P20.50x4.60mm_D1.30mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005002876255086.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Device" part="Fuse" description="Fuse"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005002876255086.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Fuse"/>
+      <property name="ki_keywords" value="fuse"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>76158bee-9c0f-4435-8b5a-285dc8bff856</tstamps>
+    </comp>
+    <comp ref="J1">
+      <value>Clema K1000</value>
+      <footprint>componentes-auxiliares:Clema 20x14mm K1000 2P</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/4000170287617.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Connector" part="Screw_Terminal_01x02" description="Generic screw terminal, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/4000170287617.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Generic screw terminal, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="ki_keywords" value="screw terminal"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>b560af8d-6cad-4cdd-982a-c28cd2d1eda7</tstamps>
+    </comp>
+    <comp ref="J2">
+      <value>Clema K1000</value>
+      <footprint>componentes-auxiliares:Clema 20x14mm K1000 2P</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/4000170287617.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Connector" part="Screw_Terminal_01x02" description="Generic screw terminal, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/4000170287617.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Generic screw terminal, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="ki_keywords" value="screw terminal"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>98618883-2c6e-4600-9fe9-4574bdc24740</tstamps>
+    </comp>
+    <comp ref="J3">
+      <value>Inter-PCB</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Connector_Generic" part="Conn_01x04" description="Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>a4dd803e-1e91-4ffb-b65d-2ef96886a429</tstamps>
+    </comp>
+    <comp ref="J16">
+      <value>Conn_01x02_Male</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32758380907.html</field>
+        <field name="Grupo">Ventilador PWM</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x02_Male" description="Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32758380907.html"/>
+      <property name="Grupo" value="Ventilador PWM"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>277056e7-2f2d-4e2d-8354-f45180b6e720</tstamps>
+    </comp>
+    <comp ref="M1">
+      <value>40mm 5V PWM Fan</value>
+      <datasheet>https://noctua.at/en/products/fan/nf-a4x10-pwm/specification</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005003661639143.html</field>
+        <field name="Nota">https://electronics.stackexchange.com/questions/446128/5v-4-pin-noctua-a4x10-on-raspberry-pi</field>
+      </fields>
+      <libsource lib="Motor" part="Fan_4pin" description="Fan, tacho output, PWM input, 4-pin connector"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005003661639143.html"/>
+      <property name="Nota" value="https://electronics.stackexchange.com/questions/446128/5v-4-pin-noctua-a4x10-on-raspberry-pi"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="exclude_from_board"/>
+      <property name="dnp"/>
+      <property name="ki_description" value="Fan, tacho output, PWM input, 4-pin connector"/>
+      <property name="ki_keywords" value="Fan Motor tacho PWM"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>442cee94-00f6-4180-a160-c604e42f4256</tstamps>
+    </comp>
+    <comp ref="PS1">
+      <value>HLK-PM01</value>
+      <footprint>Converter_ACDC:Converter_ACDC_HiLink_HLK-PMxx</footprint>
+      <datasheet>http://www.hlktech.net/product_detail.php?ProId=54</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32408565688.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Converter_ACDC" part="HLK-PM01" description="Compact AC/DC board mount power module 3W 5V"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32408565688.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Compact AC/DC board mount power module 3W 5V"/>
+      <property name="ki_keywords" value="AC/DC module power supply"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>2b7bc843-8acc-49ea-8e71-3141f5a3a4ef</tstamps>
+    </comp>
+    <comp ref="Q1">
+      <value>BTA26-600BW</value>
+      <footprint>componentes-auxiliares:TOP3_Vertical</footprint>
+      <datasheet>https://www.st.com/resource/en/datasheet/bta16.pdf</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32508392409.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Triac_Thyristor" part="BTA16-600BW" description="16A RMS, 600V Off-State Voltage, 50mA Sensitivity, Snubberless, Insulated, Triac, TO-220"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32508392409.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="16A RMS, 600V Off-State Voltage, 50mA Sensitivity, Snubberless, Insulated, Triac, TO-220"/>
+      <property name="ki_keywords" value="Triac"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>11262df3-9acc-442d-813e-3523a87219a1</tstamps>
+    </comp>
+    <comp ref="Q4">
+      <value>BS170</value>
+      <footprint>Package_TO_SOT_THT:TO-92_Inline</footprint>
+      <datasheet>https://www.onsemi.com/pub/Collateral/BS170-D.PDF</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/33043571478.html</field>
+      </fields>
+      <libsource lib="Transistor_FET" part="BS170" description="0.5A Id, 60V Vds, N-Channel MOSFET, TO-92"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/33043571478.html"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="0.5A Id, 60V Vds, N-Channel MOSFET, TO-92"/>
+      <property name="ki_keywords" value="N-Channel MOSFET"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>41b81912-dfa9-4f47-864f-85d4430f3e67</tstamps>
+    </comp>
+    <comp ref="R1">
+      <value>360Ω</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>83514d79-574c-4333-a9b3-e75755b3f1e2</tstamps>
+    </comp>
+    <comp ref="R2">
+      <value>330Ω</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>df5c3a26-7b8d-4821-bd30-72fabe4b749c</tstamps>
+    </comp>
+    <comp ref="R3">
+      <value>180Ω</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>f5b2f157-b482-44f1-915a-5ce0286a3c5b</tstamps>
+    </comp>
+    <comp ref="R8">
+      <value>3.3Ω</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Ventilador PWM</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Ventilador PWM"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>8d35ec02-1e03-4a1b-85fe-011f72dac7af</tstamps>
+    </comp>
+    <comp ref="R9">
+      <value>10KΩ</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Ventilador PWM</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Ventilador PWM"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>37f6c051-3c0b-491b-b5a4-5f92272bcb5b</tstamps>
+    </comp>
+    <comp ref="U2">
+      <value>MOC3041M</value>
+      <footprint>Package_DIP:DIP-6_W7.62mm</footprint>
+      <datasheet>https://www.onsemi.com/pub/Collateral/MOC3043M-D.pdf</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32870289997.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Relay_SolidState" part="MOC3041M" description="Zero Cross Opto-Triac, Vdrm 400V, Ift 15mA, DIP6"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32870289997.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="potencia"/>
+      <property name="Sheetfile" value="potencia.kicad_sch"/>
+      <property name="ki_description" value="Zero Cross Opto-Triac, Vdrm 400V, Ift 15mA, DIP6"/>
+      <property name="ki_keywords" value="Opto-Triac Opto Triac Zero Cross"/>
+      <sheetpath names="/potencia/" tstamps="/b90e50dd-2cd8-41c5-a21d-a73be7220d92/"/>
+      <tstamps>50853c1f-9c77-4db0-8bbe-445bc5e55cc2</tstamps>
+    </comp>
+    <comp ref="AE1">
+      <value>Antenna</value>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32276257238.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Device" part="Antenna" description="Antenna"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32276257238.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="exclude_from_board"/>
+      <property name="ki_description" value="Antenna"/>
+      <property name="ki_keywords" value="antenna"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>7baa6d68-c94d-492b-9080-a84e2d6f7d5b</tstamps>
+    </comp>
+    <comp ref="C1">
+      <value>10µF</value>
+      <footprint>Capacitor_THT:C_Disc_D4.7mm_W2.5mm_P5.00mm</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001715033995.html</field>
+        <field name="Grupo">Pinza Amperimétrica</field>
+      </fields>
+      <libsource lib="Device" part="C_Small" description="Unpolarized capacitor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001715033995.html"/>
+      <property name="Grupo" value="Pinza Amperimétrica"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Unpolarized capacitor, small symbol"/>
+      <property name="ki_keywords" value="capacitor cap"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>afdcae38-522a-4ed5-839b-c804082db6f7</tstamps>
+    </comp>
+    <comp ref="J4">
+      <value>Inter-PCB</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Connector_Generic" part="Conn_01x04" description="Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>9311a617-878d-47f7-922e-dfa5d7d53304</tstamps>
+    </comp>
+    <comp ref="J5">
+      <value>Pinza Amper.</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32758380907.html</field>
+        <field name="Grupo">Pinza Amperimétrica</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x02_Male" description="Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32758380907.html"/>
+      <property name="Grupo" value="Pinza Amperimétrica"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>cbc7c6d5-01de-4e22-a7a6-079dfe68f076</tstamps>
+    </comp>
+    <comp ref="J6">
+      <value>CT Clamp</value>
+      <footprint>Connector_Audio:Jack_3.5mm_CUI_SJ1-3525N_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005004657628758.html https://www.aliexpress.com/item/32871877936.html</field>
+        <field name="Grupo">Pinza Amperimétrica</field>
+        <field name="Nota">PJ3F07 / PJ-324M</field>
+      </fields>
+      <libsource lib="Connector" part="AudioJack2" description="Audio Jack, 2 Poles (Mono / TS)"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005004657628758.html https://www.aliexpress.com/item/32871877936.html"/>
+      <property name="Nota" value="PJ3F07 / PJ-324M"/>
+      <property name="Grupo" value="Pinza Amperimétrica"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Audio Jack, 2 Poles (Mono / TS)"/>
+      <property name="ki_keywords" value="audio jack receptacle mono phone headphone TS connector"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>7df0f068-2682-44a9-8ab2-766a48b37cc1</tstamps>
+    </comp>
+    <comp ref="J7">
+      <value>Temp sensor</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32758380907.html</field>
+        <field name="Grupo">Temperatura</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x03_Pin" description="Generic connector, single row, 01x03, script generated"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32758380907.html"/>
+      <property name="Grupo" value="Temperatura"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x03, script generated"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>959fd115-4ca5-4766-895a-8f8cf5855ee9</tstamps>
+    </comp>
+    <comp ref="J8">
+      <value>Temp Sensor</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32758380907.html</field>
+        <field name="Grupo">Temperatura</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x03_Pin" description="Generic connector, single row, 01x03, script generated"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32758380907.html"/>
+      <property name="Grupo" value="Temperatura"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x03, script generated"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>0db409b1-112e-4c3a-9645-1b66b13529d5</tstamps>
+    </comp>
+    <comp ref="J9">
+      <value>R4_FAN</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32758380907.html</field>
+        <field name="Grupo">Ventilador relé</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x03_Pin" description="Generic connector, single row, 01x03, script generated"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32758380907.html"/>
+      <property name="Grupo" value="Ventilador relé"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x03, script generated"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>b2cbb39d-cf17-4259-a7b7-b89c72a93111</tstamps>
+    </comp>
+    <comp ref="J10">
+      <value>RELÉS</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32758380907.html</field>
+        <field name="Grupo">Relés</field>
+      </fields>
+      <libsource lib="Connector" part="Conn_01x08_Pin" description="Generic connector, single row, 01x08, script generated"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32758380907.html"/>
+      <property name="Grupo" value="Relés"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Generic connector, single row, 01x08, script generated"/>
+      <property name="ki_keywords" value="connector"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>1b526a92-a6a8-4170-939b-793ff09608e1</tstamps>
+    </comp>
+    <comp ref="M2">
+      <value>40mm Fan</value>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/33050954650.html</field>
+      </fields>
+      <libsource lib="Motor" part="Fan" description="Fan"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/33050954650.html"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="exclude_from_board"/>
+      <property name="ki_description" value="Fan"/>
+      <property name="ki_keywords" value="Fan Motor"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>162a7437-8a22-4add-aea7-ff94441bd87b</tstamps>
+    </comp>
+    <comp ref="Q2">
+      <value>BC337</value>
+      <footprint>Package_TO_SOT_THT:TO-92_Inline</footprint>
+      <datasheet>https://diotec.com/tl_files/diotec/files/pdf/datasheets/bc337.pdf</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005003391155385.html</field>
+        <field name="Grupo">Ventilador relé</field>
+      </fields>
+      <libsource lib="Transistor_BJT" part="BC337" description="0.8A Ic, 45V Vce, NPN Transistor, TO-92"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005003391155385.html"/>
+      <property name="Grupo" value="Ventilador relé"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="0.8A Ic, 45V Vce, NPN Transistor, TO-92"/>
+      <property name="ki_keywords" value="NPN Transistor"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>fb510764-415e-4b69-8d75-8d5882871671</tstamps>
+    </comp>
+    <comp ref="Q3">
+      <value>DS18B20</value>
+      <footprint>Package_TO_SOT_THT:TO-92_Inline</footprint>
+      <datasheet>http://datasheets.maximintegrated.com/en/ds/DS18B20.pdf</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1783091649.html</field>
+        <field name="Grupo">Temperatura</field>
+      </fields>
+      <libsource lib="Sensor_Temperature" part="DS18B20" description="Programmable Resolution 1-Wire Digital Thermometer TO-92"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1783091649.html"/>
+      <property name="Grupo" value="Temperatura"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Programmable Resolution 1-Wire Digital Thermometer TO-92"/>
+      <property name="ki_keywords" value="OneWire 1Wire Dallas Maxim"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>48e6d971-ae9e-4007-bf4c-127a926d043c</tstamps>
+    </comp>
+    <comp ref="R4">
+      <value>180Ω</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Ventilador relé</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Ventilador relé"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>fee76890-e3e9-4fdb-9907-5c76ad7942da</tstamps>
+    </comp>
+    <comp ref="R5">
+      <value>10KΩ</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Pinza Amperimétrica</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Pinza Amperimétrica"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>ef2135ce-67c6-44a3-9d30-a51b2541b47d</tstamps>
+    </comp>
+    <comp ref="R6">
+      <value>10KΩ</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Pinza Amperimétrica</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Pinza Amperimétrica"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>80364d5a-4685-42cb-961c-052a9de32bfa</tstamps>
+    </comp>
+    <comp ref="R7">
+      <value>4.7KΩ</value>
+      <footprint>Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001931818502.html</field>
+        <field name="Grupo">Temperatura</field>
+      </fields>
+      <libsource lib="Device" part="R_Small" description="Resistor, small symbol"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001931818502.html"/>
+      <property name="Grupo" value="Temperatura"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Resistor, small symbol"/>
+      <property name="ki_keywords" value="R resistor"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>337f7f63-4a89-4272-aa69-b2fae9b230c6</tstamps>
+    </comp>
+    <comp ref="SW1">
+      <value>PRG</value>
+      <footprint>Button_Switch_THT:SW_Tactile_SPST_Angled_PTS645Vx83-2LFS</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32912894177.html</field>
+        <field name="Grupo">Botón</field>
+      </fields>
+      <libsource lib="Switch" part="SW_SPST" description="Single Pole Single Throw (SPST) switch"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32912894177.html"/>
+      <property name="Grupo" value="Botón"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Single Pole Single Throw (SPST) switch"/>
+      <property name="ki_keywords" value="switch lever"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>0ac71ca0-36af-47cd-bf9a-bdb213e36ff9</tstamps>
+    </comp>
+    <comp ref="U3">
+      <value>HW-0519 (Módulo RS485-TTL)</value>
+      <footprint>componentes-auxiliares:HW-519 TTL-RS485</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/1005001621746811.html</field>
+        <field name="Grupo">Modbus</field>
+      </fields>
+      <libsource lib="module" part="HW-519_MODBUS" description=""/>
+      <property name="Compras" value="https://www.aliexpress.com/item/1005001621746811.html"/>
+      <property name="Grupo" value="Modbus"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>0fb4be9c-23d7-4491-ab2f-6efba9b18fc1</tstamps>
+    </comp>
+    <comp ref="U4">
+      <value>ESP32-WROOM-32U</value>
+      <footprint>Espressif:ESP32-DevKitC</footprint>
+      <datasheet>https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html</datasheet>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32864722159.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="Espressif" part="ESP32-DevKitC" description="Development Kit"/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32864722159.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <property name="ki_description" value="Development Kit"/>
+      <property name="ki_keywords" value="ESP32"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>0109c698-413d-4adc-b9cd-ccd569169882</tstamps>
+    </comp>
+    <comp ref="U5">
+      <value>SSD1306_I2C_128x64</value>
+      <footprint>componentes-auxiliares:OLED_SSD1306_I2C_0.96</footprint>
+      <fields>
+        <field name="Compras">https://www.aliexpress.com/item/32638662748.html</field>
+        <field name="Grupo">Básico</field>
+      </fields>
+      <libsource lib="OLED_SSD1312_I2C" part="SSD1312_I2C_128x64" description=""/>
+      <property name="Compras" value="https://www.aliexpress.com/item/32638662748.html"/>
+      <property name="Grupo" value="Básico"/>
+      <property name="Sheetname" value="control"/>
+      <property name="Sheetfile" value="control.kicad_sch"/>
+      <sheetpath names="/control/" tstamps="/e7d391bb-1181-44de-8fa6-a302a4ce8d26/"/>
+      <tstamps>2d3e1e52-4887-4537-9400-449348a35ae0</tstamps>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Connector" part="AudioJack2">
+      <description>Audio Jack, 2 Poles (Mono / TS)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Jack*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">AudioJack2</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="S" name="" type="passive"/>
+        <pin num="T" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x02_Female">
+      <description>Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x02_Female</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x02_Male">
+      <description>Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x02_Male</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x03_Female">
+      <description>Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x03_Female</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x03_Pin">
+      <description>Generic connector, single row, 01x03, script generated</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x03_Pin</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x04_Female">
+      <description>Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x04_Female</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x04_Male">
+      <description>Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x04_Male</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Conn_01x08_Pin">
+      <description>Generic connector, single row, 01x08, script generated</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x08_Pin</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+        <pin num="5" name="Pin_5" type="passive"/>
+        <pin num="6" name="Pin_6" type="passive"/>
+        <pin num="7" name="Pin_7" type="passive"/>
+        <pin num="8" name="Pin_8" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector" part="Screw_Terminal_01x02">
+      <description>Generic screw terminal, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>TerminalBlock*:*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Screw_Terminal_01x02</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Connector_Generic" part="Conn_01x04">
+      <description>Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Connector*:*_1x??_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn_01x04</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="Pin_1" type="passive"/>
+        <pin num="2" name="Pin_2" type="passive"/>
+        <pin num="3" name="Pin_3" type="passive"/>
+        <pin num="4" name="Pin_4" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Converter_ACDC" part="HLK-PM01">
+      <description>Compact AC/DC board mount power module 3W 5V</description>
+      <docs>http://www.hlktech.net/product_detail.php?ProId=54</docs>
+      <footprints>
+        <fp>Converter*ACDC*HiLink*HLK?PM*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">PS</field>
+        <field name="Value">HLK-PM01</field>
+        <field name="Footprint">Converter_ACDC:Converter_ACDC_HiLink_HLK-PMxx</field>
+        <field name="Datasheet">http://www.hlktech.net/product_detail.php?ProId=54</field>
+      </fields>
+      <pins>
+        <pin num="1" name="AC/L" type="power_in"/>
+        <pin num="2" name="AC/N" type="power_in"/>
+        <pin num="3" name="-Vout" type="power_out"/>
+        <pin num="4" name="+Vout" type="power_out"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="Antenna">
+      <description>Antenna</description>
+      <docs>~</docs>
+      <fields>
+        <field name="Reference">AE</field>
+        <field name="Value">Antenna</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="C_Small">
+      <description>Unpolarized capacitor, small symbol</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>C_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">C_Small</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="Fuse">
+      <description>Fuse</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>*Fuse*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">F</field>
+        <field name="Value">Fuse</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="R_Small">
+      <description>Resistor, small symbol</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>R_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">R_Small</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Diode" part="1N4007">
+      <description>1000V 1A General Purpose Rectifier Diode, DO-41</description>
+      <docs>http://www.vishay.com/docs/88503/1n4001.pdf</docs>
+      <footprints>
+        <fp>D*DO?41*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">D</field>
+        <field name="Value">1N4007</field>
+        <field name="Footprint">Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal</field>
+        <field name="Datasheet">http://www.vishay.com/docs/88503/1n4001.pdf</field>
+      </fields>
+      <pins>
+        <pin num="1" name="K" type="passive"/>
+        <pin num="2" name="A" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Espressif" part="ESP32-DevKitC">
+      <description>Development Kit</description>
+      <docs>https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">ESP32-DevKitC</field>
+        <field name="Footprint">Espressif:ESP32-DevKitC</field>
+        <field name="Datasheet">https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html</field>
+      </fields>
+      <pins>
+        <pin num="1" name="3V3" type="power_in"/>
+        <pin num="2" name="CHIP_PU" type="input"/>
+        <pin num="3" name="SENSOR_VP/GPIO36/ADC1_CH0" type="input"/>
+        <pin num="4" name="SENSOR_VN/GPIO39/ADC1_CH3" type="input"/>
+        <pin num="5" name="VDET_1/GPIO34/ADC1_CH6" type="input"/>
+        <pin num="6" name="VDET_2/GPIO35/ADC1_CH7" type="input"/>
+        <pin num="7" name="32K_XP/GPIO32/ADC1_CH4" type="bidirectional"/>
+        <pin num="8" name="32K_XN/GPIO33/ADC1_CH5" type="bidirectional"/>
+        <pin num="9" name="DAC_1/ADC2_CH8/GPIO25" type="bidirectional"/>
+        <pin num="10" name="DAC_2/ADC2_CH9/GPIO26" type="bidirectional"/>
+        <pin num="11" name="ADC2_CH7/GPIO27" type="bidirectional"/>
+        <pin num="12" name="MTMS/GPIO14/ADC2_CH6" type="bidirectional"/>
+        <pin num="13" name="MTDI/GPIO12/ADC2_CH5" type="bidirectional"/>
+        <pin num="14" name="GND" type="power_in"/>
+        <pin num="15" name="MTCK/GPIO13/ADC2_CH4" type="bidirectional"/>
+        <pin num="16" name="SD_DATA2/GPIO9" type="bidirectional"/>
+        <pin num="17" name="SD_DATA3/GPIO10" type="bidirectional"/>
+        <pin num="18" name="CMD" type="bidirectional"/>
+        <pin num="19" name="5V" type="power_in"/>
+        <pin num="20" name="SD_CLK/GPIO6" type="bidirectional"/>
+        <pin num="21" name="SD_DATA0/GPIO7" type="bidirectional"/>
+        <pin num="22" name="SD_DATA1/GPIO8" type="bidirectional"/>
+        <pin num="23" name="MTDO/GPIO15/ADC2_CH3" type="bidirectional"/>
+        <pin num="24" name="ADC2_CH2/GPIO2" type="bidirectional"/>
+        <pin num="25" name="GPIO0/BOOT/ADC2_CH1" type="bidirectional"/>
+        <pin num="26" name="ADC2_CH0/GPIO4" type="bidirectional"/>
+        <pin num="27" name="GPIO16" type="bidirectional"/>
+        <pin num="28" name="GPIO17" type="bidirectional"/>
+        <pin num="29" name="GPIO5" type="bidirectional"/>
+        <pin num="30" name="GPIO18" type="bidirectional"/>
+        <pin num="31" name="GPIO19" type="bidirectional"/>
+        <pin num="32" name="GND" type="passive"/>
+        <pin num="33" name="GPIO21" type="bidirectional"/>
+        <pin num="34" name="U0RXD/GPIO3" type="bidirectional"/>
+        <pin num="35" name="U0TXD/GPIO1" type="bidirectional"/>
+        <pin num="36" name="GPIO22" type="bidirectional"/>
+        <pin num="37" name="GPIO23" type="bidirectional"/>
+        <pin num="38" name="GND" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Mechanical" part="Housing">
+      <description>Housing</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>Enclosure*</fp>
+        <fp>Housing*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">N</field>
+        <field name="Value">Housing</field>
+        <field name="Datasheet">~</field>
+      </fields>
+    </libpart>
+    <libpart lib="Motor" part="Fan">
+      <description>Fan</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>PinHeader*P2.54mm*</fp>
+        <fp>TerminalBlock*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">M</field>
+        <field name="Value">Fan</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="+" type="passive"/>
+        <pin num="2" name="-" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Motor" part="Fan_4pin">
+      <description>Fan, tacho output, PWM input, 4-pin connector</description>
+      <docs>http://www.formfactors.org/developer%5Cspecs%5Crev1_2_public.pdf</docs>
+      <footprints>
+        <fp>FanPinHeader*P2.54mm*Vertical*</fp>
+        <fp>PinHeader*P2.54mm*Vertical*</fp>
+        <fp>TerminalBlock*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">M</field>
+        <field name="Value">Fan_4pin</field>
+        <field name="Datasheet">http://www.formfactors.org/developer%5Cspecs%5Crev1_2_public.pdf</field>
+      </fields>
+      <pins>
+        <pin num="1" name="-" type="passive"/>
+        <pin num="2" name="+" type="passive"/>
+        <pin num="3" name="Tacho" type="passive"/>
+        <pin num="4" name="PWM" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="OLED_SSD1312_I2C" part="SSD1312_I2C_128x64">
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">SSD1312_I2C_128x64</field>
+      </fields>
+      <pins>
+        <pin num="1" name="GND" type="power_in"/>
+        <pin num="2" name="VCC" type="power_in"/>
+        <pin num="3" name="SCL" type="input"/>
+        <pin num="4" name="SDA" type="bidirectional"/>
+      </pins>
+    </libpart>
+    <libpart lib="Relay_SolidState" part="MOC3041M">
+      <description>Zero Cross Opto-Triac, Vdrm 400V, Ift 15mA, DIP6</description>
+      <docs>https://www.onsemi.com/pub/Collateral/MOC3043M-D.pdf</docs>
+      <footprints>
+        <fp>DIP*W7.62mm*</fp>
+        <fp>SMDIP*W9.53mm*</fp>
+        <fp>DIP*W10.16mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">MOC3041M</field>
+        <field name="Datasheet">https://www.onsemi.com/pub/Collateral/MOC3043M-D.pdf</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+        <pin num="3" name="NC" type="no_connect"/>
+        <pin num="4" name="" type="passive"/>
+        <pin num="5" name="NC" type="no_connect"/>
+        <pin num="6" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Sensor_Temperature" part="DS18B20">
+      <description>Programmable Resolution 1-Wire Digital Thermometer TO-92</description>
+      <docs>http://datasheets.maximintegrated.com/en/ds/DS18B20.pdf</docs>
+      <footprints>
+        <fp>TO*92*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">DS18B20</field>
+        <field name="Footprint">Package_TO_SOT_THT:TO-92_Inline</field>
+        <field name="Datasheet">http://datasheets.maximintegrated.com/en/ds/DS18B20.pdf</field>
+      </fields>
+      <pins>
+        <pin num="1" name="GND" type="power_in"/>
+        <pin num="2" name="DQ" type="bidirectional"/>
+        <pin num="3" name="VDD" type="power_in"/>
+      </pins>
+    </libpart>
+    <libpart lib="Switch" part="SW_SPST">
+      <description>Single Pole Single Throw (SPST) switch</description>
+      <docs>~</docs>
+      <fields>
+        <field name="Reference">SW</field>
+        <field name="Value">SW_SPST</field>
+        <field name="Datasheet">~</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A" type="passive"/>
+        <pin num="2" name="B" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Transistor_BJT" part="BC337">
+      <description>0.8A Ic, 45V Vce, NPN Transistor, TO-92</description>
+      <docs>https://diotec.com/tl_files/diotec/files/pdf/datasheets/bc337.pdf</docs>
+      <footprints>
+        <fp>TO?92*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">BC337</field>
+        <field name="Footprint">Package_TO_SOT_THT:TO-92_Inline</field>
+        <field name="Datasheet">https://diotec.com/tl_files/diotec/files/pdf/datasheets/bc337.pdf</field>
+      </fields>
+      <pins>
+        <pin num="1" name="C" type="passive"/>
+        <pin num="2" name="B" type="input"/>
+        <pin num="3" name="E" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Transistor_FET" part="BS170">
+      <description>0.5A Id, 60V Vds, N-Channel MOSFET, TO-92</description>
+      <docs>https://www.onsemi.com/pub/Collateral/BS170-D.PDF</docs>
+      <footprints>
+        <fp>TO?92*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">BS170</field>
+        <field name="Footprint">Package_TO_SOT_THT:TO-92_Inline</field>
+        <field name="Datasheet">https://www.onsemi.com/pub/Collateral/BS170-D.PDF</field>
+      </fields>
+      <pins>
+        <pin num="1" name="D" type="passive"/>
+        <pin num="2" name="G" type="input"/>
+        <pin num="3" name="S" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Transistor_FET" part="IRLZ44N">
+      <description>47A Id, 55V Vds, 22mOhm Rds Single N-Channel HEXFET Power MOSFET, TO-220AB</description>
+      <docs>http://www.irf.com/product-info/datasheets/data/irlz44n.pdf</docs>
+      <footprints>
+        <fp>TO?220*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">IRLZ44N</field>
+        <field name="Footprint">Package_TO_SOT_THT:TO-220-3_Vertical</field>
+        <field name="Datasheet">http://www.irf.com/product-info/datasheets/data/irlz44n.pdf</field>
+      </fields>
+      <pins>
+        <pin num="1" name="G" type="input"/>
+        <pin num="2" name="D" type="passive"/>
+        <pin num="3" name="S" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Triac_Thyristor" part="BTA16-600BW">
+      <description>16A RMS, 600V Off-State Voltage, 50mA Sensitivity, Snubberless, Insulated, Triac, TO-220</description>
+      <docs>https://www.st.com/resource/en/datasheet/bta16.pdf</docs>
+      <footprints>
+        <fp>TO?220*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">BTA16-600BW</field>
+        <field name="Footprint">Package_TO_SOT_THT:TO-220-3_Vertical</field>
+        <field name="Datasheet">https://www.st.com/resource/en/datasheet/bta16.pdf</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A1" type="passive"/>
+        <pin num="2" name="A2" type="passive"/>
+        <pin num="3" name="G" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="module" part="HW-519_MODBUS">
+      <fields>
+        <field name="Reference">U</field>
+      </fields>
+      <pins>
+        <pin num="1" name="VCC" type="input"/>
+        <pin num="2" name="TXD" type="input"/>
+        <pin num="3" name="RXD" type="input"/>
+        <pin num="4" name="GND" type="input"/>
+        <pin num="5" name="Y" type="input"/>
+        <pin num="6" name="B-" type="input"/>
+        <pin num="7" name="A+" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="module" part="YYAC-35_PWM_TRIAC">
+      <fields>
+        <field name="Reference">U</field>
+      </fields>
+      <pins>
+        <pin num="1" name="3.3/5V" type="input"/>
+        <pin num="2" name="GND" type="input"/>
+        <pin num="3" name="PWM" type="input"/>
+        <pin num="4" name="N-OUT_CHARGE" type="output"/>
+        <pin num="5" name="L-OUT_CHARGE" type="output"/>
+        <pin num="6" name="L-IN_230V" type="input"/>
+        <pin num="7" name="N-IN_230V" type="input"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Connector">
+      <uri>/usr/share/kicad/symbols//Connector.kicad_sym</uri>
+    </library>
+    <library logical="Connector_Generic">
+      <uri>/usr/share/kicad/symbols//Connector_Generic.kicad_sym</uri>
+    </library>
+    <library logical="Converter_ACDC">
+      <uri>/usr/share/kicad/symbols//Converter_ACDC.kicad_sym</uri>
+    </library>
+    <library logical="Device">
+      <uri>/usr/share/kicad/symbols//Device.kicad_sym</uri>
+    </library>
+    <library logical="Diode">
+      <uri>/usr/share/kicad/symbols//Diode.kicad_sym</uri>
+    </library>
+    <library logical="Espressif">
+      <uri>/home/ivan/devel/freeds-pcb/espressif-kicad-libraries/libraries/Espressif.kicad_sym</uri>
+    </library>
+    <library logical="Mechanical">
+      <uri>/usr/share/kicad/symbols//Mechanical.kicad_sym</uri>
+    </library>
+    <library logical="Motor">
+      <uri>/usr/share/kicad/symbols//Motor.kicad_sym</uri>
+    </library>
+    <library logical="Relay_SolidState">
+      <uri>/usr/share/kicad/symbols//Relay_SolidState.kicad_sym</uri>
+    </library>
+    <library logical="Sensor_Temperature">
+      <uri>/usr/share/kicad/symbols//Sensor_Temperature.kicad_sym</uri>
+    </library>
+    <library logical="Switch">
+      <uri>/usr/share/kicad/symbols//Switch.kicad_sym</uri>
+    </library>
+    <library logical="Transistor_BJT">
+      <uri>/usr/share/kicad/symbols//Transistor_BJT.kicad_sym</uri>
+    </library>
+    <library logical="Transistor_FET">
+      <uri>/usr/share/kicad/symbols//Transistor_FET.kicad_sym</uri>
+    </library>
+    <library logical="Triac_Thyristor">
+      <uri>/usr/share/kicad/symbols//Triac_Thyristor.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="+3V3">
+      <node ref="J7" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="J8" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="Q3" pin="3" pinfunction="VDD" pintype="power_in"/>
+      <node ref="R5" pin="1" pintype="passive"/>
+      <node ref="R7" pin="1" pintype="passive"/>
+      <node ref="U3" pin="1" pinfunction="VCC" pintype="input"/>
+      <node ref="U4" pin="1" pinfunction="3V3" pintype="power_in"/>
+      <node ref="U5" pin="2" pinfunction="VCC" pintype="power_in"/>
+    </net>
+    <net code="2" name="+5V">
+      <node ref="J4" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="J9" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="U4" pin="19" pinfunction="5V" pintype="power_in"/>
+    </net>
+    <net code="3" name="/control/SW1">
+      <node ref="SW1" pin="1" pinfunction="A" pintype="passive"/>
+      <node ref="U4" pin="25" pinfunction="GPIO0/BOOT/ADC2_CH1" pintype="bidirectional"/>
+    </net>
+    <net code="4" name="/potencia/+5V">
+      <node ref="C2" pin="2" pintype="passive"/>
+      <node ref="D2" pin="1" pinfunction="K" pintype="passive"/>
+      <node ref="J16" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="J3" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="PS1" pin="4" pinfunction="+Vout" pintype="power_out"/>
+    </net>
+    <net code="5" name="/potencia/A1">
+      <node ref="F1" pin="1" pintype="passive"/>
+      <node ref="Q1" pin="1" pinfunction="A1" pintype="passive"/>
+      <node ref="R2" pin="1" pintype="passive"/>
+    </net>
+    <net code="6" name="/potencia/GND">
+      <node ref="J3" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="PS1" pin="3" pinfunction="-Vout" pintype="power_out"/>
+      <node ref="Q4" pin="3" pinfunction="S" pintype="passive"/>
+      <node ref="R3" pin="2" pintype="passive"/>
+      <node ref="R9" pin="1" pintype="passive"/>
+    </net>
+    <net code="7" name="/potencia/Gate">
+      <node ref="Q1" pin="3" pinfunction="G" pintype="input"/>
+      <node ref="R2" pin="2" pintype="passive"/>
+      <node ref="U2" pin="4" pintype="passive"/>
+    </net>
+    <net code="8" name="/potencia/PWM POTENCIA">
+      <node ref="J3" pin="4" pinfunction="Pin_4" pintype="passive"/>
+      <node ref="R8" pin="1" pintype="passive"/>
+      <node ref="U2" pin="1" pintype="passive"/>
+    </net>
+    <net code="9" name="1WIRE">
+      <node ref="J7" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="J8" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="Q3" pin="2" pinfunction="DQ" pintype="bidirectional"/>
+      <node ref="R7" pin="2" pintype="passive"/>
+      <node ref="U4" pin="24" pinfunction="ADC2_CH2/GPIO2" pintype="bidirectional"/>
+    </net>
+    <net code="10" name="CT CLAMP">
+      <node ref="J5" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="J6" pin="T" pintype="passive"/>
+      <node ref="U4" pin="5" pinfunction="VDET_1/GPIO34/ADC1_CH6" pintype="input"/>
+    </net>
+    <net code="11" name="Earth">
+      <node ref="J2" pin="2" pinfunction="Pin_2" pintype="passive"/>
+    </net>
+    <net code="12" name="GND">
+      <node ref="C1" pin="2" pintype="passive"/>
+      <node ref="J10" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="J10" pin="4" pinfunction="Pin_4" pintype="passive"/>
+      <node ref="J10" pin="6" pinfunction="Pin_6" pintype="passive"/>
+      <node ref="J10" pin="8" pinfunction="Pin_8" pintype="passive"/>
+      <node ref="J4" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="J7" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="J8" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="J9" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="Q2" pin="3" pinfunction="E" pintype="passive"/>
+      <node ref="Q3" pin="1" pinfunction="GND" pintype="power_in"/>
+      <node ref="R6" pin="2" pintype="passive"/>
+      <node ref="SW1" pin="2" pinfunction="B" pintype="passive"/>
+      <node ref="U3" pin="4" pinfunction="GND" pintype="input"/>
+      <node ref="U4" pin="14" pinfunction="GND" pintype="power_in"/>
+      <node ref="U4" pin="32" pinfunction="GND" pintype="passive"/>
+      <node ref="U4" pin="38" pinfunction="GND" pintype="passive"/>
+      <node ref="U5" pin="1" pinfunction="GND" pintype="power_in"/>
+    </net>
+    <net code="13" name="I2C SCL">
+      <node ref="U4" pin="23" pinfunction="MTDO/GPIO15/ADC2_CH3" pintype="bidirectional"/>
+      <node ref="U5" pin="3" pinfunction="SCL" pintype="input"/>
+    </net>
+    <net code="14" name="I2C SDA">
+      <node ref="U4" pin="26" pinfunction="ADC2_CH0/GPIO4" pintype="bidirectional"/>
+      <node ref="U5" pin="4" pinfunction="SDA" pintype="bidirectional"/>
+    </net>
+    <net code="15" name="LINE IN">
+      <node ref="J1" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="PS1" pin="1" pinfunction="AC/L" pintype="power_in"/>
+      <node ref="Q1" pin="2" pinfunction="A2" pintype="passive"/>
+      <node ref="R1" pin="1" pintype="passive"/>
+    </net>
+    <net code="16" name="LINE OUT">
+      <node ref="F1" pin="2" pintype="passive"/>
+      <node ref="J1" pin="1" pinfunction="Pin_1" pintype="passive"/>
+    </net>
+    <net code="17" name="NEUT">
+      <node ref="J2" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="PS1" pin="2" pinfunction="AC/N" pintype="power_in"/>
+    </net>
+    <net code="19" name="Net-(D2-A)">
+      <node ref="C2" pin="1" pintype="passive"/>
+      <node ref="D2" pin="2" pinfunction="A" pintype="passive"/>
+      <node ref="J16" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="Q4" pin="1" pinfunction="D" pintype="passive"/>
+    </net>
+    <net code="20" name="Net-(J5-Pin_2)">
+      <node ref="C1" pin="1" pintype="passive"/>
+      <node ref="J5" pin="2" pinfunction="Pin_2" pintype="passive"/>
+      <node ref="J6" pin="S" pintype="passive"/>
+      <node ref="R5" pin="2" pintype="passive"/>
+      <node ref="R6" pin="1" pintype="passive"/>
+    </net>
+    <net code="21" name="Net-(J9-Pin_3)">
+      <node ref="J9" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="Q2" pin="1" pinfunction="C" pintype="passive"/>
+    </net>
+    <net code="22" name="Net-(J11-Pin_2)">
+      <node ref="M2" pin="2" pinfunction="-" pintype="passive"/>
+    </net>
+    <net code="23" name="Net-(J11-Pin_3)">
+      <node ref="M2" pin="1" pinfunction="+" pintype="passive"/>
+    </net>
+    <net code="24" name="Net-(J12-Pin_1)">
+      <node ref="M1" pin="1" pinfunction="-" pintype="passive"/>
+    </net>
+    <net code="25" name="Net-(J12-Pin_2)">
+      <node ref="M1" pin="2" pinfunction="+" pintype="passive"/>
+    </net>
+    <net code="26" name="Net-(J12-Pin_3)">
+      <node ref="M1" pin="3" pinfunction="Tacho" pintype="passive"/>
+    </net>
+    <net code="27" name="Net-(J12-Pin_4)">
+      <node ref="M1" pin="4" pinfunction="PWM" pintype="input"/>
+    </net>
+    <net code="32" name="Net-(Q2-B)">
+      <node ref="Q2" pin="2" pinfunction="B" pintype="input"/>
+      <node ref="R4" pin="1" pintype="passive"/>
+    </net>
+    <net code="33" name="Net-(Q4-G)">
+      <node ref="Q4" pin="2" pinfunction="G" pintype="input"/>
+      <node ref="R8" pin="2" pintype="passive"/>
+      <node ref="R9" pin="2" pintype="passive"/>
+    </net>
+    <net code="35" name="Net-(R1-Pad2)">
+      <node ref="R1" pin="2" pintype="passive"/>
+      <node ref="U2" pin="6" pintype="passive"/>
+    </net>
+    <net code="36" name="Net-(R3-Pad1)">
+      <node ref="R3" pin="1" pintype="passive"/>
+      <node ref="U2" pin="2" pintype="passive"/>
+    </net>
+    <net code="37" name="PWM">
+      <node ref="J4" pin="4" pinfunction="Pin_4" pintype="passive"/>
+      <node ref="U4" pin="9" pinfunction="DAC_1/ADC2_CH8/GPIO25" pintype="bidirectional"/>
+    </net>
+    <net code="38" name="RELAY1">
+      <node ref="J10" pin="1" pinfunction="Pin_1" pintype="passive"/>
+      <node ref="U4" pin="15" pinfunction="MTCK/GPIO13/ADC2_CH4" pintype="bidirectional"/>
+    </net>
+    <net code="39" name="RELAY2">
+      <node ref="J10" pin="3" pinfunction="Pin_3" pintype="passive"/>
+      <node ref="U4" pin="13" pinfunction="MTDI/GPIO12/ADC2_CH5" pintype="bidirectional"/>
+    </net>
+    <net code="40" name="RELAY3">
+      <node ref="J10" pin="5" pinfunction="Pin_5" pintype="passive"/>
+      <node ref="U4" pin="12" pinfunction="MTMS/GPIO14/ADC2_CH6" pintype="bidirectional"/>
+    </net>
+    <net code="41" name="RELAY4">
+      <node ref="J10" pin="7" pinfunction="Pin_7" pintype="passive"/>
+      <node ref="R4" pin="2" pintype="passive"/>
+      <node ref="U4" pin="11" pinfunction="ADC2_CH7/GPIO27" pintype="bidirectional"/>
+    </net>
+    <net code="42" name="RS485RX">
+      <node ref="U3" pin="3" pinfunction="RXD" pintype="input"/>
+      <node ref="U4" pin="31" pinfunction="GPIO19" pintype="bidirectional"/>
+    </net>
+    <net code="43" name="RS485TX">
+      <node ref="U3" pin="2" pinfunction="TXD" pintype="input"/>
+      <node ref="U4" pin="37" pinfunction="GPIO23" pintype="bidirectional"/>
+    </net>
+    <net code="44" name="unconnected-(AE1-A-Pad1)">
+      <node ref="AE1" pin="1" pinfunction="A" pintype="input"/>
+    </net>
+    <net code="45" name="unconnected-(J3-Pin_3-Pad3)">
+      <node ref="J3" pin="3" pinfunction="Pin_3" pintype="passive+no_connect"/>
+    </net>
+    <net code="46" name="unconnected-(J4-Pin_3-Pad3)">
+      <node ref="J4" pin="3" pinfunction="Pin_3" pintype="passive+no_connect"/>
+    </net>
+    <net code="51" name="unconnected-(U2-NC-Pad3)">
+      <node ref="U2" pin="3" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="52" name="unconnected-(U2-NC-Pad5)">
+      <node ref="U2" pin="5" pinfunction="NC" pintype="no_connect"/>
+    </net>
+    <net code="53" name="unconnected-(U3-A+-Pad7)">
+      <node ref="U3" pin="7" pinfunction="A+" pintype="input+no_connect"/>
+    </net>
+    <net code="54" name="unconnected-(U3-B--Pad6)">
+      <node ref="U3" pin="6" pinfunction="B-" pintype="input+no_connect"/>
+    </net>
+    <net code="55" name="unconnected-(U3-Y-Pad5)">
+      <node ref="U3" pin="5" pinfunction="Y" pintype="input+no_connect"/>
+    </net>
+    <net code="56" name="unconnected-(U4-32K_XN{slash}GPIO33{slash}ADC1_CH5-Pad8)">
+      <node ref="U4" pin="8" pinfunction="32K_XN/GPIO33/ADC1_CH5" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="57" name="unconnected-(U4-32K_XP{slash}GPIO32{slash}ADC1_CH4-Pad7)">
+      <node ref="U4" pin="7" pinfunction="32K_XP/GPIO32/ADC1_CH4" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="58" name="unconnected-(U4-CHIP_PU-Pad2)">
+      <node ref="U4" pin="2" pinfunction="CHIP_PU" pintype="input+no_connect"/>
+    </net>
+    <net code="59" name="unconnected-(U4-CMD-Pad18)">
+      <node ref="U4" pin="18" pinfunction="CMD" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="60" name="unconnected-(U4-DAC_2{slash}ADC2_CH9{slash}GPIO26-Pad10)">
+      <node ref="U4" pin="10" pinfunction="DAC_2/ADC2_CH9/GPIO26" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="61" name="unconnected-(U4-GPIO5-Pad29)">
+      <node ref="U4" pin="29" pinfunction="GPIO5" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="62" name="unconnected-(U4-GPIO16-Pad27)">
+      <node ref="U4" pin="27" pinfunction="GPIO16" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="63" name="unconnected-(U4-GPIO17-Pad28)">
+      <node ref="U4" pin="28" pinfunction="GPIO17" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="64" name="unconnected-(U4-GPIO18-Pad30)">
+      <node ref="U4" pin="30" pinfunction="GPIO18" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="65" name="unconnected-(U4-GPIO21-Pad33)">
+      <node ref="U4" pin="33" pinfunction="GPIO21" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="66" name="unconnected-(U4-GPIO22-Pad36)">
+      <node ref="U4" pin="36" pinfunction="GPIO22" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="67" name="unconnected-(U4-SD_CLK{slash}GPIO6-Pad20)">
+      <node ref="U4" pin="20" pinfunction="SD_CLK/GPIO6" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="68" name="unconnected-(U4-SD_DATA0{slash}GPIO7-Pad21)">
+      <node ref="U4" pin="21" pinfunction="SD_DATA0/GPIO7" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="69" name="unconnected-(U4-SD_DATA1{slash}GPIO8-Pad22)">
+      <node ref="U4" pin="22" pinfunction="SD_DATA1/GPIO8" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="70" name="unconnected-(U4-SD_DATA2{slash}GPIO9-Pad16)">
+      <node ref="U4" pin="16" pinfunction="SD_DATA2/GPIO9" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="71" name="unconnected-(U4-SD_DATA3{slash}GPIO10-Pad17)">
+      <node ref="U4" pin="17" pinfunction="SD_DATA3/GPIO10" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="72" name="unconnected-(U4-SENSOR_VN{slash}GPIO39{slash}ADC1_CH3-Pad4)">
+      <node ref="U4" pin="4" pinfunction="SENSOR_VN/GPIO39/ADC1_CH3" pintype="input+no_connect"/>
+    </net>
+    <net code="73" name="unconnected-(U4-SENSOR_VP{slash}GPIO36{slash}ADC1_CH0-Pad3)">
+      <node ref="U4" pin="3" pinfunction="SENSOR_VP/GPIO36/ADC1_CH0" pintype="input+no_connect"/>
+    </net>
+    <net code="74" name="unconnected-(U4-U0RXD{slash}GPIO3-Pad34)">
+      <node ref="U4" pin="34" pinfunction="U0RXD/GPIO3" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="75" name="unconnected-(U4-U0TXD{slash}GPIO1-Pad35)">
+      <node ref="U4" pin="35" pinfunction="U0TXD/GPIO1" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="76" name="unconnected-(U4-VDET_2{slash}GPIO35{slash}ADC1_CH7-Pad6)">
+      <node ref="U4" pin="6" pinfunction="VDET_2/GPIO35/ADC1_CH7" pintype="input+no_connect"/>
+    </net>
+  </nets>
+</export>
