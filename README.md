@@ -6,6 +6,9 @@
     </a>
 </h1>
 
+**!!!WARNING!!!** The last code available is for the 1.0.7 rev2, source code from last betas is not open at the moment and is 100% new, but free to use.
+            You can get info in the telegram Channel: http://t.me/freeds_es or take a look to the community manual: [https://docs.google.com/document/d/1-XLCqHEbpqEPi4geI4CbANmGxodExC__zDvND89xjIU]
+
 **FreeDS** is a universal surplus manager and totally independent of the source that generates
 them (whether they come from photovoltaic and/or wind generation).
 
