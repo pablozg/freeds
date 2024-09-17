@@ -9,6 +9,10 @@
 **!!!WARNING!!!** The last code available is for the 1.0.7 rev2, source code from last betas is not open at the moment and is 100% new, but free to use.
             You can get info in the telegram Channel: http://t.me/freeds_es or take a look to the community manual: [https://docs.google.com/document/d/1-XLCqHEbpqEPi4geI4CbANmGxodExC__zDvND89xjIU]
 
+Code of version 1.0.7 rev2 is under GPL-3.0 License.
+
+New Beta releases are under [CC BY-ND 4.0 ](https://creativecommons.org/licenses/by-nd/4.0/?ref=chooser-v1)
+
 **FreeDS** is a universal surplus manager and totally independent of the source that generates
 them (whether they come from photovoltaic and/or wind generation).
 
@@ -22,6 +26,6 @@ them (whether they come from photovoltaic and/or wind generation).
 - **esp32ModbusTCP**: [bertmelis/esp32ModbusTCP](https://github.com/bertmelis/esp32ModbusTCP)
 
 ## License
-Licensed under the [GPL-3.0 License](https://opensource.org/licenses/GPL-3.0)
+FreeDS 1.0.7 rev2 licensed under the [GPL-3.0 License](https://opensource.org/licenses/GPL-3.0)
 
-Read [LICENSE](LICENSE) for more information
+FreeDS Beta licensed under [CC BY-ND 4.0 ](https://creativecommons.org/licenses/by-nd/4.0/?ref=chooser-v1)
