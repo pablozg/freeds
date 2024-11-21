@@ -25,6 +25,14 @@ them (whether they come from photovoltaic and/or wind generation).
 - **ThingPulse OLED SSD1306 (ESP8266/ESP32/Mbed-OS)**: [ThingPulse/esp8266-oled-ssd1306](https://github.com/ThingPulse/esp8266-oled-ssd1306)
 - **esp32ModbusTCP**: [bertmelis/esp32ModbusTCP](https://github.com/bertmelis/esp32ModbusTCP)
 
+## Compile
+- **Download Source Code** Clone https://github.com/pablozg/freeds.git or download https://github.com/pablozg/freeds/archive/refs/heads/PID.zip (The source code is only the 1.0.7 Rev2)
+- **Extract lib.zip** Extract the content of lib.zip inside the lib folder.
+- **Use VSCode** Install it.
+- **Install PlatformIO** You need the PlatformIO extension.
+- **Open folder** Open the folder which contains the source code of FreeDS, wait until it finishes installing all required dependencies.
+- **Compile** Compile using the PlatformIO build option or upload directly to the ESP32 board.
+
 ## License
 FreeDS 1.0.7 rev2 licensed under the [GPL-3.0 License](https://opensource.org/licenses/GPL-3.0)
 
