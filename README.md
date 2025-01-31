@@ -14,7 +14,7 @@ Code of version 1.0.7 rev2 is under GPL-3.0 License.
 **New Beta releases are under [CC BY-ND 4.0 ](https://creativecommons.org/licenses/by-nd/4.0/?ref=chooser-v1)**
 
 **FreeDS** is a universal surplus manager and totally independent of the source that generates
-them (whether they come from photovoltaic and/or wind generation).
+them (whether they come from photovoltaic and/or wind generation), created by Pablo Zerón, tested by Aeizoon and PCB Design by amcalo.
 
 
 **Donate**
