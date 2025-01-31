@@ -16,6 +16,12 @@ Code of version 1.0.7 rev2 is under GPL-3.0 License.
 **FreeDS** is a universal surplus manager and totally independent of the source that generates
 them (whether they come from photovoltaic and/or wind generation).
 
+
+**Donate**
+
+[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=P2KUJFDMRSGTY)
+
+
 ## Dependencies (just to compile)
 - **TickerScheduler** (included in this repository with the necessary patch): [Toshik/TickerScheduler](https://github.com/Toshik/TickerScheduler)
 - **Async MQTT client for ESP8266 and ESP32**: [marvinroger/async-mqtt-client](https://github.com/marvinroger/async-mqtt-client)
