@@ -3,13 +3,21 @@ con fines estadisticos o para la prestación de servicios especificos pudiendo s
 
 FreeDS no procesará ni obtendrá datos de caracter personal, sin autorización expresa otorgada por el usuario.
 
-También serán de aplicación los terminos y condiciones definidos en la licencia GPL-3.0
+También serán de aplicación los terminos y condiciones definidos en la licencia CC BY-ND 4.0
+
+La venta con fines lucrativos de gestores que contengan el firmware de FreeDS, deberán obtener una clave de activación para poder hacer uso del mismo, apoyando así
+la continuación del proyecto y futuras mejoras, todos los usuarios que hayan colaborado con el desarrollo de freeDS, hayan realizado donativos, usen placas oficiales del proyecto o
+hayan montado el gestor por si mismos deberán solicitar la clave de activación mediante un correo a derivadorfreeds@gmail.com incluyendo el mail con el que realizaron su aportación o
+o la forma en que han colaborado con el proyecto e indicando el número de gestores que necesitan activación junto al codigo de dispositivo que se muestra en la web o en la ultima pantalla del esp32.
 
 
+I consent to freeDS obtaining operational data for statistical purposes or to provide specific services. This data may be stored in a file created for this purpose if necessary.
 
-I grant with freeDS to obtain the data of its operation for statistical purposes or for the 
-provision of specific services and may be stored in a file created for this purpose if necessary.
+FreeDS will not process or obtain personal data without the express authorization of the user.
 
-FreeDS will not process or obtain personal data without the express authorization granted by the user.
+The terms and conditions defined in the CC BY-ND 4.0 license will also apply.
 
-Licensed under the GPL-3.0 License
+For the commercial sale of managers containing the FreeDS firmware, an activation key must be obtained in order to use it, thus supporting the continuation of the project and future improvements.
+All users who have collaborated with the development of freeDS, have made donations, use official project boards, or have built the manager themselves (DIY) must request the activation key by emailing derivadorfreeds@gmail.com,
+including the email address with which they made their contribution or the way in which they have collaborated with the project,
+and indicating the number of managers that need activation along with the device code shown on the website or on the last screen of the esp32.
