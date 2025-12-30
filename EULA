@@ -1,23 +1,137 @@
-Doy mi consentimiento para que freeDS pueda obtener los datos de su funcionamiento
-con fines estadisticos o para la prestación de servicios especificos pudiendo ser almacenados en un fichero creado al efecto si fuera necesario.
+# TÉRMINOS LEGALES, POLÍTICA DE PRIVACIDAD Y CONDICIONES DE USO
 
-FreeDS no procesará ni obtendrá datos de caracter personal, sin autorización expresa otorgada por el usuario.
+Última actualización: 01/12/2025
 
-También serán de aplicación los terminos y condiciones definidos en la licencia CC BY-ND 4.0
+A continuación se detallan los términos y condiciones que rigen el uso del software y hardware asociado al proyecto **FreeDS**, en cumplimiento con el Reglamento General de Protección de Datos (RGPD) y la Ley Orgánica 3/2018 de Protección de Datos y Garantía de Derechos Digitales (LOPD-GDD).
 
-La venta con fines lucrativos de gestores que contengan el firmware de FreeDS, deberán obtener una clave de activación para poder hacer uso del mismo, apoyando así
-la continuación del proyecto y futuras mejoras, todos los usuarios que hayan colaborado con el desarrollo de freeDS, hayan realizado donativos, usen placas oficiales del proyecto o
-hayan montado el gestor por si mismos deberán solicitar la clave de activación mediante un correo a derivadorfreeds@gmail.com incluyendo el mail con el que realizaron su aportación o
-o la forma en que han colaborado con el proyecto e indicando el número de gestores que necesitan activación junto al codigo de dispositivo que se muestra en la web o en la ultima pantalla del esp32.
+## 1. INFORMACIÓN BÁSICA SOBRE PROTECCIÓN DE DATOS (Cuadro Resumen)
+
+**Responsable**
+  **Ibepower Technologies S.L.** (NIF: **B13899117**)
+
+**Finalidad**
+  1. Recopilación de telemetría y estadísticas de funcionamiento.
+  2. Prestación del servicio en la nube (si se registra).
+  3. Gestión de licencias y claves de activación.
+
+**Legitimación** 
+  Consentimiento expreso del interesado al usar el software, solicitar activación o registrarse.
+
+**Destinatarios**
+  No se cederán datos a terceros, salvo obligación legal o proveedores de infraestructura necesarios.
+
+**Derechos** 
+  Acceder, rectificar y suprimir los datos, así como otros derechos detallados en la información adicional.
+
+## 2. INFORMACIÓN DETALLADA
+
+### 2.1 Responsable del Tratamiento
+Los datos recogidos a través del uso de FreeDS y sus servicios asociados son tratados por:
+* **Identidad:** Ibepower Technologies S.L.
+* **NIF:** **B13899117**
+* **Contacto:** info@ibepower.com
+
+### 2.2 Recogida de Datos y Finalidad
+Al aceptar estos términos mediante el uso del dispositivo o el registro web, el usuario consiente que FreeDS pueda obtener datos técnicos de su funcionamiento:
+
+1.  **Fines estadísticos y de mejora:** Recopilación de telemetría anónima para analizar el rendimiento del firmware y depurar errores.
+2.  **Prestación de servicios específicos:** Habilitar funcionalidades como el servicio en la nube, monitorización remota y almacenamiento de históricos.
+
+**Privacidad de Datos Personales:**
+FreeDS **no procesará ni obtendrá datos de carácter personal** (nombres, direcciones físicas, etc.) sin una autorización expresa otorgada por el usuario. Se entenderá otorgada dicha autorización cuando el usuario se registre de forma voluntaria en el servicio de la nube de Ibepower Technologies S.L., vinculando su dispositivo a una cuenta de usuario.
+
+### 2.3 Licencia y Propiedad Intelectual
+El firmware FreeDS se distribuye bajo los términos de la licencia **Creative Commons Atribución-SinDerivadas 4.0 Internacional (CC BY-ND 4.0)**.
+
+**Usted es libre de:** Compartir, copiar y redistribuir el material en cualquier medio o formato para cualquier finalidad, incluso comercial.
+**Limitación:** Si remezcla, transforma o crea a partir del material, **no podrá distribuir el material modificado**.
+**Atribución:** Debe otorgar el crédito adecuado, proporcionar un enlace a la licencia e indicar si se realizaron cambios.
+
+### 2.4 Condiciones de Uso Comercial y Claves de Activación
+Para garantizar la sostenibilidad del proyecto y futuras mejoras, se establecen las siguientes condiciones:
+
+* **Venta con fines lucrativos:** Cualquier entidad o tercero que comercialice gestores que contengan el firmware de FreeDS deberá obtener una **clave de activación** válida para cada unidad vendida.
+* **Usuarios DIY y Colaboradores:** Los usuarios que hayan colaborado con el desarrollo, realizado donativos, utilicen placas oficiales del proyecto o hayan montado el gestor por sí mismos,
+haciendo uso de hardware no creado expresamente para freeDS, deberán solicitar la clave de activación gratuita.
+
+### 2.5 Procedimiento de Activación
+Para solicitar la clave de activación, es necesario enviar un correo electrónico a **derivadorfreeds@gmail.com** incluyendo:
+
+1.  El **código de dispositivo** (visible en la web de configuración o en la última pantalla del ESP32).
+2.  **Justificante:** El mail con el que se realizó la aportación/donativo, o una descripción de la forma en que se ha colaborado con el proyecto (ej. montaje propio), incluyendo una imágen del gestor donde sea visible la pantalla del esp32.
+
+*Al enviar este correo, el usuario consiente el tratamiento de su dirección de email y los datos aportados exclusivamente para la gestión de licencias y verificación de su condición de colaborador.*
+
+### 2.6 Derechos del Usuario
+El usuario puede ejercer en cualquier momento sus derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad sobre sus datos personales. Para ello, deberá enviar una solicitud por escrito al correo electrónico indicado anteriormente, acreditando su identidad.
+
+---
+*Ibepower Technologies S.L. se reserva el derecho de modificar la presente política para adaptarla a novedades legislativas o jurisprudenciales.*
 
 
-I consent to freeDS obtaining operational data for statistical purposes or to provide specific services. This data may be stored in a file created for this purpose if necessary.
+# LEGAL TERMS, PRIVACY POLICY, AND TERMS OF USE
 
-FreeDS will not process or obtain personal data without the express authorization of the user.
+Last updated: 01/12/2025
 
-The terms and conditions defined in the CC BY-ND 4.0 license will also apply.
+The following details the terms and conditions governing the use of the software and hardware associated with the **FreeDS** project, in compliance with the General Data Protection Regulation (GDPR) and the Organic Law 3/2018 on Personal Data Protection and Guarantee of Digital Rights (LOPD-GDD).
 
-For the commercial sale of managers containing the FreeDS firmware, an activation key must be obtained in order to use it, thus supporting the continuation of the project and future improvements.
-All users who have collaborated with the development of freeDS, have made donations, use official project boards, or have built the manager themselves (DIY) must request the activation key by emailing derivadorfreeds@gmail.com,
-including the email address with which they made their contribution or the way in which they have collaborated with the project,
-and indicating the number of managers that need activation along with the device code shown on the website or on the last screen of the esp32.
+## 1. BASIC INFORMATION ON DATA PROTECTION (Summary)
+
+**Data Controller**
+  **Ibepower Technologies S.L.** (Tax ID/NIF: **B13899117**)
+**Purpose**
+  1. Collection of telemetry and operational statistics.
+  2. Provision of cloud services (if registered).
+  3. Management of licenses and activation keys.
+
+**Legal Basis** 
+  Express consent of the interested party when using the software, requesting activation, or registering.
+**Recipients**
+  Data will not be transferred to third parties, except for legal obligations or necessary infrastructure providers.
+
+**Rights**
+  Access, rectify, and delete data, as well as other rights detailed in the additional information.
+
+## 2. DETAILED INFORMATION
+
+### 2.1 Data Controller
+The data collected through the use of FreeDS and its associated services are processed by:
+* **Identity:** Ibepower Technologies S.L.
+* **Tax ID (NIF):** B13899117
+* **Contact:** info@ibepower.com
+
+### 2.2 Data Collection and Purpose
+By accepting these terms through the use of the device or web registration, the user consents to FreeDS obtaining technical data regarding its operation:
+
+1.  **Statistical and Improvement Purposes:** Collection of anonymous telemetry to analyze firmware performance and debug errors.
+2.  **Specific Service Provision:** Enabling functionalities such as cloud service, remote monitoring, and historical data storage.
+
+**Personal Data Privacy:**
+FreeDS **will not process or obtain personal data** (names, physical addresses, etc.) without express authorization granted by the user. Such authorization is considered granted when the user voluntarily registers for the Ibepower Technologies S.L. cloud service, linking their device to a user account.
+
+### 2.3 License and Intellectual Property
+The FreeDS firmware is distributed under the terms of the **Creative Commons Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0)** license.
+
+**You are free to:** Share, copy, and redistribute the material in any medium or format for any purpose, even commercially.
+**Limitation:** If you remix, transform, or build upon the material, **you may not distribute the modified material**.
+**Attribution:** You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+
+### 2.4 Commercial Use Conditions and Activation Keys
+To ensure the sustainability of the project and future improvements, the following conditions are established:
+
+* **For-Profit Sale:** Any entity or third party marketing managers/devices containing the FreeDS firmware must obtain a valid **activation key** for each unit sold.
+* **DIY Users and Collaborators:** Users who have collaborated on development, made donations, use official project boards, or have assembled the manager themselves **using hardware not expressly created for FreeDS**, must request a free activation key.
+
+### 2.5 Activation Procedure
+To request the activation key, it is necessary to send an email to **derivadorfreeds@gmail.com** including:
+
+1.  The **device code** (visible on the configuration web interface or the last screen of the ESP32).
+2.  **Proof:** The email address used to make the donation/contribution, or a description of how you have collaborated with the project (e.g., self-assembly), **including an image of the manager where the ESP32 screen is visible.**
+
+*By sending this email, the user consents to the processing of their email address and the provided data exclusively for license management and verification of their collaborator status.*
+
+### 2.6 User Rights
+The user may exercise their rights of access, rectification, erasure (deletion), opposition, limitation of processing, and portability of their personal data at any time. To do so, a written request must be sent to the email address indicated above, proving their identity.
+
+---
+*Ibepower Technologies S.L. reserves the right to modify this policy to adapt it to legislative or jurisprudential developments.*
