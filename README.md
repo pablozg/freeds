@@ -6,40 +6,67 @@
     </a>
 </h1>
 
-**!!!WARNING!!!** The last code available is for the 1.0.7 rev2, source code from last betas is not open at the moment and is 100% new, but free to use.
-            You can get info in the telegram Channel: http://t.me/freeds_es or take a look to the community manual: [https://docs.google.com/document/d/1-XLCqHEbpqEPi4geI4CbANmGxodExC__zDvND89xjIU]
+**⚠️ ATTENTION / ADVERTENCIA** The project has evolved through different licensing stages. Please check the version you are using:
 
-Code of version 1.0.7 rev2 is under GPL-3.0 License.
+* **v1.0.7 rev2:** Open Source (GPL-3.0). Source code available in this repo.
+* **Betas (up to v1.0.21):** Distributed under CC BY-ND 4.0.
+* **v2.0.0 and above:** Proprietary EULA. Requires **Per-Device Activation**.
 
-**New Beta releases are under [CC BY-ND 4.0 ](https://creativecommons.org/licenses/by-nd/4.0/?ref=chooser-v1)**
+You can get more info in the Telegram Channel: [http://t.me/freeds_es](http://t.me/freeds_es) or check the community manual: [Community Manual](https://docs.google.com/document/d/1-XLCqHEbpqEPi4geI4CbANmGxodExC__zDvND89xjIU)
 
-**FreeDS** is a universal surplus manager and totally independent of the source that generates
-them (whether they come from photovoltaic and/or wind generation), created by Pablo Zerón, tested by Aeizoon and PCB Design by amcalo.
+**FreeDS** is a universal surplus manager, totally independent of the energy source (photovoltaic and/or wind), created by **Pablo Zerón**, tested by Aeizoon, and PCB Design by amcalo.
 
+---
 
-**Donate**
+## 🔑 License & Activation (v2.0.0+)
+
+Starting from **version 2.0.0**, FreeDS uses a **Proprietary EULA**. 
+
+- **Ownership:** The software is the exclusive property of **Pablo Zerón**.
+- **Cloud Services:** Powered and managed by **Ibepower Technologies S.L.**
+- **Activation:** A unique **Activation Key** is required for each device (linked to Hardware ID).
+
+### How to get a Key?
+Send an email to **derivadorfreeds@gmail.com** with:
+1. Your **Device ID** (visible on the screen/web interface).
+2. **DIY/Contributors:** Proof of contribution or self-assembly (image of the device) to request a **free key**.
+3. **Commercial Use:** Request a quote if you are selling hardware with FreeDS firmware.
+
+---
+
+## 📜 License History
+
+| Version Range | License Type | Description |
+| :--- | :--- | :--- |
+| **<= v1.0.7 rev2** | [GPL-3.0](https://opensource.org/licenses/GPL-3.0) | Open Source. Original legacy code. |
+| **v1.0.8 - v1.0.21** | [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/) | Creative Commons. No derivatives allowed. |
+| **>= v2.0.0** | **Proprietary EULA** | Proprietary. Requires activation key per hardware. |
+
+*Full legal terms can be found in the [EULA.md](./EULA.md) file.*
+
+---
+
+## ☕ Donate
+If you find this project useful, consider supporting its development:
 
 [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=P2KUJFDMRSGTY)
 
+---
 
-## Dependencies (just to compile)
-- **TickerScheduler** (included in this repository with the necessary patch): [Toshik/TickerScheduler](https://github.com/Toshik/TickerScheduler)
-- **Async MQTT client for ESP8266 and ESP32**: [marvinroger/async-mqtt-client](https://github.com/marvinroger/async-mqtt-client)
+## Dependencies (for legacy v1.0.7 compilation)
+- **TickerScheduler**: [Toshik/TickerScheduler](https://github.com/Toshik/TickerScheduler)
+- **Async MQTT client**: [marvinroger/async-mqtt-client](https://github.com/marvinroger/async-mqtt-client)
 - **ArduinoJson**: [bblanchon/ArduinoJson](https://github.com/bblanchon/ArduinoJson)
 - **AsyncTCP**: [me-no-dev/AsyncTCP](https://github.com/me-no-dev/AsyncTCP)
 - **ESPAsyncWebServer**: [me-no-dev/ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer)
-- **ThingPulse OLED SSD1306 (ESP8266/ESP32/Mbed-OS)**: [ThingPulse/esp8266-oled-ssd1306](https://github.com/ThingPulse/esp8266-oled-ssd1306)
+- **ThingPulse OLED SSD1306**: [ThingPulse/esp8266-oled-ssd1306](https://github.com/ThingPulse/esp8266-oled-ssd1306)
 - **esp32ModbusTCP**: [bertmelis/esp32ModbusTCP](https://github.com/bertmelis/esp32ModbusTCP)
 
-## Compile
-- **Download Source Code** Clone https://github.com/pablozg/freeds.git or download https://github.com/pablozg/freeds/archive/refs/heads/PID.zip (The source code is only the 1.0.7 Rev2)
-- **Extract lib.zip** Extract the content of lib.zip inside the lib folder.
-- **Use VSCode** Install it.
-- **Install PlatformIO** You need the PlatformIO extension.
-- **Open folder** Open the folder which contains the source code of FreeDS, wait until it finishes installing all required dependencies.
-- **Compile** Compile using the PlatformIO build option or upload directly to the ESP32 board.
+## Compile (Legacy v1.0.7)
+1. **Download:** Clone this repo or download the [PID.zip](https://github.com/pablozg/freeds/archive/refs/heads/PID.zip).
+2. **Library Setup:** Extract `lib.zip` into the `/lib` folder.
+3. **IDE:** Open with **VSCode** and **PlatformIO**.
+4. **Build:** Use PlatformIO to compile and upload to your ESP32.
 
-## License
-FreeDS 1.0.7 rev2 licensed under the [GPL-3.0 License](https://opensource.org/licenses/GPL-3.0)
-
-FreeDS Beta licensed under [CC BY-ND 4.0 ](https://creativecommons.org/licenses/by-nd/4.0/?ref=chooser-v1)
+---
+Copyright (c) 2026 Pablo Zerón. Cloud services provided by Ibepower Technologies S.L.
