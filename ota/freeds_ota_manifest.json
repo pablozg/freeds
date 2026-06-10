@@ -1,9 +1,9 @@
-﻿{
+{
     "schema":  1,
     "project":  "FreeDS",
     "repository":  "pablozg/freeds",
     "latest":  "2.0.5",
-    "generated_at":  "2026-06-10T19:19:15Z",
+    "generated_at":  "2026-06-10T19:20:45Z",
     "versions":  [
                      {
                          "version":  "2.0.5",
