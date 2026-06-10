@@ -3,7 +3,7 @@
     "project":  "FreeDS",
     "repository":  "pablozg/freeds",
     "latest":  "2.0.5",
-    "generated_at":  "2026-06-10T19:20:45Z",
+    "generated_at":  "2026-06-10T19:22:46Z",
     "versions":  [
                      {
                          "version":  "2.0.5",
@@ -31,6 +31,24 @@
                                                "env":  "WIFIKIT32",
                                                "name":  "FreeDS_OTA_v2.0.4_WIFIKIT32.bin",
                                                "url":  "https://raw.githubusercontent.com/pablozg/freeds/PID/ota/firmware/FreeDS_OTA_v2.0.4_WIFIKIT32.bin",
+                                               "size":  1564832
+                                           },
+                                           {
+                                               "env":  "WROOM32-NOSCREEN",
+                                               "name":  "FreeDS_OTA_v2.0.4_WROOM32-NOSCREEN.bin",
+                                               "url":  "https://raw.githubusercontent.com/pablozg/freeds/PID/ota/firmware/FreeDS_OTA_v2.0.4_WROOM32-NOSCREEN.bin",
+                                               "size":  1527088
+                                           },
+                                           {
+                                               "env":  "WROOM32-OLED",
+                                               "name":  "FreeDS_OTA_v2.0.4_WROOM32-OLED.bin",
+                                               "url":  "https://raw.githubusercontent.com/pablozg/freeds/PID/ota/firmware/FreeDS_OTA_v2.0.4_WROOM32-OLED.bin",
+                                               "size":  1564832
+                                           },
+                                           {
+                                               "env":  "WROOM32-SSH1106",
+                                               "name":  "FreeDS_OTA_v2.0.4_WROOM32-SSH1106.bin",
+                                               "url":  "https://raw.githubusercontent.com/pablozg/freeds/PID/ota/firmware/FreeDS_OTA_v2.0.4_WROOM32-SSH1106.bin",
                                                "size":  1564832
                                            }
                                        ]
