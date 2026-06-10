@@ -3,20 +3,20 @@
   "project": "FreeDS",
   "repository": "pablozg/freeds",
   "latest": "2.0.5",
-  "generated_at": "2026-06-10T19:17:02Z",
+  "generated_at": "2026-06-10T19:18:29Z",
   "versions": [
     {
       "version": "2.0.5",
       "tag": "2.0.5",
       "name": "V2.0.5",
-      "published_at": "2026-06-10T19:17:01Z",
+      "published_at": "2026-06-10T19:18:28Z",
       "changelog": "",
       "firmwares": [
         {
           "env": "WIFIKIT32",
           "name": "FreeDS_OTA_v2.0.5_WIFIKIT32.bin",
           "url": "https://raw.githubusercontent.com/pablozg/freeds/PID/ota/firmware/FreeDS_OTA_v2.0.5_WIFIKIT32.bin",
-          "size": 1570880
+          "size": 1570928
         }
       ]
     }
